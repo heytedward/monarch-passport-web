@@ -120,7 +120,7 @@ const Closet: React.FC = () => {
                       <Text fontSize="md" color="#FFFBEF" opacity={0.7}>Tap or swipe to flip</Text>
                     </Box>
                   )}
-                  <IconButton aria-label="Close" icon={<FaArrowLeft />} position="absolute" top={2} left={2} size="sm" onClick={onClose} bg="transparent" color="#FFFBEF" _hover={{ bg: 'rgba(255,255,255,0.1)' }} />
+                  <IconButton _icon={<FaArrowLeft />} position="absolute" top={2} left={2} size="sm" onClick={onClose} bg="transparent" color="#FFFBEF" _hover={{ bg: 'rgba(255,255,255,0.1)' }} />
                   <IconButton aria-label="Flip" icon={<FaSync />} position="absolute" top={2} right={2} size="sm" onClick={handleFlip} bg="transparent" color="#FFFBEF" _hover={{ bg: 'rgba(255,255,255,0.1)' }} />
                 </MotionBox>
               )}
