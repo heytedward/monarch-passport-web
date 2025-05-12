@@ -5,7 +5,7 @@ const Home = () => {
     <Container maxW="container.md">
       <VStack spacing={8} align="stretch">
         <Box textAlign="center">
-          <Heading size="2xl" mb={4}>Hello narch Passport</Heading>
+          <Heading size="2xl" mb={4}>Welcome to Monarch Passport</Heading>
           <Text fontSize="lg" color="gray.600">
             Scan your Papillon Brand apparel to earn $WNGS and collect rewards
           </Text>
