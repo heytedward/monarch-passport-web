@@ -1,4 +1,3 @@
-// src/pages/Closet.tsx
 import React from 'react';
 
 interface ClosetItem {
