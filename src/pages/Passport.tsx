@@ -1,4 +1,5 @@
-import { Box, Heading, SimpleGrid, Text } from '@chakra-ui/react'
+import { Box, Heading, SimpleGrid, Text, VStack } from '@chakra-ui/react'
+import useStore from '../store/useStore'
 
 const events = [
   {
@@ -16,8 +17,8 @@ const events = [
   {
     name: 'Store Opening ’24',
     label: 'GOLD',
-    borderColor: '#F4.4019',
-    labelColor: '#F4.4019',
+    borderColor: '#FFB000',
+    labelColor: '#FFB000',
   },
   {
     name: 'Paris Show ’24',
@@ -31,14 +32,20 @@ const dark = '#121212'
 const cream = '#FFFBEF'
 
 const Passport = () => {
+  const { points } = useStore();
+
   return (
     <Box bg={dark} minH="100vh" color={cream} p={0} fontFamily="Outfit, sans-serif">
-      <Box textAlign="center" pt={6}>
+      <Box textAlign="center" pt={6} pb={4}>
         <Heading fontFamily="Outfit, sans-serif" fontWeight={700} fontSize="2xl" letterSpacing="0.1em" mb={1} color={cream}>PAPILLON</Heading>
-        <Text fontSize="2xl" fontWeight={600} mb={4} color={cream}>Closet</Text>
-        <Text fontSize="xl" fontWeight={600} mb={4} color={cream} opacity={0.8}>Cards</Text>
+        <Text fontSize="2xl" fontWeight={600} mb={2} color={cream}>Digital Passport</Text>
+        <VStack spacing={0} opacity={0.8}>
+           <Text fontSize="sm" fontWeight="bold">Balance: {points.toLocaleString()} $WNGS</Text>
+           <Text fontSize="xs">Clearance Level: AUTHORIZED</Text>
+        </VStack>
       </Box>
-      <SimpleGrid columns={2} spacing={4} px={4}>
+      
+      <SimpleGrid columns={2} spacing={4} px={4} pb={10}>
         {events.map((event, idx) => (
           <Box
             key={idx}
@@ -48,9 +55,22 @@ const Passport = () => {
             p={4}
             textAlign="center"
             boxShadow="md"
+            transition="all 0.2s"
+            _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
           >
-            <Text fontSize="lg" fontWeight={700} mb={2}>{event.name}</Text>
-            <Box border={`2px solid ${event.labelColor}`} color={event.labelColor} borderRadius="10px" px={3} py={1} display="inline-block" fontWeight={700} fontSize="md">{event.label}</Box>
+            <Text fontSize="lg" fontWeight={700} mb={3} lineHeight="1.2">{event.name}</Text>
+            <Box 
+              border={`2px solid ${event.labelColor}`} 
+              color={event.labelColor} 
+              borderRadius="10px" 
+              px={3} 
+              py={1} 
+              display="inline-block" 
+              fontWeight={700} 
+              fontSize="sm"
+            >
+              {event.label}
+            </Box>
           </Box>
         ))}
       </SimpleGrid>
