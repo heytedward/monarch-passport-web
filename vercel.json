@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/v2/verify/(.*)",
+      "destination": "/api/v2/verify/$1"
+    },
+    {
+      "source": "/api/v2/claim",
+      "destination": "/api/v2/claim"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
