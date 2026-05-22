@@ -17,12 +17,20 @@ import {
   useDisclosure,
   IconButton,
   Divider,
-  useColorMode
+  useColorMode,
+  Spinner
 } from '@chakra-ui/react'
-import { useState } from 'react'
-import { MdTune, MdRefresh, MdClose, MdLightMode, MdDarkMode } from 'react-icons/md'
+import { useState, useEffect } from 'react'
+import { MdTune, MdRefresh, MdClose } from 'react-icons/md'
 import { PiShoppingBagFill, PiSunFill, PiMoonFill } from 'react-icons/pi'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
+import { usePrivy } from '@privy-io/react-auth'
+import { createClient } from '@supabase/supabase-js'
+
+// Initialize Supabase Frontend Client
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const MotionBox = motion.create(Box)
 
@@ -119,75 +127,67 @@ const Closet = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedItem, setSelectedItem] = useState<ClosetItemData | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
+  
+  // LIVE DATA STATES
+  const { user } = usePrivy();
+  const [livePhysicalItems, setLivePhysicalItems] = useState<Record<string, ClosetItemData>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  const physical_items: Record<string, ClosetItemData> = {
-    '01': { 
-      id: 'P01', 
-      type: 'physical', 
-      name: 'NEO_HOODIE_01', 
-      borderColor: '#D53F8C',
-      dossier: {
-        collection: 'GENESYS_PHASE_1',
-        releaseDate: '2026-01-15',
-        serialId: 'SN-2026-0387',
-        xpPerTap: '40',
-        composition: '100% ORGANIC FRENCH TERRY (450 GSM)',
-        activeMissions: [
-          'Complete 3 artifact taps this week',
-          'Share this artifact profile 2 times'
-        ]
+  // FETCH ARTIFACTS FROM DATABASE
+  useEffect(() => {
+    const fetchArtifacts = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
       }
-    },
-    '02': { 
-      id: 'P02', 
-      type: 'physical', 
-      name: 'MONARCH_TEE_04', 
-      borderColor: '#38A169',
-      dossier: {
-        collection: 'LONDON_DROP_25',
-        releaseDate: '2025-05-12',
-        serialId: 'SN-2025-0912',
-        xpPerTap: '25',
-        composition: '100% ORGANIC COTTON (220 GSM)',
-        activeMissions: [
-          'Visit a Papillon retail node',
-          'Scan 5 times in 24 hours'
-        ]
-      }
-    },
-    '03': { 
-      id: 'P03', 
-      type: 'physical', 
-      name: 'UNKNOWN_ASSET', 
-      locked: true,
-      dossier: {
-        collection: 'LOCKED',
-        releaseDate: '???',
-        serialId: '???',
-        xpPerTap: '0',
-        composition: 'UNKNOWN',
-        activeMissions: []
-      }
-    },
-    '04': { 
-      id: 'P04', 
-      type: 'physical', 
-      name: 'SYSTEM_TOTE_v1',
-      borderColor: 'white',
-      dossier: {
-        collection: 'GENESIS_COLLECTION',
-        releaseDate: '2024-11-01',
-        serialId: 'SN-2024-0001',
-        xpPerTap: '10',
-        composition: 'RECYCLED TECH NYLON',
-        activeMissions: [
-          'Initial system handshake',
-          'Register phygital vault'
-        ]
-      }
-    },
-  };
+      
+      try {
+        const { data, error } = await supabase
+          .from('artifacts')
+          .select('*')
+          .eq('owner_id', user.id)
+          .eq('is_activated', true); // Only fetch successfully claimed items
 
+        if (error) throw error;
+
+        if (data) {
+          const fetchedItems: Record<string, ClosetItemData> = {};
+          
+          // Map DB records to UI slots (01, 02, etc.)
+          data.forEach((artifact, index) => {
+            const slotKey = `0${index + 1}`.slice(-2);
+            fetchedItems[slotKey] = {
+              id: artifact.tag_id,
+              type: 'physical',
+              name: artifact.name.toUpperCase(),
+              borderColor: '#FFB000', // Monarch Gold for active items
+              dossier: {
+                collection: artifact.tier.toUpperCase() + '_TIER',
+                releaseDate: new Date(artifact.created_at).toISOString().split('T')[0],
+                serialId: `SN-${artifact.tag_id.toUpperCase()}`,
+                xpPerTap: '50',
+                composition: 'NFC_EMBEDDED_NODE',
+                activeMissions: [
+                  'Initialize system handshake',
+                  'Register phygital vault'
+                ]
+              }
+            };
+          });
+          
+          setLivePhysicalItems(fetchedItems);
+        }
+      } catch (err) {
+        console.error("Uplink to Registry Failed:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchArtifacts();
+  }, [user]);
+
+  // Keep digital items hardcoded for now (Themes/Avatars)
   const digital_items: Record<string, ClosetItemData> = {
     '01': {
       id: 'T01',
@@ -218,46 +218,10 @@ const Closet = () => {
         composition: 'LOW_LIGHT_ENCRYPTION',
         activeMissions: ['Maintain stealth protocols']
       }
-    },
-    '03': {
-      id: 'D01',
-      type: 'digital',
-      name: 'IDENTITY_MATRIX_01',
-      borderColor: '#FFB000',
-      avatarColors: ['white', 'purple.500', 'black', 'orange.400', 'white', 'purple.500', 'black', 'black', 'white'],
-      dossier: {
-        collection: 'DIGITAL_GENESIS',
-        releaseDate: '2026-03-10',
-        serialId: 'ID-001-ALPHA',
-        xpPerTap: '50',
-        composition: 'NEURAL_LINK_PROTOCOL (v1.2)',
-        activeMissions: [
-          'Sync with physical counterpart',
-          'Update status 5 times'
-        ]
-      }
-    },
-    '04': {
-      id: 'D02',
-      type: 'digital',
-      name: 'IDENTITY_MATRIX_02',
-      borderColor: 'cyan.400',
-      avatarColors: ['black', 'yellow.400', 'black', 'yellow.400', 'purple.500', 'yellow.400', 'black', 'yellow.400', 'black'],
-      dossier: {
-        collection: 'NEO_CYBER_SERIES',
-        releaseDate: '2026-04-15',
-        serialId: 'ID-002-BETA',
-        xpPerTap: '30',
-        composition: 'CYAN_EMISSION_MESH',
-        activeMissions: [
-          'Visit Neo_City node',
-          'Collect 5 stamps'
-        ]
-      }
     }
   };
 
-  const current_items = mode === 'physical' ? physical_items : digital_items;
+  const current_items = mode === 'physical' ? livePhysicalItems : digital_items;
 
   const handleOpen = (item: ClosetItemData) => {
     setSelectedItem(item);
@@ -282,7 +246,7 @@ const Closet = () => {
               CLOSET
             </Heading>
             <Text fontSize="9px" fontWeight="900" color="#FFB000" fontFamily="monospace" letterSpacing="0.1em">
-              ASSETS_VERIFIED // {Object.keys(current_items).filter(k => !current_items[k].locked).length}
+              {isLoading ? 'SYNCING_REGISTRY...' : `ASSETS_VERIFIED // ${Object.keys(current_items).filter(k => !current_items[k].locked).length}`}
             </Text>
           </VStack>
           <Box h="12px" bg="#FFB000" w="100%" mt={6} />
@@ -331,7 +295,7 @@ const Closet = () => {
         <Box borderY="1px solid whiteAlpha.300" px={6} py={2}>
           <Flex justify="space-between" align="center">
             <Text fontSize="7px" fontWeight="900" color="white" fontFamily="monospace">PROTOCOL: {mode.toUpperCase()}_STORAGE</Text>
-            <Text fontSize="7px" fontWeight="900" color="white" fontFamily="monospace">VAULT_SYNC: ONLINE</Text>
+            <Text fontSize="7px" fontWeight="900" color="white" fontFamily="monospace">VAULT_SYNC: {isLoading ? 'PENDING' : 'ONLINE'}</Text>
           </Flex>
         </Box>
 
@@ -368,17 +332,23 @@ const Closet = () => {
               <Text fontSize="6px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace">PROTOCOL_TAG</Text>
             </Flex>
             
-            <SimpleGrid columns={3} spacing={3}>
-              <ClosetSlot index="01" item={current_items['01']} onOpen={handleOpen} />
-              <ClosetSlot index="02" item={current_items['02']} onOpen={handleOpen} />
-              <ClosetSlot index="03" item={current_items['03']} onOpen={handleOpen} />
-              <ClosetSlot index="04" item={current_items['04']} onOpen={handleOpen} />
-              <ClosetSlot index="05" onOpen={handleOpen} />
-              <ClosetSlot index="06" onOpen={handleOpen} />
-              <ClosetSlot index="07" onOpen={handleOpen} />
-              <ClosetSlot index="08" onOpen={handleOpen} />
-              <ClosetSlot index="09" onOpen={handleOpen} />
-            </SimpleGrid>
+            {isLoading ? (
+              <Center h="200px">
+                <Spinner color="#FFB000" />
+              </Center>
+            ) : (
+              <SimpleGrid columns={3} spacing={3}>
+                <ClosetSlot index="01" item={current_items['01']} onOpen={handleOpen} />
+                <ClosetSlot index="02" item={current_items['02']} onOpen={handleOpen} />
+                <ClosetSlot index="03" item={current_items['03']} onOpen={handleOpen} />
+                <ClosetSlot index="04" item={current_items['04']} onOpen={handleOpen} />
+                <ClosetSlot index="05" item={current_items['05']} onOpen={handleOpen} />
+                <ClosetSlot index="06" item={current_items['06']} onOpen={handleOpen} />
+                <ClosetSlot index="07" item={current_items['07']} onOpen={handleOpen} />
+                <ClosetSlot index="08" item={current_items['08']} onOpen={handleOpen} />
+                <ClosetSlot index="09" item={current_items['09']} onOpen={handleOpen} />
+              </SimpleGrid>
+            )}
 
             {/* Grid Footer Info */}
             <Flex justify="end" mt={4}>
