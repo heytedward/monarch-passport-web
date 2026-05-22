@@ -10,6 +10,7 @@ A Web2 loyalty app for Papillon Brand that will eventually integrate with Solana
 - Rewards redemption
 - Modern, responsive UI built with Chakra UI
 - Future Solana integration planned
+- Deployment refresh commit
 
 ## Tech Stack
 
