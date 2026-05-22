@@ -3,6 +3,8 @@
     { "source": "/v/(.*)", "destination": "/index.html" },
     { "source": "/claim", "destination": "/index.html" },
     { "source": "/closet", "destination": "/index.html" },
-    { "source": "/profile", "destination": "/index.html" }
+    { "source": "/profile", "destination": "/index.html" },
+    { "source": "/home", "destination": "/index.html" },
+    { "source": "/wallet", "destination": "/index.html" }
   ]
 }
