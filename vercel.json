@@ -1,10 +1,16 @@
 {
   "rewrites": [
     { "source": "/v/(.*)", "destination": "/index.html" },
-    { "source": "/claim", "destination": "/index.html" },
+    { "source": "/claim(.*)", "destination": "/index.html" },
     { "source": "/closet", "destination": "/index.html" },
     { "source": "/profile", "destination": "/index.html" },
+    { "source": "/command", "destination": "/index.html" },
     { "source": "/home", "destination": "/index.html" },
-    { "source": "/wallet", "destination": "/index.html" } 
+    { "source": "/wallet", "destination": "/index.html" },
+    { "source": "/shop", "destination": "/index.html" },
+    { "source": "/passport", "destination": "/index.html" },
+    { "source": "/rewards", "destination": "/index.html" },
+    { "source": "/scan", "destination": "/index.html" },
+    { "source": "/recruit", "destination": "/index.html" }
   ]
 }

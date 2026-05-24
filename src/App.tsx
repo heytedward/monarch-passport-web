@@ -14,6 +14,8 @@ import Wallet from './pages/Wallet'
 import Shop from './pages/Shop'
 import TerminalScanner from './pages/TerminalScanner'
 import Recruit from './pages/Recruit'
+import CommandCenter from './pages/CommandCenter'
+import Verify from './pages/Verify'
 import useStore from './store/useStore'
 
 import { PRIVY_APP_ID } from './config'
@@ -87,9 +89,10 @@ function App() {
                 <Route path="/scan" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
                 <Route path="/closet" element={<ProtectedRoute><Closet /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                <Route path="/v/:tagId" element={<TerminalScanner />} />
+                <Route path="/v/:id" element={<Verify />} />
                 <Route path="/recruit" element={<Recruit />} />
                 <Route path="/claim/:tagId" element={<Claim />} />
+                <Route path="/command" element={<CommandCenter />} />
               </Routes>
             </Box>
           </Box>
@@ -100,4 +103,3 @@ function App() {
 }
 
 export default App
- 
