@@ -23,6 +23,9 @@ interface Artifact {
   tier: string;
   isActivated: boolean;
   ownerId: string | null;
+  collection: string | null;
+  season: string | null;
+  isSeasonArtifact: boolean;
 }
 
 const Verify: React.FC = () => {
@@ -107,11 +110,24 @@ const Verify: React.FC = () => {
                 AUTHENTIC MONARCH ARTIFACT // OWNER_VERIFIED
               </Heading>
               <Box w="full" h="1px" bg="#00FF00" opacity={0.3} />
-              <VStack align="start" w="full" spacing={2}>
-                <Text color="#00FF00" fontFamily="monospace" fontSize="xs">ARTIFACT_NAME: {artifact.name}</Text>
-                <Text color="#00FF00" fontFamily="monospace" fontSize="xs">REGISTRY_TIER: {artifact.tier}</Text>
-                <Text color="#00FF00" fontFamily="monospace" fontSize="xs">STATUS: SECURED</Text>
+              
+              <VStack align="start" w="full" spacing={1}>
+                <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="2xl" lineHeight="1" mb={1}>
+                  {artifact.name.toUpperCase()}
+                </Text>
+                <HStack spacing={2}>
+                  <Text color="#00FF00" fontFamily="monospace" fontSize="xs" fontWeight="900">
+                    {artifact.collection?.toUpperCase() || 'GENERAL_RELEASE'} // {artifact.season?.toUpperCase() || 'UNSPECIFIED'}
+                  </Text>
+                  {artifact.isSeasonArtifact && (
+                    <Text color="black" bg="#00FF00" fontSize="10px" px={1} fontWeight="900">SEASON_EXCLUSIVE</Text>
+                  )}
+                </HStack>
+                <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="9px" pt={2}>
+                  SERIAL_NUM: {artifact.id.toUpperCase()} // REGISTRY_TIER: {artifact.tier.toUpperCase()}
+                </Text>
               </VStack>
+
               <Button 
                 w="full"
                 bg="#00FF00"
@@ -131,11 +147,24 @@ const Verify: React.FC = () => {
                 AUTHENTIC MONARCH ARTIFACT // UNCLAIMED
               </Heading>
               <Box w="full" h="1px" bg="#FFB000" opacity={0.3} />
-              <VStack align="start" w="full" spacing={2}>
-                <Text color="#FFB000" fontFamily="monospace" fontSize="xs">ARTIFACT_NAME: {artifact.name}</Text>
-                <Text color="#FFB000" fontFamily="monospace" fontSize="xs">REGISTRY_TIER: {artifact.tier}</Text>
-                <Text color="#FFB000" fontFamily="monospace" fontSize="xs">STATUS: READY_FOR_UPLINK</Text>
+              
+              <VStack align="start" w="full" spacing={1}>
+                <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="2xl" lineHeight="1" mb={1}>
+                  {artifact.name.toUpperCase()}
+                </Text>
+                <HStack spacing={2}>
+                  <Text color="#FFB000" fontFamily="monospace" fontSize="xs" fontWeight="900">
+                    {artifact.collection?.toUpperCase() || 'GENERAL_RELEASE'} // {artifact.season?.toUpperCase() || 'UNSPECIFIED'}
+                  </Text>
+                  {artifact.isSeasonArtifact && (
+                    <Text color="black" bg="#FFB000" fontSize="10px" px={1} fontWeight="900">SEASON_EXCLUSIVE</Text>
+                  )}
+                </HStack>
+                <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="9px" pt={2}>
+                  SERIAL_NUM: {artifact.id.toUpperCase()} // REGISTRY_TIER: {artifact.tier.toUpperCase()}
+                </Text>
               </VStack>
+
               <Button 
                 w="full"
                 bg="#FFB000"

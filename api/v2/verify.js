@@ -39,7 +39,10 @@ export default async function handler(req, res) {
       name: artifact.name,
       tier: artifact.tier,
       isActivated: artifact.is_activated,
-      ownerId: artifact.owner_id
+      ownerId: artifact.owner_id,
+      collection: artifact.collection,
+      season: artifact.season,
+      isSeasonArtifact: artifact.is_season_artifact
     });
 
   } catch (error) {

@@ -162,11 +162,11 @@ const Closet = () => {
               name: artifact.name.toUpperCase(),
               borderColor: '#FFB000', // Monarch Gold for active items
               dossier: {
-                collection: artifact.tier.toUpperCase() + '_TIER',
+                collection: artifact.collection?.toUpperCase() || 'GENERAL_RELEASE',
                 releaseDate: new Date(artifact.created_at).toISOString().split('T')[0],
                 serialId: `SN-${artifact.tag_id.toUpperCase()}`,
                 xpPerTap: '50',
-                composition: 'NFC_EMBEDDED_NODE',
+                composition: `${artifact.season?.toUpperCase() || 'CORE'}_COLLECTION`,
                 activeMissions: [
                   'Initialize system handshake',
                   'Register phygital vault'
@@ -398,13 +398,18 @@ const Closet = () => {
                           <AvatarGrid colors={selectedItem.avatarColors || []} size="120px" />
                         )}
                       </Box>
-                      <VStack spacing={1}>
-                        <Text fontSize="10px" fontWeight="900" color="#FFB000" fontFamily="monospace">
+                      <VStack spacing={2} textAlign="center">
+                        <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="xl" lineHeight="1">
                           {selectedItem.name}
                         </Text>
-                        <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace">
-                          SLOT_INDEX: {selectedItem.id}
+                        <Text fontSize="9px" fontWeight="900" color="#FFB000" fontFamily="monospace">
+                          {selectedItem.dossier.collection} // {selectedItem.dossier.composition.replace('_COLLECTION', '')}
                         </Text>
+                        <Box pt={2}>
+                          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" border="1px solid" borderColor="whiteAlpha.300" px={2} py={0.5}>
+                            SERIAL: {selectedItem.id.toUpperCase()}
+                          </Text>
+                        </Box>
                       </VStack>
                       <HStack color="whiteAlpha.400">
                         <Icon as={MdRefresh} />
@@ -413,108 +418,88 @@ const Closet = () => {
                     </VStack>
                   </Center>
 
-                  {/* BACK (MISSION_DOSSIER) */}
+                  {/* BACK (ARTIFACT_METADATA) */}
                   <Box
                     position="absolute"
                     inset={0}
                     bg="black"
                     style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
                     border="4px solid white"
-                    p={0}
+                    p={8}
                     display="flex"
                     flexDirection="column"
+                    justifyContent="center"
+                    alignItems="center"
+                    textAlign="center"
                   >
-                    {/* Dossier Header */}
-                    <Box p={6} borderBottom="1px solid whiteAlpha.300">
-                      <Flex justify="space-between" align="start">
-                        <VStack align="start" spacing={0}>
-                          <Heading fontSize="2xl" fontWeight="900" color="white" fontStyle="italic" letterSpacing="-0.02em">
-                            MISSION_DOSSIER
-                          </Heading>
-                          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace">
-                            ON-CHAIN VERIFICATION: SECURE
-                          </Text>
-                        </VStack>
-                        <IconButton 
-                          aria-label="Close" 
-                          icon={<MdClose />} 
-                          variant="outline" 
-                          color="white" 
-                          borderColor="whiteAlpha.400" 
-                          borderRadius="0"
-                          size="sm"
-                          onClick={(e) => { e.stopPropagation(); onClose(); }}
-                        />
-                      </Flex>
-                      <Box h="4px" bg={selectedItem.borderColor || "white"} w="full" mt={4} />
-                    </Box>
+                    <IconButton 
+                      aria-label="Close" 
+                      icon={<MdClose />} 
+                      variant="ghost" 
+                      color="whiteAlpha.400" 
+                      position="absolute"
+                      top={2}
+                      right={2}
+                      onClick={(e) => { e.stopPropagation(); onClose(); }}
+                      _hover={{ color: "white" }}
+                    />
 
-                    {/* Dossier Content */}
-                    <Box flex={1} p={6} overflowY="auto">
-                      <VStack align="stretch" spacing={5}>
+                    <VStack spacing={10} w="full">
+                      <VStack spacing={2}>
+                        <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="3xl" lineHeight="1.1">
+                          {selectedItem.name}
+                        </Text>
+                        <Box h="2px" bg="#FFB000" w="40px" />
+                      </VStack>
+
+                      <VStack spacing={4} w="full">
                         <Box>
-                          <Text fontSize="7px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace">COLLECTION</Text>
-                          <Text fontSize="xs" fontWeight="900" color="white">{selectedItem.dossier.collection}</Text>
+                          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" mb={1}>COLLECTION</Text>
+                          <Text fontSize="sm" fontWeight="900" color="white" letterSpacing="0.05em">{selectedItem.dossier.collection}</Text>
                         </Box>
                         
-                        <HStack spacing={10}>
-                          <Box>
-                            <Text fontSize="7px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace">RELEASE_DATE</Text>
-                            <Text fontSize="xs" fontWeight="900" color="white">{selectedItem.dossier.releaseDate}</Text>
-                          </Box>
-                          <Box>
-                            <Text fontSize="7px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace">SERIAL_ID</Text>
-                            <Text fontSize="xs" fontWeight="900" color="white">{selectedItem.dossier.serialId}</Text>
-                          </Box>
-                        </HStack>
-
                         <Box>
-                          <Text fontSize="7px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace">XP_PER_TAP</Text>
-                          <Text fontSize="xl" fontWeight="900" color="white">{selectedItem.dossier.xpPerTap}</Text>
+                          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" mb={1}>SEASON</Text>
+                          <Text fontSize="sm" fontWeight="900" color="white" letterSpacing="0.05em">
+                            {selectedItem.dossier.composition.replace('_COLLECTION', '')}
+                          </Text>
                         </Box>
 
                         <Box>
-                          <Text fontSize="7px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace">COMPOSITION</Text>
-                          <Text fontSize="9px" fontWeight="900" color="white">{selectedItem.dossier.composition}</Text>
+                          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" mb={1}>SERIAL_IDENTIFIER</Text>
+                          <Text fontSize="sm" fontWeight="900" color="white" letterSpacing="0.05em">{selectedItem.dossier.serialId}</Text>
                         </Box>
 
-                        <Divider borderColor="whiteAlpha.300" />
-
-                        {selectedItem.type === 'theme' ? (
-                           <Button 
-                            w="full" 
-                            h="60px" 
-                            bg={selectedItem.borderColor === '#FFB000' ? "whiteAlpha.200" : "white"} 
-                            color={selectedItem.borderColor === '#FFB000' ? "white" : "black"} 
-                            borderRadius="0" 
-                            fontSize="sm" 
-                            fontWeight="900" 
-                            onClick={handleThemeApply}
-                            isDisabled={selectedItem.borderColor === '#FFB000'}
-                          >
-                            {selectedItem.borderColor === '#FFB000' ? 'ALREADY_ACTIVE' : 'APPLY_PROTOCOL'}
-                          </Button>
-                        ) : (
-                          <Box>
-                            <Text fontSize="7px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace" mb={2}>ACTIVE_MISSIONS</Text>
-                            <VStack align="start" spacing={1}>
-                              {selectedItem.dossier.activeMissions.map((mission, i) => (
-                                <Text key={i} fontSize="10px" fontWeight="900" color="whiteAlpha.800">
-                                  [{i + 1}] {mission}
-                                </Text>
-                              ))}
-                            </VStack>
-                          </Box>
-                        )}
+                        <Box>
+                          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" mb={1}>REGISTRY_DATE</Text>
+                          <Text fontSize="sm" fontWeight="900" color="white" letterSpacing="0.05em">{selectedItem.dossier.releaseDate}</Text>
+                        </Box>
                       </VStack>
-                    </Box>
 
-                    {/* Dossier Footer */}
-                    <Box p={4} borderTop="1px solid whiteAlpha.300">
+                      {selectedItem.type === 'theme' && (
+                        <Button 
+                          w="full" 
+                          h="50px" 
+                          bg={selectedItem.borderColor === '#FFB000' ? "whiteAlpha.200" : "white"} 
+                          color={selectedItem.borderColor === '#FFB000' ? "white" : "black"} 
+                          borderRadius="0" 
+                          fontSize="xs" 
+                          fontWeight="900" 
+                          onClick={handleThemeApply}
+                          isDisabled={selectedItem.borderColor === '#FFB000'}
+                          _hover={selectedItem.borderColor !== '#FFB000' ? { bg: "#FFB000" } : {}}
+                        >
+                          {selectedItem.borderColor === '#FFB000' ? 'PROTOCOL_ACTIVE' : 'ACTIVATE_PROTOCOL'}
+                        </Button>
+                      )}
+                    </VStack>
+
+                    {/* Footer - Inside Metadata Box */}
+                    <Box mt="auto" pt={4} w="full">
                       <Center cursor="pointer" onClick={() => setIsFlipped(false)}>
                         <HStack color="whiteAlpha.400" spacing={1}>
                           <Icon as={MdRefresh} boxSize="10px" />
-                          <Text fontSize="8px" fontWeight="900">TAP TO SPIN BACK</Text>
+                          <Text fontSize="8px" fontWeight="900">TAP_TO_FLIP_BACK</Text>
                         </HStack>
                       </Center>
                     </Box>
