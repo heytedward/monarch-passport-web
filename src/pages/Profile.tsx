@@ -5,29 +5,24 @@ import {
   VStack, 
   HStack, 
   Flex, 
-  Button, 
   Icon, 
   Center,
-  SimpleGrid,
-  useColorMode
+  SimpleGrid
 } from '@chakra-ui/react'
 import { useState } from 'react'
-import { MdSettings, MdLightMode, MdDarkMode, MdLock, MdHistory } from 'react-icons/md'
-import { usePrivy } from '@privy-io/react-auth'
+import { MdSettings, MdLock } from 'react-icons/md'
 import { Facehash } from 'facehash'
 import useStore from '../store/useStore'
 
 const Profile = () => {
-  const { user } = usePrivy()
   const { points } = useStore()
-  const { colorMode, setColorMode } = useColorMode()
   const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'LOG'>('STATS');
 
   const stats = [
     { label: 'WNGS_BALANCE', value: points.toString() },
     { label: 'TOTAL_XP', value: '0' },
     { label: 'QUESTS_CLEARED', value: '1/4' },
-    { label: 'CURRENT_THEME', value: colorMode === 'dark' ? 'BASIC_DARK' : 'BASIC_LIGHT' },
+    { label: 'IDENTITY_TYPE', value: 'AGENT' },
   ];
 
   const renderTabContent = () => {
@@ -156,48 +151,6 @@ const Profile = () => {
 
       {/* Dynamic Tab Content */}
       {renderTabContent()}
-
-      {/* Interface Sync Section (From iOS) */}
-      <Box p={8} bg="black" color="white">
-        <Text fontSize="10px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace" mb={6}>
-          INTERFACE_SYNC // PROTOCOL_SELECT
-        </Text>
-        <SimpleGrid columns={2} spacing={4}>
-          <Button 
-            h="70px" 
-            bg="black" 
-            color="white" 
-            border="4px solid white" 
-            borderRadius="0"
-            _hover={{ bg: "white", color: "black" }}
-            leftIcon={<Icon as={MdLightMode} />}
-            fontSize="xs"
-            fontWeight="900"
-            onClick={() => setColorMode('light')}
-          >
-            LIGHT
-          </Button>
-          <Button 
-            h="70px" 
-            bg="#FFB000" 
-            color="black" 
-            border="4px solid black" 
-            borderRadius="0"
-            _hover={{ bg: "white" }}
-            leftIcon={<Icon as={MdDarkMode} />}
-            fontSize="xs"
-            fontWeight="900"
-            onClick={() => setColorMode('dark')}
-          >
-            DARK
-          </Button>
-        </SimpleGrid>
-        <Center mt={8}>
-          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace">
-            BASIC_PROTOCOL_SYNC_ACTIVE
-          </Text>
-        </Center>
-      </Box>
 
       {/* Social Miner Hub Footer */}
       <Box p={6} borderTop="4px solid white">
