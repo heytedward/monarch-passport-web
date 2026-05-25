@@ -8,7 +8,8 @@ import {
   Heading, 
   Button, 
   Spinner, 
-  Center
+  Center,
+  HStack
 } from '@chakra-ui/react';
 
 const blink = keyframes`
