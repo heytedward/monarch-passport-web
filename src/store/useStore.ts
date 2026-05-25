@@ -19,6 +19,7 @@ interface UserState {
     collected: boolean
   }[]
   cart: CartItem[]
+  activeAvatarColors: string[] | null
   setUser: (user: { id: string } | null) => void
   addPoints: (amount: number) => void
   collectStamp: (stampId: number) => void
@@ -27,6 +28,7 @@ interface UserState {
   removeFromCart: (itemId: string) => void
   clearCart: () => void
   executeHandshake: (tagId: string) => void
+  setActiveAvatarColors: (colors: string[] | null) => void
 }
 
 const useStore = create<UserState>()(
@@ -42,6 +44,7 @@ const useStore = create<UserState>()(
         { id: 4, name: 'Winter 2024', image: '/stamps/winter.png', collected: false },
       ],
       cart: [],
+      activeAvatarColors: null,
       setUser: (user) => set({ user }),
       addPoints: (amount) => 
         set((state) => ({ points: state.points + amount })),
@@ -58,6 +61,7 @@ const useStore = create<UserState>()(
       executeHandshake: (tagId) => {
         console.log(`Executing handshake for tag: ${tagId}`);
       },
+      setActiveAvatarColors: (colors) => set({ activeAvatarColors: colors }),
     }),
     {
       name: 'monarch-passport-storage',

@@ -1,4 +1,4 @@
-import { Box, Flex, IconButton, Text, VStack, Center } from '@chakra-ui/react'
+import { Box, Flex, IconButton, Text, VStack, Center, useColorModeValue } from '@chakra-ui/react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { PiHouseFill, PiWalletFill, PiCoatHangerFill, PiUserFill } from 'react-icons/pi'
 import { Logo } from './Logo'
@@ -36,6 +36,10 @@ const Navbar = () => {
   const isDev = import.meta.env.DEV;
   const devBypass = isDev && localStorage.getItem('monarch_dev_bypass') === 'true';
 
+  const bgColor = useColorModeValue("gray.50", "black");
+  const borderColor = useColorModeValue("gray.300", "white");
+  const iconColor = useColorModeValue("black", "white");
+
   if (!devBypass && (!ready || !authenticated)) return null;
 
   return (
@@ -45,8 +49,8 @@ const Navbar = () => {
       bottom={0}
       left={0}
       w="100%"
-      bg="black"
-      borderTop="4px solid white"
+      bg={bgColor}
+      borderTop={`4px solid ${borderColor}`}
       zIndex={1000}
       pb="env(safe-area-inset-bottom)"
     >
@@ -72,11 +76,11 @@ const Navbar = () => {
                 transition="opacity 0.2s"
                 _hover={{ opacity: 1 }}
               >
-                <IconBox icon={item.icon} isActive={isActive} />
+                <IconBox icon={item.icon} isActive={isActive} iconColor={iconColor} />
                 <Text 
                   fontSize="8px" 
                   fontWeight="900" 
-                  color={isActive ? "#FFB000" : "white"} 
+                  color={isActive ? "#FFB000" : iconColor} 
                   fontFamily="monospace"
                   letterSpacing="0.05em"
                 >
@@ -97,9 +101,9 @@ const Navbar = () => {
             <Center
               w="70px"
               h="70px"
-              bg="black"
+              bg={bgColor}
               borderRadius="full"
-              border="4px solid white"
+              border={`4px solid ${borderColor}`}
               position="relative"
               transition="all 0.2s"
               _hover={{ transform: 'scale(1.05)' }}
@@ -112,7 +116,7 @@ const Navbar = () => {
                 boxShadow: "0 0 15px #FFB000, inset 0 0 15px #FFB000",
               }}
             >
-              <Logo boxSize="35px" color={location.pathname === '/shop' ? "#FFB000" : "white"} />
+              <Logo boxSize="35px" color={location.pathname === '/shop' ? "#FFB000" : iconColor} />
             </Center>
           </VStack>
         </Box>
@@ -131,11 +135,11 @@ const Navbar = () => {
                 transition="opacity 0.2s"
                 _hover={{ opacity: 1 }}
               >
-                <IconBox icon={item.icon} isActive={isActive} />
+                <IconBox icon={item.icon} isActive={isActive} iconColor={iconColor} />
                 <Text 
                   fontSize="8px" 
                   fontWeight="900" 
-                  color={isActive ? "#FFB000" : "white"} 
+                  color={isActive ? "#FFB000" : iconColor} 
                   fontFamily="monospace"
                   letterSpacing="0.05em"
                 >
@@ -150,11 +154,11 @@ const Navbar = () => {
   )
 }
 
-const IconBox = ({ icon: Icon, isActive }: { icon: any, isActive: boolean }) => (
+const IconBox = ({ icon: Icon, isActive, iconColor }: { icon: any, isActive: boolean, iconColor: string }) => (
   <Center 
     w="32px" 
     h="32px" 
-    color={isActive ? "#FFB000" : "white"}
+    color={isActive ? "#FFB000" : iconColor}
   >
     <Icon size={24} />
   </Center>

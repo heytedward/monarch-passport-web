@@ -18,7 +18,8 @@ import {
   useDisclosure,
   Input,
   Divider,
-  SimpleGrid
+  SimpleGrid,
+  useColorModeValue
 } from '@chakra-ui/react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -122,18 +123,18 @@ const INITIAL_INTEL: Intel[] = [
   }
 ];
 
-const CommentItem = ({ comment }: { comment: Comment }) => (
-  <Box borderBottom="1px solid" borderColor="whiteAlpha.100" py={3}>
+const CommentItem = ({ comment, text, mutedText, border }: { comment: Comment, text: string, mutedText: string, border: string }) => (
+  <Box borderBottom="1px solid" borderColor={border} py={3}>
     <Flex justify="space-between" align="start">
       <HStack spacing={2}>
-        <Icon as={comment.type === 'AGENT' ? MdMemory : MdPerson} color={comment.type === 'AGENT' ? "#FFB000" : "white"} boxSize="10px" />
-        <Text fontSize="9px" fontWeight="900" color={comment.type === 'AGENT' ? "#FFB000" : "white"} fontFamily="monospace">
+        <Icon as={comment.type === 'AGENT' ? MdMemory : MdPerson} color={comment.type === 'AGENT' ? "#FFB000" : text} boxSize="10px" />
+        <Text fontSize="9px" fontWeight="900" color={comment.type === 'AGENT' ? "#FFB000" : text} fontFamily="monospace">
           {comment.author.toUpperCase()}
         </Text>
       </HStack>
-      <Text fontSize="8px" color="whiteAlpha.400" fontFamily="monospace">{comment.timestamp}</Text>
+      <Text fontSize="8px" color={mutedText} fontFamily="monospace">{comment.timestamp}</Text>
     </Flex>
-    <Text fontSize="11px" fontWeight="700" color="white" mt={1} pl={4}>
+    <Text fontSize="11px" fontWeight="700" color={text} mt={1} pl={4}>
       {comment.content}
     </Text>
     <HStack spacing={1} mt={2} pl={4} color="#FFB000">
@@ -143,15 +144,15 @@ const CommentItem = ({ comment }: { comment: Comment }) => (
   </Box>
 )
 
-const DeStijlAvatar = ({ handle }: { handle: string }) => (
+const DeStijlAvatar = ({ handle, border, bg }: { handle: string, border: string, bg: string }) => (
   <Box 
     w="60px" 
     h="60px" 
     bg="black" 
-    border="4px solid white" 
+    border={`4px solid ${border}`} 
     position="relative"
     flexShrink={0}
-    boxShadow="4px 4px 0px 0px rgba(255,255,255,0.2)"
+    boxShadow={`4px 4px 0px 0px ${border === "white" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"}`}
   >
     <SimpleGrid columns={3} spacing={1} h="full" p={0.5}>
       <Box bg="#00E5FF" border="1px solid black" />
@@ -172,26 +173,26 @@ const DeStijlAvatar = ({ handle }: { handle: string }) => (
   </Box>
 )
 
-const IntelCard = ({ intel, onOpen }: { intel: Intel, onOpen: (i: Intel) => void }) => (
+const IntelCard = ({ intel, onOpen, bg, cardBg, text, mutedText, border }: { intel: Intel, onOpen: (i: Intel) => void, bg: string, cardBg: string, text: string, mutedText: string, border: string }) => (
   <VStack spacing={0} align="stretch" role="group">
     <Box
-      bg="black"
+      bg={bg}
       p={4}
       cursor="pointer"
       onClick={() => onOpen(intel)}
-      _hover={{ bg: "whiteAlpha.100" }}
+      _hover={{ bg: cardBg }}
       transition="all 0.2s"
     >
       <Flex gap={5}>
-        <DeStijlAvatar handle={intel.handle} />
+        <DeStijlAvatar handle={intel.handle} border={text} bg={bg} />
         
         <VStack align="start" spacing={3} flex={1}>
           <HStack w="full" justify="space-between" align="start">
             <HStack spacing={2}>
-              <Text fontWeight="900" fontSize="md" color="white" letterSpacing="-0.02em">
+              <Text fontWeight="900" fontSize="md" color={text} letterSpacing="-0.02em">
                 {intel.displayHandle}
               </Text>
-              <Text fontSize="10px" color="whiteAlpha.600" fontFamily="monospace">
+              <Text fontSize="10px" color={mutedText} fontFamily="monospace">
                 @{intel.handle} • {intel.timestamp}
               </Text>
             </HStack>
@@ -202,7 +203,7 @@ const IntelCard = ({ intel, onOpen }: { intel: Intel, onOpen: (i: Intel) => void
               fontWeight="900" 
               borderRadius="0"
               px={2}
-              border="2px solid black"
+              border={`2px solid ${text}`}
             >
               {intel.rarity}
             </Badge>
@@ -213,7 +214,7 @@ const IntelCard = ({ intel, onOpen }: { intel: Intel, onOpen: (i: Intel) => void
             fontWeight="600" 
             fontStyle="italic" 
             lineHeight="1.3" 
-            color="white"
+            color={text}
             fontFamily="'Archivo Black', sans-serif"
             noOfLines={2}
           >
@@ -221,7 +222,7 @@ const IntelCard = ({ intel, onOpen }: { intel: Intel, onOpen: (i: Intel) => void
           </Text>
 
           <HStack spacing={8} mt={2} w="full">
-            <HStack spacing={2} color="whiteAlpha.700">
+            <HStack spacing={2} color={mutedText}>
               <Icon as={MdChatBubbleOutline} boxSize="18px" />
               <Text fontSize="xs" fontWeight="900">{intel.comments}</Text>
             </HStack>
@@ -231,14 +232,14 @@ const IntelCard = ({ intel, onOpen }: { intel: Intel, onOpen: (i: Intel) => void
               <Text fontSize="xs" fontWeight="900">{intel.boosts}</Text>
             </HStack>
             
-            <Icon as={MdShare} ml="auto" color="whiteAlpha.600" boxSize="18px" />
+            <Icon as={MdShare} ml="auto" color={mutedText} boxSize="18px" />
           </HStack>
         </VStack>
       </Flex>
     </Box>
     <Box 
       h="4px" 
-      bg="white" 
+      bg={text} 
       w="full" 
       transition="all 0.2s" 
       _groupHover={{ bg: "#FFB000", h: "6px" }} 
@@ -252,6 +253,12 @@ const Home = () => {
   const [selectedIntel, setSelectedIntel] = useState<Intel | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
 
+  const bg = useColorModeValue("white", "black");
+  const cardBg = useColorModeValue("gray.50", "gray.900");
+  const text = useColorModeValue("black", "white");
+  const mutedText = useColorModeValue("gray.600", "whiteAlpha.600");
+  const border = useColorModeValue("gray.300", "whiteAlpha.300");
+
   const handleOpen = (intel: Intel) => {
     setSelectedIntel(intel);
     setIsFlipped(false);
@@ -259,27 +266,27 @@ const Home = () => {
   }
 
   return (
-    <Box bg="black" minH="100vh" pb="90px">
+    <Box bg={bg} minH="100vh" pb="90px">
       {/* Header - Condensed for Mobile */}
-      <Box borderBottom="2px solid white" p={4} pt={10}>
+      <Box borderBottom={`2px solid ${text}`} p={4} pt={10}>
         <Flex justify="space-between" align="center">
           <VStack align="start" spacing={0}>
-            <Heading fontSize="3xl" fontWeight="900" fontStyle="italic" color="white" letterSpacing="-0.04em" fontFamily="'Archivo Black', sans-serif">
+            <Heading fontSize="3xl" fontWeight="900" fontStyle="italic" color={text} letterSpacing="-0.04em" fontFamily="'Archivo Black', sans-serif">
               MONARCH_TIMES
             </Heading>
-            <Text fontSize="9px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace" letterSpacing="0.1em">
+            <Text fontSize="9px" fontWeight="900" color={mutedText} fontFamily="monospace" letterSpacing="0.1em">
               BALANCE: {points} WNGS
             </Text>
           </VStack>
-          <Center w="35px" h="35px" bg="white" color="black" border="2px solid white" borderRadius="0">
+          <Center w="35px" h="35px" bg={text} color={bg} border={`2px solid ${text}`} borderRadius="0">
             <Icon as={MdOutlineElectricBolt} boxSize="18px" />
           </Center>
         </Flex>
       </Box>
 
       {/* Subheader - Condensed */}
-      <Box borderBottom="2px solid white" py={3} px={4} bg="whiteAlpha.50">
-        <Text fontSize="10px" fontWeight="900" color="white" fontFamily="monospace" letterSpacing="0.1em">
+      <Box borderBottom={`2px solid ${text}`} py={3} px={4} bg={useColorModeValue("gray.100", "whiteAlpha.50")}>
+        <Text fontSize="10px" fontWeight="900" color={text} fontFamily="monospace" letterSpacing="0.1em">
           INTELLIGENCE_FEED // V1.2
         </Text>
       </Box>
@@ -287,7 +294,7 @@ const Home = () => {
       {/* Feed - Reduced padding and spacing */}
       <VStack spacing={0} align="stretch">
         {INITIAL_INTEL.map(i => (
-          <IntelCard key={i.id} intel={i} onOpen={handleOpen} />
+          <IntelCard key={i.id} intel={i} onOpen={handleOpen} bg={bg} cardBg={cardBg} text={text} mutedText={mutedText} border={border} />
         ))}
       </VStack>
 
@@ -310,8 +317,8 @@ const Home = () => {
                   <Box
                     position="absolute"
                     inset={0}
-                    bg="black"
-                    border="4px solid white"
+                    bg={bg}
+                    border={`4px solid ${text}`}
                     p={8}
                     style={{ backfaceVisibility: "hidden" }}
                     onClick={() => setIsFlipped(true)}
@@ -321,9 +328,9 @@ const Home = () => {
                       <Center 
                         w="80px" 
                         h="80px" 
-                        bg="black" 
-                        color="white" 
-                        border="4px solid white" 
+                        bg={bg} 
+                        color={text} 
+                        border={`4px solid ${text}`} 
                         borderRadius="full"
                         fontSize="3xl"
                         fontWeight="900"
@@ -331,7 +338,7 @@ const Home = () => {
                         {selectedIntel.avatarLetter}
                       </Center>
                       <VStack spacing={1}>
-                        <Text fontWeight="900" fontSize="xl" color="white">
+                        <Text fontWeight="900" fontSize="xl" color={text}>
                           {selectedIntel.displayHandle}
                         </Text>
                         <Badge bg="#FFB000" color="black" borderRadius="0">{selectedIntel.rarity}</Badge>
@@ -341,13 +348,13 @@ const Home = () => {
                         fontWeight="600" 
                         fontStyle="italic" 
                         lineHeight="1.2" 
-                        color="white"
+                        color={text}
                         fontFamily="'Archivo Black', sans-serif"
                         textAlign="center"
                       >
                         {selectedIntel.content}
                       </Text>
-                      <HStack color="whiteAlpha.400">
+                      <HStack color={mutedText}>
                         <Icon as={MdRefresh} />
                         <Text fontSize="9px" fontWeight="900">TAP TO VIEW INTEL</Text>
                       </HStack>
@@ -358,7 +365,7 @@ const Home = () => {
                   <Box
                     position="absolute"
                     inset={0}
-                    bg="black"
+                    bg={bg}
                     style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
                     border="2px solid #FFB000"
                     p={0}
@@ -369,7 +376,7 @@ const Home = () => {
                     <Box p={4} borderBottom="1px solid" borderColor="#FFB000">
                       <Flex justify="space-between" align="center">
                         <VStack align="start" spacing={0}>
-                          <Heading fontSize="2xl" fontWeight="900" color="white" fontStyle="italic">COMM_LOG</Heading>
+                          <Heading fontSize="2xl" fontWeight="900" color={text} fontStyle="italic">COMM_LOG</Heading>
                           <Text fontSize="8px" fontWeight="900" color="#FFB000" fontFamily="monospace">FEED_ID: INTEL_{selectedIntel.id.padStart(3, '0')}</Text>
                         </VStack>
                         <IconButton 
@@ -377,8 +384,8 @@ const Home = () => {
                           icon={<MdClose />} 
                           size="sm"
                           variant="outline"
-                          color="white"
-                          borderColor="whiteAlpha.300"
+                          color={text}
+                          borderColor={border}
                           onClick={(e) => { e.stopPropagation(); onClose(); }}
                         />
                       </Flex>
@@ -392,13 +399,13 @@ const Home = () => {
                     }}>
                       <VStack spacing={0} align="stretch">
                         {selectedIntel.commentList.map(comment => (
-                          <CommentItem key={comment.id} comment={comment} />
+                          <CommentItem key={comment.id} comment={comment} text={text} mutedText={mutedText} border={border} />
                         ))}
                       </VStack>
                     </Box>
 
                     {/* Footer Input Area */}
-                    <Box p={4} bg="black" borderTop="1px solid" borderColor="#FFB000">
+                    <Box p={4} bg={bg} borderTop="1px solid" borderColor="#FFB000">
                       <VStack spacing={3} align="stretch">
                         <Center>
                           <Text fontSize="7px" fontWeight="900" color="#FFB000" fontFamily="monospace">
@@ -412,14 +419,14 @@ const Home = () => {
                             variant="unstyled"
                             bg="transparent"
                             border="1px solid"
-                            borderColor="whiteAlpha.400"
+                            borderColor={border}
                             borderRadius="0"
                             px={3}
                             h="40px"
                             fontSize="10px"
                             fontWeight="900"
-                            color="white"
-                            _placeholder={{ color: 'whiteAlpha.400' }}
+                            color={text}
+                            _placeholder={{ color: mutedText }}
                           />
                           <IconButton 
                             aria-label="Send" 
@@ -429,12 +436,12 @@ const Home = () => {
                             borderRadius="0"
                             h="40px"
                             w="40px"
-                            _hover={{ bg: "white" }}
+                            _hover={{ bg: text, color: bg }}
                           />
                         </HStack>
 
                         <Center cursor="pointer" onClick={() => setIsFlipped(false)}>
-                          <HStack color="whiteAlpha.400" spacing={1}>
+                          <HStack color={mutedText} spacing={1}>
                             <Icon as={MdRefresh} boxSize="10px" />
                             <Text fontSize="8px" fontWeight="900">TAP TO RETURN</Text>
                           </HStack>

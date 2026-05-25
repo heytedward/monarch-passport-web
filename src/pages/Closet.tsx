@@ -18,7 +18,9 @@ import {
   IconButton,
   Divider,
   useColorMode,
-  Spinner
+  useColorModeValue,
+  Spinner,
+  useToast
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { MdTune, MdRefresh, MdClose } from 'react-icons/md'
@@ -26,6 +28,7 @@ import { PiShoppingBagFill, PiSunFill, PiMoonFill } from 'react-icons/pi'
 import { motion } from 'framer-motion'
 import { usePrivy } from '@privy-io/react-auth'
 import { createClient } from '@supabase/supabase-js'
+import useStore from '../store/useStore'
 
 // Initialize Supabase Frontend Client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -68,34 +71,34 @@ interface ClosetItemData {
   };
 }
 
-const ClosetSlot = ({ index, item, onOpen }: { index: string, item?: ClosetItemData, onOpen: (item: ClosetItemData) => void }) => {
+const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, item?: ClosetItemData, onOpen: (item: ClosetItemData) => void, text: string, border: string, bg: string }) => {
   if (item) {
     const isActiveTheme = item.type === 'theme' && item.borderColor === '#FFB000';
 
     return (
       <Box 
         border="1px solid" 
-        borderColor={item.borderColor || "white"}
+        borderColor={item.borderColor || border}
         h="140px" 
         position="relative" 
-        bg="black"
+        bg={bg}
         cursor="pointer"
         transition="all 0.2s"
         onClick={() => !item.locked && onOpen(item)}
         _hover={!item.locked ? { transform: 'scale(1.02)', borderColor: "#FFB000" } : {}}
       >
-        <Text position="absolute" top={1} left={1} fontSize="6px" color="whiteAlpha.400" fontFamily="monospace">{index}</Text>
+        <Text position="absolute" top={1} left={1} fontSize="6px" color={text} opacity={0.4} fontFamily="monospace">{index}</Text>
         <Center h="full">
           {item.locked ? (
-             <Box border="1px solid whiteAlpha.300" p={4} bg="whiteAlpha.100">
-                <Icon as={PiShoppingBagFill} color="whiteAlpha.300" boxSize="30px" />
-                <Text fontSize="5px" color="whiteAlpha.300" mt={1} textAlign="center" fontWeight="900">LOCKED</Text>
+             <Box border="1px solid" borderColor={border} p={4} bg={bg} opacity={0.5}>
+                <Icon as={PiShoppingBagFill} color={text} opacity={0.3} boxSize="30px" />
+                <Text fontSize="5px" color={text} opacity={0.3} mt={1} textAlign="center" fontWeight="900">LOCKED</Text>
              </Box>
           ) : (
             item.type === 'theme' ? (
-               <Icon as={item.themeMode === 'light' ? PiSunFill : PiMoonFill} color="white" boxSize="35px" />
+               <Icon as={item.themeMode === 'light' ? PiSunFill : PiMoonFill} color={text} boxSize="35px" />
             ) : item.type === 'physical' ? (
-              <TShirtIcon />
+              <TShirtIcon color={text} />
             ) : (
               <AvatarGrid colors={item.avatarColors || []} size="60px" />
             )
@@ -109,13 +112,13 @@ const ClosetSlot = ({ index, item, onOpen }: { index: string, item?: ClosetItemD
   return (
     <Box 
       border="1px dashed" 
-      borderColor="whiteAlpha.300" 
+      borderColor={border} 
       h="140px" 
       position="relative"
     >
-      <Text position="absolute" top={1} left={1} fontSize="6px" color="whiteAlpha.400" fontFamily="monospace">{index}</Text>
+      <Text position="absolute" top={1} left={1} fontSize="6px" color={text} opacity={0.4} fontFamily="monospace">{index}</Text>
       <Center h="full">
-        <Box w="2px" h="2px" bg="whiteAlpha.300" borderRadius="full" />
+        <Box w="2px" h="2px" bg={text} opacity={0.3} borderRadius="full" />
       </Center>
     </Box>
   )
@@ -124,9 +127,36 @@ const ClosetSlot = ({ index, item, onOpen }: { index: string, item?: ClosetItemD
 const Closet = () => {
   const [mode, setMode] = useState<'physical' | 'digital'>('physical');
   const { colorMode, setColorMode } = useColorMode();
+  const { setActiveAvatarColors } = useStore();
+  const toast = useToast();
+  
+  const bg = useColorModeValue("white", "black");
+  const cardBg = useColorModeValue("gray.50", "gray.900");
+  const text = useColorModeValue("black", "white");
+  const mutedText = useColorModeValue("gray.600", "whiteAlpha.600");
+  const border = useColorModeValue("gray.300", "whiteAlpha.300");
+  const inverseText = useColorModeValue("white", "black");
+
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedItem, setSelectedItem] = useState<ClosetItemData | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
+
+  const handleEquip = () => {
+    if (!selectedItem) return;
+
+    const name = selectedItem.name.toUpperCase();
+    if (name.includes('LIGHT_THEME') || selectedItem.themeMode === 'light') {
+      setColorMode('light');
+      toast({ title: 'PROTOCOL_EQUIPPED: LIGHT_MODE', status: 'success', duration: 2000 });
+    } else if (name.includes('DARK_THEME') || selectedItem.themeMode === 'dark') {
+      setColorMode('dark');
+      toast({ title: 'PROTOCOL_EQUIPPED: DARK_MODE', status: 'success', duration: 2000 });
+    } else if (selectedItem.avatarColors) {
+      setActiveAvatarColors(selectedItem.avatarColors);
+      toast({ title: 'PROTOCOL_EQUIPPED: AVATAR_SYNCED', status: 'success', duration: 2000 });
+    }
+    onClose();
+  };
   
   // LIVE DATA STATES
   const { user } = usePrivy();
@@ -196,9 +226,9 @@ const Closet = () => {
     '01': {
       id: 'T01',
       type: 'theme',
-      name: 'BASIC_LIGHT_THEME',
+      name: 'LIGHT_THEME',
       themeMode: 'light',
-      borderColor: colorMode === 'light' ? '#FFB000' : 'white',
+      borderColor: colorMode === 'light' ? '#FFB000' : border,
       dossier: {
         collection: 'SYSTEM_PROTOCOLS',
         releaseDate: '2024-01-01',
@@ -211,9 +241,9 @@ const Closet = () => {
     '02': {
       id: 'T02',
       type: 'theme',
-      name: 'BASIC_DARK_THEME',
+      name: 'DARK_THEME',
       themeMode: 'dark',
-      borderColor: colorMode === 'dark' ? '#FFB000' : 'white',
+      borderColor: colorMode === 'dark' ? '#FFB000' : border,
       dossier: {
         collection: 'SYSTEM_PROTOCOLS',
         releaseDate: '2024-01-01',
@@ -233,20 +263,13 @@ const Closet = () => {
     onOpen();
   }
 
-  const handleThemeApply = () => {
-    if (selectedItem?.type === 'theme' && selectedItem.themeMode) {
-      setColorMode(selectedItem.themeMode);
-      onClose();
-    }
-  }
-
   return (
-    <Box bg="black" minH="100vh" pb="100px">
+    <Box bg={bg} minH="100vh" pb="100px">
       <Container maxW="container.sm" p={0}>
         {/* Header */}
-        <Box p={8} bg="black">
+        <Box p={8} bg={bg}>
           <VStack align="start" spacing={2}>
-            <Heading fontSize="5xl" fontWeight="900" fontStyle="italic" color="white" fontFamily="'Archivo Black', sans-serif">
+            <Heading fontSize="5xl" fontWeight="900" fontStyle="italic" color={text} fontFamily="'Archivo Black', sans-serif">
               CLOSET
             </Heading>
             <Text fontSize="9px" fontWeight="900" color="#FFB000" fontFamily="monospace" letterSpacing="0.1em">
@@ -259,21 +282,22 @@ const Closet = () => {
         {/* Tab Switcher */}
         <Box p={6}>
           <Flex 
-            border="1px solid white" 
+            border="1px solid" 
+            borderColor={text}
             borderRadius="full" 
             p="2px"
-            bg="black"
+            bg={bg}
           >
             <Button 
               flex={1} 
               h="36px"
               borderRadius="full" 
               bg={mode === 'physical' ? "#FFB000" : "transparent"}
-              color={mode === 'physical' ? "black" : "white"}
+              color={mode === 'physical' ? inverseText : text}
               fontSize="9px"
               fontWeight="900"
               onClick={() => setMode('physical')}
-              leftIcon={<Box as="span" h="8px" w="8px" border="1px solid" borderColor={mode === 'physical' ? "black" : "white"} borderRadius="full" bg={mode === 'physical' ? "black" : "transparent"} />}
+              leftIcon={<Box as="span" h="8px" w="8px" border="1px solid" borderColor={mode === 'physical' ? inverseText : text} borderRadius="full" bg={mode === 'physical' ? inverseText : "transparent"} />}
               _hover={{}}
             >
               PHYSICAL
@@ -283,11 +307,11 @@ const Closet = () => {
               h="36px"
               borderRadius="full" 
               bg={mode === 'digital' ? "#FFB000" : "transparent"}
-              color={mode === 'digital' ? "black" : "white"}
+              color={mode === 'digital' ? inverseText : text}
               fontSize="9px"
               fontWeight="900"
               onClick={() => setMode('digital')}
-              leftIcon={<Box as="span" h="8px" w="8px" border="1px solid" borderColor={mode === 'digital' ? "black" : "white"} borderRadius="full" bg={mode === 'digital' ? "black" : "transparent"} />}
+              leftIcon={<Box as="span" h="8px" w="8px" border="1px solid" borderColor={mode === 'digital' ? inverseText : text} borderRadius="full" bg={mode === 'digital' ? inverseText : "transparent"} />}
               _hover={{}}
             >
               DIGITAL
@@ -296,28 +320,28 @@ const Closet = () => {
         </Box>
 
         {/* Info Bar */}
-        <Box borderY="1px solid whiteAlpha.300" px={6} py={2}>
+        <Box borderY="1px solid" borderColor={border} px={6} py={2}>
           <Flex justify="space-between" align="center">
-            <Text fontSize="7px" fontWeight="900" color="white" fontFamily="monospace">PROTOCOL: {mode.toUpperCase()}_STORAGE</Text>
-            <Text fontSize="7px" fontWeight="900" color="white" fontFamily="monospace">VAULT_SYNC: {isLoading ? 'PENDING' : 'ONLINE'}</Text>
+            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">PROTOCOL: {mode.toUpperCase()}_STORAGE</Text>
+            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">VAULT_SYNC: {isLoading ? 'PENDING' : 'ONLINE'}</Text>
           </Flex>
         </Box>
 
         {/* Grid Section */}
         <Box p={6}>
           {/* Grid Header */}
-          <Box border="1px solid white" borderBottom="none" p={4} bg="black">
+          <Box border="1px solid" borderColor={text} borderBottom="none" p={4} bg={bg}>
             <Flex justify="space-between" align="center">
               <VStack align="start" spacing={1}>
-                <Heading fontSize="xs" fontWeight="900" color="white" fontFamily="'Archivo Black', sans-serif">
+                <Heading fontSize="xs" fontWeight="900" color={text} fontFamily="'Archivo Black', sans-serif">
                   STORAGE_SLOTS // {Object.keys(current_items).length}
                 </Heading>
               </VStack>
               <Button 
                 size="xs" 
                 variant="outline" 
-                color="white" 
-                borderColor="white" 
+                color={text} 
+                borderColor={text} 
                 borderRadius="0"
                 leftIcon={<MdTune />}
                 fontSize="8px"
@@ -330,10 +354,10 @@ const Closet = () => {
           </Box>
 
           {/* Asset Grid */}
-          <Box border="1px solid white" p={4}>
-            <Flex justify="space-between" mb={4} borderBottom="1px solid whiteAlpha.300" pb={1}>
-              <Text fontSize="6px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace">SLOT_ID</Text>
-              <Text fontSize="6px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace">PROTOCOL_TAG</Text>
+          <Box border="1px solid" borderColor={text} p={4}>
+            <Flex justify="space-between" mb={4} borderBottom="1px solid" borderColor={border} pb={1}>
+              <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">SLOT_ID</Text>
+              <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">PROTOCOL_TAG</Text>
             </Flex>
             
             {isLoading ? (
@@ -342,21 +366,21 @@ const Closet = () => {
               </Center>
             ) : (
               <SimpleGrid columns={3} spacing={3}>
-                <ClosetSlot index="01" item={current_items['01']} onOpen={handleOpen} />
-                <ClosetSlot index="02" item={current_items['02']} onOpen={handleOpen} />
-                <ClosetSlot index="03" item={current_items['03']} onOpen={handleOpen} />
-                <ClosetSlot index="04" item={current_items['04']} onOpen={handleOpen} />
-                <ClosetSlot index="05" item={current_items['05']} onOpen={handleOpen} />
-                <ClosetSlot index="06" item={current_items['06']} onOpen={handleOpen} />
-                <ClosetSlot index="07" item={current_items['07']} onOpen={handleOpen} />
-                <ClosetSlot index="08" item={current_items['08']} onOpen={handleOpen} />
-                <ClosetSlot index="09" item={current_items['09']} onOpen={handleOpen} />
+                <ClosetSlot index="01" item={current_items['01']} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                <ClosetSlot index="02" item={current_items['02']} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                <ClosetSlot index="03" item={current_items['03']} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                <ClosetSlot index="04" item={current_items['04']} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                <ClosetSlot index="05" item={current_items['05']} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                <ClosetSlot index="06" item={current_items['06']} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                <ClosetSlot index="07" item={current_items['07']} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                <ClosetSlot index="08" item={current_items['08']} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                <ClosetSlot index="09" item={current_items['09']} onOpen={handleOpen} text={text} border={border} bg={bg} />
               </SimpleGrid>
             )}
 
             {/* Grid Footer Info */}
             <Flex justify="end" mt={4}>
-              <Text fontSize="6px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace">
+              <Text fontSize="6px" fontWeight="900" color={mutedText} opacity={0.4} fontFamily="monospace">
                 SYSTEM_STABILITY: 100% // LOAD_COMPLETE
               </Text>
             </Flex>
@@ -383,9 +407,9 @@ const Closet = () => {
                   <Center
                     position="absolute"
                     inset={0}
-                    bg="black"
+                    bg={bg}
                     border="4px solid"
-                    borderColor={selectedItem.borderColor || "white"}
+                    borderColor={selectedItem.borderColor || border}
                     style={{ backfaceVisibility: "hidden" }}
                     flexDirection="column"
                     p={8}
@@ -393,11 +417,11 @@ const Closet = () => {
                     cursor="pointer"
                   >
                     <VStack spacing={8}>
-                      <Box border="2px solid white" p={10}>
+                      <Box border={`2px solid ${text}`} p={10}>
                         {selectedItem.type === 'theme' ? (
-                          <Icon as={selectedItem.themeMode === 'light' ? PiSunFill : PiMoonFill} color="white" boxSize="100px" />
+                          <Icon as={selectedItem.themeMode === 'light' ? PiSunFill : PiMoonFill} color={text} boxSize="100px" />
                         ) : selectedItem.type === 'physical' ? (
-                          <TShirtIcon boxSize="100px" />
+                          <TShirtIcon color={text} boxSize="100px" />
                         ) : (
                           <AvatarGrid colors={selectedItem.avatarColors || []} size="120px" />
                         )}
@@ -406,7 +430,7 @@ const Closet = () => {
                         {(() => {
                           const product_name = (selectedItem.name || "ARTIFACT").toUpperCase();
                           return (
-                            <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="xl" lineHeight="1">
+                            <Text color={text} fontFamily="'Archivo Black', sans-serif" fontSize="xl" lineHeight="1">
                               {product_name}
                             </Text>
                           );
@@ -415,12 +439,12 @@ const Closet = () => {
                           {selectedItem.dossier.collection} // {selectedItem.dossier.composition.replace('_COLLECTION', '')}
                         </Text>
                         <Box pt={2}>
-                          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" border="1px solid" borderColor="whiteAlpha.300" px={2} py={0.5}>
+                          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" border="1px solid" borderColor={border} px={2} py={0.5}>
                             SERIAL: {selectedItem.id.toUpperCase()}
                           </Text>
                         </Box>
                       </VStack>
-                      <HStack color="whiteAlpha.400">
+                      <HStack color={mutedText}>
                         <Icon as={MdRefresh} />
                         <Text fontSize="9px" fontWeight="900">TAP TO VIEW SPECS</Text>
                       </HStack>
@@ -431,9 +455,9 @@ const Closet = () => {
                   <Box
                     position="absolute"
                     inset={0}
-                    bg="black"
+                    bg={bg}
                     style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
-                    border="4px solid white"
+                    border={`4px solid ${text}`}
                     p={8}
                     display="flex"
                     flexDirection="column"
@@ -445,17 +469,17 @@ const Closet = () => {
                       aria-label="Close" 
                       icon={<MdClose />} 
                       variant="ghost" 
-                      color="whiteAlpha.400" 
+                      color={mutedText} 
                       position="absolute"
                       top={2}
                       right={2}
                       onClick={(e) => { e.stopPropagation(); onClose(); }}
-                      _hover={{ color: "white" }}
+                      _hover={{ color: text }}
                     />
 
                     <VStack spacing={10} w="full">
                       <VStack spacing={2}>
-                        <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="3xl" lineHeight="1.1">
+                        <Text color={text} fontFamily="'Archivo Black', sans-serif" fontSize="3xl" lineHeight="1.1">
                           {selectedItem.name}
                         </Text>
                         <Box h="2px" bg="#FFB000" w="40px" />
@@ -463,42 +487,44 @@ const Closet = () => {
 
                       <VStack spacing={4} w="full">
                         <Box>
-                          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" mb={1}>COLLECTION</Text>
-                          <Text fontSize="sm" fontWeight="900" color="white" letterSpacing="0.05em">{selectedItem.dossier.collection}</Text>
+                          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mb={1}>COLLECTION</Text>
+                          <Text fontSize="sm" fontWeight="900" color={text} letterSpacing="0.05em">{selectedItem.dossier.collection}</Text>
                         </Box>
                         
                         <Box>
-                          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" mb={1}>SEASON</Text>
-                          <Text fontSize="sm" fontWeight="900" color="white" letterSpacing="0.05em">
+                          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mb={1}>SEASON</Text>
+                          <Text fontSize="sm" fontWeight="900" color={text} letterSpacing="0.05em">
                             {selectedItem.dossier.composition.replace('_COLLECTION', '')}
                           </Text>
                         </Box>
 
                         <Box>
-                          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" mb={1}>SERIAL_IDENTIFIER</Text>
-                          <Text fontSize="sm" fontWeight="900" color="white" letterSpacing="0.05em">{selectedItem.dossier.serialId}</Text>
+                          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mb={1}>SERIAL_IDENTIFIER</Text>
+                          <Text fontSize="sm" fontWeight="900" color={text} letterSpacing="0.05em">{selectedItem.dossier.serialId}</Text>
                         </Box>
 
                         <Box>
-                          <Text fontSize="8px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" mb={1}>REGISTRY_DATE</Text>
-                          <Text fontSize="sm" fontWeight="900" color="white" letterSpacing="0.05em">{selectedItem.dossier.releaseDate}</Text>
+                          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mb={1}>REGISTRY_DATE</Text>
+                          <Text fontSize="sm" fontWeight="900" color={text} letterSpacing="0.05em">{selectedItem.dossier.releaseDate}</Text>
                         </Box>
                       </VStack>
 
-                      {selectedItem.type === 'theme' && (
+                      {(selectedItem.type === 'theme' || 
+                        selectedItem.type === 'digital' || 
+                        selectedItem.name.toUpperCase().includes('MODE') ||
+                        selectedItem.dossier.collection === 'SYSTEM_PROTOCOLS') && (
                         <Button 
                           w="full" 
                           h="50px" 
-                          bg={selectedItem.borderColor === '#FFB000' ? "whiteAlpha.200" : "white"} 
-                          color={selectedItem.borderColor === '#FFB000' ? "white" : "black"} 
+                          bg="#FFB000" 
+                          color="black" 
                           borderRadius="0" 
                           fontSize="xs" 
                           fontWeight="900" 
-                          onClick={handleThemeApply}
-                          isDisabled={selectedItem.borderColor === '#FFB000'}
-                          _hover={selectedItem.borderColor !== '#FFB000' ? { bg: "#FFB000" } : {}}
+                          onClick={handleEquip}
+                          _hover={{ bg: text, color: bg }}
                         >
-                          {selectedItem.borderColor === '#FFB000' ? 'PROTOCOL_ACTIVE' : 'ACTIVATE_PROTOCOL'}
+                          EQUIP
                         </Button>
                       )}
                     </VStack>
@@ -506,7 +532,7 @@ const Closet = () => {
                     {/* Footer - Inside Metadata Box */}
                     <Box mt="auto" pt={4} w="full">
                       <Center cursor="pointer" onClick={() => setIsFlipped(false)}>
-                        <HStack color="whiteAlpha.400" spacing={1}>
+                        <HStack color={mutedText} spacing={1}>
                           <Icon as={MdRefresh} boxSize="10px" />
                           <Text fontSize="8px" fontWeight="900">TAP_TO_FLIP_BACK</Text>
                         </HStack>
