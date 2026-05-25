@@ -156,10 +156,14 @@ const Closet = () => {
           // Map DB records to UI slots (01, 02, etc.)
           data.forEach((artifact, index) => {
             const slotKey = `0${index + 1}`.slice(-2);
+            
+            // Strictly dynamic: Use product_name if available, fallback to name, or 'ARTIFACT'
+            const product_name = (artifact.product_name || artifact.name || 'ARTIFACT').toUpperCase();
+
             fetchedItems[slotKey] = {
               id: artifact.tag_id,
               type: 'physical',
-              name: artifact.name.toUpperCase(),
+              name: product_name,
               borderColor: '#FFB000', // Monarch Gold for active items
               dossier: {
                 collection: artifact.collection?.toUpperCase() || 'GENERAL_RELEASE',
@@ -399,9 +403,14 @@ const Closet = () => {
                         )}
                       </Box>
                       <VStack spacing={2} textAlign="center">
-                        <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="xl" lineHeight="1">
-                          {selectedItem.name}
-                        </Text>
+                        {(() => {
+                          const product_name = (selectedItem.name || "ARTIFACT").toUpperCase();
+                          return (
+                            <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="xl" lineHeight="1">
+                              {product_name}
+                            </Text>
+                          );
+                        })()}
                         <Text fontSize="9px" fontWeight="900" color="#FFB000" fontFamily="monospace">
                           {selectedItem.dossier.collection} // {selectedItem.dossier.composition.replace('_COLLECTION', '')}
                         </Text>
@@ -413,7 +422,7 @@ const Closet = () => {
                       </VStack>
                       <HStack color="whiteAlpha.400">
                         <Icon as={MdRefresh} />
-                        <Text fontSize="9px" fontWeight="900">TAP TO VIEW MISSION_DOSSIER</Text>
+                        <Text fontSize="9px" fontWeight="900">TAP TO VIEW SPECS</Text>
                       </HStack>
                     </VStack>
                   </Center>
