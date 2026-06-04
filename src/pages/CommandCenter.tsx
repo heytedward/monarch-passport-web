@@ -1,304 +1,411 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  Heading, 
-  Text, 
-  VStack, 
-  Center, 
-  Input, 
-  Button, 
-  Select, 
-  FormControl, 
-  FormLabel, 
-  Textarea, 
-  HStack,
+import {
+  Box,
+  VStack,
+  Heading,
+  Text,
+  Input,
+  Button,
+  SimpleGrid,
+  Card,
+  CardHeader,
+  CardBody,
+  FormControl,
+  FormLabel,
+  Select,
+  useColorModeValue,
+  Center,
   useToast,
-  Switch,
-  Divider
+  HStack,
+  Divider,
+  Code,
+  IconButton,
 } from '@chakra-ui/react';
-import { AdminGuard } from '../AdminGuard';
-import Registry from './Registry';
+import { MdContentCopy, MdRefresh } from 'react-icons/md';
+import { usePrivy } from '@privy-io/react-auth';
+import { supabase } from '../lib/supabase';
+
+// TODO: Update this with actual admin wallet addresses
+const ADMIN_WALLETS = ["did:privy:cmjufzcf403jjl70dpyp1mood"];
 
 const CommandCenter: React.FC = () => {
-  const [prefix, setPrefix] = useState('s');
-  const [startNum, setStartNum] = useState(2);
-  const [count, setCount] = useState(10);
-  const [tier, setTier] = useState('COMMON');
-  const [product, setProduct] = useState('Alpha Hoodie');
-  const [collection, setCollection] = useState('Genesis');
-  const [season, setSeason] = useState('FW25');
-  const [isSeasonArtifact, setIsSeasonArtifact] = useState(false);
-  const [passphrase, setPassphrase] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [generatedUrls, setGeneratedUrls] = useState<string[]>([]);
-  const [error, setError] = useState('');
-  
+  const { user, authenticated, ready } = usePrivy();
   const toast = useToast();
 
-  const handleMint = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-    setGeneratedUrls([]);
+  const [claimId, setClaimId] = useState('');
+  const [wngsValue, setWngsValue] = useState('');
+  const [itemType, setItemType] = useState('CLOTHING');
+  const [generatedLink, setGeneratedLink] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [systemLogs, setSystemLogs] = useState<string[]>([
+    `[${new Date().toLocaleTimeString()}] SECURE_CONNECTION_ESTABLISHED`,
+    `[${new Date().toLocaleTimeString()}] SYNCING_ECONOMY_DATA...`,
+    `[${new Date().toLocaleTimeString()}] SYSTEM_READY_FOR_COMMANDS`
+  ]);
+
+  const addLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setSystemLogs(prev => [...prev.slice(-4), `[${timestamp}] ${message}`]);
+  };
+
+  const userId = user?.id?.toLowerCase();
+  const userWallet = user?.wallet?.address?.toLowerCase();
+  
+  const isAuthorized = authenticated && (
+    (userId && ADMIN_WALLETS.map(w => w.toLowerCase()).includes(userId)) ||
+    (userWallet && ADMIN_WALLETS.map(w => w.toLowerCase()).includes(userWallet))
+  );
+
+  const bgColor = useColorModeValue('gray.50', 'black');
+  const cardBg = useColorModeValue('white', 'gray.900');
+  const borderColor = useColorModeValue('gray.200', 'whiteAlpha.300');
+  const monarchYellow = '#FFB000';
+  const destructiveRed = '#E53E3E';
+
+  if (!ready) {
+    return (
+      <Center h="100vh" bg="black">
+        <Text color={monarchYellow} fontFamily="monospace">INITIALIZING_SECURE_UPLINK...</Text>
+      </Center>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <Center h="100vh" bg="black" p={6}>
+        <VStack spacing={6} textAlign="center" border="4px solid red" p={12} bg="black">
+          <Text
+            color="red.500"
+            fontSize="5xl"
+            fontWeight="900"
+            fontFamily="monospace"
+            lineHeight="1"
+          >
+            ACCESS DENIED
+          </Text>
+          <Divider borderColor="red.500" borderBottomWidth="2px" />
+          <Text
+            color="red.500"
+            fontSize="2xl"
+            fontWeight="700"
+            fontFamily="monospace"
+            letterSpacing="widest"
+          >
+            LEVEL 5 CLEARANCE REQUIRED
+          </Text>
+          <Text color="gray.500" fontSize="xs" fontFamily="monospace">
+            UNAUTHORIZED ACCESS ATTEMPT LOGGED // ID: {user?.id || 'ANONYMOUS'}
+          </Text>
+        </VStack>
+      </Center>
+    );
+  }
+
+  const generateClaimLink = async () => {
+    if (!claimId || !wngsValue) {
+      toast({
+        title: "MISSING_DATA",
+        description: "CLAIM_ID AND WNGS_VALUE ARE REQUIRED",
+        status: "error",
+      });
+      return;
+    }
+
+    const safeShortCode = claimId.trim().replace(/\s+/g, '-').toLowerCase();
+    setIsGenerating(true);
+    addLog(`INITIATING_DATABASE_INSERT // ID: ${safeShortCode}`);
 
     try {
-      const response = await fetch('/api/v2/admin/mint', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-passphrase': passphrase
-        },
-        body: JSON.stringify({
-          prefix,
-          startNum,
-          count,
-          tier,
-          product,
-          collection,
-          season,
-          isSeasonArtifact
-        })
-      });
+      const { error } = await supabase
+        .from('claim_links')
+        .insert({ 
+          short_code: safeShortCode, 
+          wngs_award: parseInt(wngsValue),
+          item_name: claimId, // Original unformatted input
+          item_type: itemType
+        });
 
-      const data = await response.json();
+      if (error) throw error;
 
-      if (!response.ok) {
-        throw new Error(data.error || 'UPLINK_FAILURE');
-      }
-
-      setGeneratedUrls(data.urls || []);
+      const link = `${window.location.origin}/claim/${safeShortCode}`;
+      setGeneratedLink(link);
+      addLog(`DATABASE_INSERT_SUCCESS // ID: ${safeShortCode}`);
       toast({
-        title: 'BATCH_MINTED_SUCCESSFULLY',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
+        title: "SUCCESS",
+        description: "CLAIM LINK GENERATED AND STORED",
+        status: "success",
       });
     } catch (err: any) {
-      setError(err.message || 'SYSTEM_ERROR');
+      console.error(err);
+      addLog(`DATABASE_INSERT_FAILED // ${err.message}`);
+      toast({
+        title: "ERROR",
+        description: err.message,
+        status: "error",
+      });
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
-  const copyAll = () => {
-    navigator.clipboard.writeText(generatedUrls.join('\n'));
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedLink);
     toast({
-      title: 'COPIED_TO_CLIPBOARD',
-      status: 'info',
+      title: "COPIED",
+      description: "LINK COPIED TO CLIPBOARD",
+      status: "info",
       duration: 2000,
     });
   };
 
+  const resetGenerator = () => {
+    setClaimId('');
+    setWngsValue('');
+    setItemType('CLOTHING');
+    setGeneratedLink('');
+    addLog("GENERATOR_STATE_RESET");
+  };
+
+  const handleAction = (action: string) => {
+    toast({
+      title: `PROTOCOL: ${action}`,
+      description: "COMMAND SENT TO CORE ENGINE",
+      status: "info",
+      duration: 3000,
+      isClosable: true,
+      variant: "solid",
+    });
+  };
+
   return (
-    <AdminGuard>
-      <Box minH="100vh" bg="black" color="white" p={8} fontFamily="monospace">
-        <VStack align="stretch" spacing={12} maxW="1000px" mx="auto">
-          {/* Header Section */}
-          <VStack align="start" spacing={0}>
-            <Heading color="#FFB000" fontSize="3xl" fontWeight="900" letterSpacing="-0.02em" mb={2}>
-              MONARCH_OS // ADMIN_DASHBOARD
-            </Heading>
-            <Box h="2px" bg="gray.800" w="full" />
-          </VStack>
-
-          {/* Minting Section */}
-          <VStack align="stretch" spacing={6}>
-            <VStack align="start" spacing={0}>
-              <Heading color="#FFB000" fontSize="xl" fontWeight="900" mb={2}>
-                ARTIFACT_GENERATION_TERMINAL
-              </Heading>
-              <Box h="1px" bg="whiteAlpha.300" w="full" />
-            </VStack>
-
-            <Box as="form" onSubmit={handleMint} border="1px solid #FFB000" p={6} bg="whiteAlpha.50">
-              <VStack spacing={6}>
-                <HStack spacing={4} w="full">
-                  <FormControl>
-                    <FormLabel fontSize="xs" color="#FFB000">PREFIX</FormLabel>
-                    <Input 
-                      value={prefix} 
-                      onChange={(e) => setPrefix(e.target.value)}
-                      borderColor="whiteAlpha.300"
-                      _focus={{ borderColor: '#FFB000' }}
-                      borderRadius="0"
-                      fontSize="sm"
-                    />
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel fontSize="xs" color="#FFB000">START_NUM</FormLabel>
-                    <Input 
-                      type="number"
-                      value={startNum} 
-                      onChange={(e) => setStartNum(parseInt(e.target.value))}
-                      borderColor="whiteAlpha.300"
-                      _focus={{ borderColor: '#FFB000' }}
-                      borderRadius="0"
-                      fontSize="sm"
-                    />
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel fontSize="xs" color="#FFB000">COUNT</FormLabel>
-                    <Input 
-                      type="number"
-                      value={count} 
-                      onChange={(e) => setCount(parseInt(e.target.value))}
-                      borderColor="whiteAlpha.300"
-                      _focus={{ borderColor: '#FFB000' }}
-                      borderRadius="0"
-                      fontSize="sm"
-                    />
-                  </FormControl>
-                </HStack>
-
-                <HStack spacing={4} w="full">
-                  <FormControl>
-                    <FormLabel fontSize="xs" color="#FFB000">TIER</FormLabel>
-                    <Select 
-                      value={tier} 
-                      onChange={(e) => setTier(e.target.value)}
-                      borderColor="whiteAlpha.300"
-                      _focus={{ borderColor: '#FFB000' }}
-                      borderRadius="0"
-                      bg="black"
-                      fontSize="sm"
-                    >
-                      <option value="COMMON" style={{backgroundColor: 'black'}}>COMMON</option>
-                      <option value="UNCOMMON" style={{backgroundColor: 'black'}}>UNCOMMON</option>
-                      <option value="RARE" style={{backgroundColor: 'black'}}>RARE</option>
-                      <option value="EPIC" style={{backgroundColor: 'black'}}>EPIC</option>
-                      <option value="LEGENDARY" style={{backgroundColor: 'black'}}>LEGENDARY</option>
-                      <option value="MONARCH" style={{backgroundColor: 'black'}}>MONARCH</option>
-                    </Select>
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel fontSize="xs" color="#FFB000">PRODUCT_NAME</FormLabel>
-                    <Input 
-                      value={product} 
-                      onChange={(e) => setProduct(e.target.value)}
-                      placeholder="e.g. Alpha Hoodie"
-                      borderColor="whiteAlpha.300"
-                      _focus={{ borderColor: '#FFB000' }}
-                      borderRadius="0"
-                      fontSize="sm"
-                    />
-                  </FormControl>
-                </HStack>
-
-                <HStack spacing={4} w="full">
-                  <FormControl>
-                    <FormLabel fontSize="xs" color="#FFB000">COLLECTION</FormLabel>
-                    <Input 
-                      value={collection} 
-                      onChange={(e) => setCollection(e.target.value)}
-                      placeholder="e.g. Genesis"
-                      borderColor="whiteAlpha.300"
-                      _focus={{ borderColor: '#FFB000' }}
-                      borderRadius="0"
-                      fontSize="sm"
-                    />
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel fontSize="xs" color="#FFB000">SEASON</FormLabel>
-                    <Input 
-                      value={season} 
-                      onChange={(e) => setSeason(e.target.value)}
-                      placeholder="e.g. FW25"
-                      borderColor="whiteAlpha.300"
-                      _focus={{ borderColor: '#FFB000' }}
-                      borderRadius="0"
-                      fontSize="sm"
-                    />
-                  </FormControl>
-                </HStack>
-
-                <HStack spacing={4} w="full" justify="space-between" align="center">
-                  <FormControl display="flex" alignItems="center">
-                    <FormLabel htmlFor="season-artifact" fontSize="xs" color="#FFB000" mb="0">
-                      SEASON_ARTIFACT?
-                    </FormLabel>
-                    <Switch 
-                      id="season-artifact" 
-                      isChecked={isSeasonArtifact}
-                      onChange={(e) => setIsSeasonArtifact(e.target.checked)}
-                      colorScheme="orange"
-                    />
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel fontSize="xs" color="#FFB000">ADMIN_PASSPHRASE</FormLabel>
-                    <Input 
-                      type="password"
-                      value={passphrase} 
-                      onChange={(e) => setPassphrase(e.target.value)}
-                      borderColor="whiteAlpha.300"
-                      _focus={{ borderColor: '#FFB000' }}
-                      borderRadius="0"
-                      fontSize="sm"
-                    />
-                  </FormControl>
-                </HStack>
-
-                {error && (
-                  <Text color="red.500" fontSize="sm" fontWeight="900">
-                    ERROR: {error}
-                  </Text>
-                )}
-
-                <Button 
-                  type="submit"
-                  w="full"
-                  bg="#FFB000"
-                  color="black"
-                  borderRadius="0"
-                  fontWeight="900"
-                  isLoading={isLoading}
-                  loadingText="UPLINKING..."
-                  _hover={{ bg: 'white' }}
-                >
-                  MINT_BATCH
-                </Button>
-              </VStack>
-            </Box>
-
-            {generatedUrls.length > 0 && (
-              <VStack align="stretch" spacing={4}>
-                <HStack justify="space-between">
-                  <Text color="#FFB000" fontSize="sm" fontWeight="900">GENERATED_MANIFEST</Text>
-                  <Button 
-                    size="xs" 
-                    bg="whiteAlpha.200" 
-                    color="white" 
-                    onClick={copyAll}
-                    _hover={{ bg: 'whiteAlpha.400' }}
-                  >
-                    COPY_ALL
-                  </Button>
-                </HStack>
-                <Textarea 
-                  value={generatedUrls.join('\n')}
-                  readOnly
-                  rows={10}
-                  bg="whiteAlpha.50"
-                  borderColor="whiteAlpha.300"
-                  fontSize="xs"
-                  borderRadius="0"
-                />
-              </VStack>
-            )}
-
-            <Text color="gray.500" fontSize="xs">
-              SYSTEM_STATUS: {isLoading ? 'PROCESSING' : 'IDLE'} // READY_FOR_UPLINK
+    <Box minH="100vh" bg={bgColor} p={8} fontFamily="monospace">
+      <VStack align="stretch" spacing={8} maxW="1200px" mx="auto">
+        {/* Header Section */}
+        <VStack align="start" spacing={0} borderLeft={`4px solid ${monarchYellow}`} pl={4}>
+          <Heading size="2xl" fontWeight="900" letterSpacing="-0.02em" textTransform="uppercase">
+            Live Ops Command Center
+          </Heading>
+          <HStack spacing={4}>
+            <Text color="gray.500" fontSize="sm">
+              OPERATOR: {userWallet?.slice(0, 6)}...{userWallet?.slice(-4)}
             </Text>
-          </VStack>
-
-          <Divider borderColor="whiteAlpha.200" />
-
-          {/* Registry Section */}
-          <Registry />
-          
+            <Text color={monarchYellow} fontSize="sm" fontWeight="bold">
+              [SYSTEM_STATUS: ACTIVE]
+            </Text>
+          </HStack>
         </VStack>
-      </Box>
-    </AdminGuard>
+
+        <Divider borderColor={borderColor} />
+
+        {/* Seasonal Control Section */}
+        <VStack align="stretch" spacing={6}>
+          <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
+            // Seasonal Control
+          </Heading>
+
+          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+            {/* Block 1: Initialize */}
+            <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
+              <CardHeader pb={0}>
+                <Heading size="sm" color={monarchYellow}>INITIALIZE NEW PROTOCOL</Heading>
+              </CardHeader>
+              <CardBody>
+                <VStack spacing={4}>
+                  <FormControl>
+                    <FormLabel fontSize="xs">SEASON ID</FormLabel>
+                    <Input borderRadius="0" placeholder="e.g. S01" fontSize="sm" />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel fontSize="xs">PROTOCOL TITLE</FormLabel>
+                    <Input borderRadius="0" placeholder="e.g. OPERATION_NEON" fontSize="sm" />
+                  </FormControl>
+                  <Button
+                    w="full"
+                    bg={monarchYellow}
+                    color="black"
+                    borderRadius="0"
+                    fontWeight="bold"
+                    _hover={{ opacity: 0.8 }}
+                    onClick={() => handleAction('INITIALIZE')}
+                  >
+                    LAUNCH
+                  </Button>
+                </VStack>
+              </CardBody>
+            </Card>
+
+            {/* Block 2: Override */}
+            <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
+              <CardHeader pb={0}>
+                <Heading size="sm" color={monarchYellow}>OVERRIDE END DATE</Heading>
+              </CardHeader>
+              <CardBody>
+                <VStack spacing={4}>
+                  <FormControl>
+                    <FormLabel fontSize="xs">NEW TERMINATION DATE</FormLabel>
+                    <Input type="date" borderRadius="0" fontSize="sm" />
+                  </FormControl>
+                  <Box flex={1} />
+                  <Button
+                    w="full"
+                    bg={monarchYellow}
+                    color="black"
+                    borderRadius="0"
+                    fontWeight="bold"
+                    _hover={{ opacity: 0.8 }}
+                    onClick={() => handleAction('OVERRIDE')}
+                  >
+                    UPDATE
+                  </Button>
+                </VStack>
+              </CardBody>
+            </Card>
+
+            {/* Block 3: Terminate */}
+            <Card variant="outline" bg={cardBg} borderColor={destructiveRed} borderRadius="0" border="2px solid">
+              <CardHeader pb={0}>
+                <Heading size="sm" color={destructiveRed}>TERMINATE ACTIVE SEASON</Heading>
+              </CardHeader>
+              <CardBody>
+                <VStack spacing={4} h="full" justify="space-between">
+                  <Text fontSize="xs" color="gray.500">
+                    WARNING: THIS ACTION IS IRREVERSIBLE. ALL ACTIVE PROTOCOLS WILL BE HALTED IMMEDIATELY.
+                  </Text>
+                  <Button
+                    w="full"
+                    bg={destructiveRed}
+                    color="white"
+                    borderRadius="0"
+                    fontWeight="bold"
+                    _hover={{ bg: 'red.700' }}
+                    onClick={() => handleAction('TERMINATE')}
+                  >
+                    KILL SWITCH
+                  </Button>
+                </VStack>
+              </CardBody>
+            </Card>
+          </SimpleGrid>
+        </VStack>
+
+        <Divider borderColor={borderColor} />
+
+        {/* Artifact & Link Forge Section */}
+        <VStack align="stretch" spacing={6}>
+          <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
+            // Artifact & Link Forge
+          </Heading>
+
+          <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
+            <CardHeader pb={0}>
+              <Heading size="sm" color={monarchYellow}>GENERATE CLAIM LINK</Heading>
+            </CardHeader>
+            <CardBody>
+              {generatedLink ? (
+                <VStack spacing={6} p={4} bg="blackAlpha.200" border="1px dashed" borderColor={monarchYellow}>
+                  <Text color={monarchYellow} fontWeight="bold" fontSize="sm">LINK_GENERATED_SUCCESSFULLY</Text>
+                  <HStack w="full" bg="black" p={4} border="1px solid" borderColor={monarchYellow} justify="space-between">
+                    <Code colorScheme="yellow" bg="transparent" color={monarchYellow} fontSize="xs" wordBreak="break-all">
+                      {generatedLink}
+                    </Code>
+                    <IconButton
+                      aria-label="Copy"
+                      icon={<MdContentCopy />}
+                      size="sm"
+                      bg={monarchYellow}
+                      color="black"
+                      onClick={copyToClipboard}
+                    />
+                  </HStack>
+                  <Button
+                    leftIcon={<MdRefresh />}
+                    variant="outline"
+                    borderColor={monarchYellow}
+                    color={monarchYellow}
+                    borderRadius="0"
+                    size="sm"
+                    onClick={resetGenerator}
+                    _hover={{ bg: "whiteAlpha.100" }}
+                  >
+                    GENERATE ANOTHER
+                  </Button>
+                </VStack>
+              ) : (
+                <>
+                  <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
+                    <VStack spacing={4}>
+                      <FormControl isRequired>
+                        <FormLabel fontSize="xs">CLAIM_ID (SHORT_CODE)</FormLabel>
+                        <Input 
+                          borderRadius="0" 
+                          placeholder="e.g. S01_GOLD_001" 
+                          fontSize="sm" 
+                          value={claimId}
+                          onChange={(e) => setClaimId(e.target.value)}
+                        />
+                      </FormControl>
+                      <FormControl>
+                        <FormLabel fontSize="xs">ITEM TYPE</FormLabel>
+                        <Select 
+                          borderRadius="0" 
+                          fontSize="sm" 
+                          variant="outline"
+                          value={itemType}
+                          onChange={(e) => setItemType(e.target.value)}
+                        >
+                          <option value="CLOTHING">CLOTHING</option>
+                          <option value="THEME">THEME</option>
+                          <option value="AVATAR">AVATAR</option>
+                          <option value="EVENT_LINK">EVENT_LINK</option>
+                        </Select>
+                      </FormControl>
+                    </VStack>
+                    <VStack spacing={4}>
+                      <FormControl isRequired>
+                        <FormLabel fontSize="xs">WNGS_VALUE</FormLabel>
+                        <Input 
+                          borderRadius="0" 
+                          type="number" 
+                          placeholder="500" 
+                          fontSize="sm" 
+                          value={wngsValue}
+                          onChange={(e) => setWngsValue(e.target.value)}
+                        />
+                      </FormControl>
+                      <FormControl>
+                        <FormLabel fontSize="xs">MAX TAPS (UNSUPPORTED)</FormLabel>
+                        <Input borderRadius="0" type="number" placeholder="100" fontSize="sm" isDisabled />
+                      </FormControl>
+                    </VStack>
+                  </SimpleGrid>
+                  <Button
+                    mt={6}
+                    w="full"
+                    bg={monarchYellow}
+                    color="black"
+                    borderRadius="0"
+                    fontWeight="bold"
+                    _hover={{ opacity: 0.8 }}
+                    onClick={generateClaimLink}
+                    isLoading={isGenerating}
+                    loadingText="GENERATING..."
+                  >
+                    GENERATE SECURE LINK
+                  </Button>
+                </>
+              )}
+            </CardBody>
+          </Card>
+        </VStack>
+
+        {/* Footer/System Logs Section */}
+        <Box p={4} bg="black" border="1px solid" borderColor="whiteAlpha.200">
+          {systemLogs.map((log, idx) => (
+            <Text key={idx} color="green.400" fontSize="xs" mb={1}>{log}</Text>
+          ))}
+        </Box>
+      </VStack>
+    </Box>
   );
 };
 

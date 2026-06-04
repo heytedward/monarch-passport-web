@@ -1,3 +1,4 @@
+import React from 'react'
 import { ChakraProvider, Box, Center, Spinner, useColorModeValue } from '@chakra-ui/react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { PrivyProvider, usePrivy } from '@privy-io/react-auth'
@@ -45,6 +46,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   const bgColor = useColorModeValue("gray.50", "black");
+  const { user, ready, authenticated } = usePrivy();
+  const { fetchWngsBalance } = useStore();
+
+  React.useEffect(() => {
+    if (ready && authenticated && user?.id) {
+      fetchWngsBalance(user.id);
+    }
+  }, [ready, authenticated, user?.id, fetchWngsBalance]);
 
   return (
     <Router>
@@ -63,8 +72,8 @@ function AppContent() {
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/v/:id" element={<Verify />} />
             <Route path="/recruit" element={<Recruit />} />
-            <Route path="/claim/:tagId" element={<Claim />} />
-            <Route path="/command" element={<CommandCenter />} />
+            <Route path="/claim/:id" element={<Claim />} />
+            <Route path="/command-center" element={<CommandCenter />} />
           </Routes>
         </Box>
       </Box>

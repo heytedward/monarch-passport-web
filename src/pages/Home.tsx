@@ -248,7 +248,7 @@ const IntelCard = ({ intel, onOpen, bg, cardBg, text, mutedText, border }: { int
 )
 
 const Home = () => {
-  const { points } = useStore();
+  const { wngsBalance } = useStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedIntel, setSelectedIntel] = useState<Intel | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -275,7 +275,7 @@ const Home = () => {
               MONARCH_TIMES
             </Heading>
             <Text fontSize="9px" fontWeight="900" color={mutedText} fontFamily="monospace" letterSpacing="0.1em">
-              BALANCE: {points} WNGS
+              BALANCE: {wngsBalance} WNGS
             </Text>
           </VStack>
           <Center w="35px" h="35px" bg={text} color={bg} border={`2px solid ${text}`} borderRadius="0">

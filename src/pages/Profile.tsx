@@ -16,7 +16,7 @@ import { Facehash } from 'facehash'
 import useStore from '../store/useStore'
 
 const Profile = () => {
-  const { points } = useStore()
+  const { wngsBalance, isLoading } = useStore()
   const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'LOG'>('STATS');
 
   const bg = useColorModeValue("white", "black");
@@ -26,7 +26,7 @@ const Profile = () => {
   const border = useColorModeValue("gray.300", "whiteAlpha.300");
 
   const stats = [
-    { label: 'WNGS_BALANCE', value: points.toString() },
+    { label: 'WNGS_BALANCE', value: isLoading ? "..." : wngsBalance.toString() },
     { label: 'TOTAL_XP', value: '0' },
     { label: 'QUESTS_CLEARED', value: '1/4' },
     { label: 'IDENTITY_TYPE', value: 'AGENT' },

@@ -27,13 +27,8 @@ import { MdTune, MdRefresh, MdClose } from 'react-icons/md'
 import { PiShoppingBagFill, PiSunFill, PiMoonFill } from 'react-icons/pi'
 import { motion } from 'framer-motion'
 import { usePrivy } from '@privy-io/react-auth'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
-
-// Initialize Supabase Frontend Client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const MotionBox = motion.create(Box)
 

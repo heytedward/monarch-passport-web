@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { supabase } from '../lib/supabase'
 
 export interface CartItem {
   id: string
@@ -10,7 +11,8 @@ export interface CartItem {
 
 interface UserState {
   user: { id: string } | null
-  points: number
+  wngsBalance: number
+  isLoading: boolean
   identityType: 'AGENT' | 'HUMAN' | null
   stamps: {
     id: number
@@ -21,6 +23,9 @@ interface UserState {
   cart: CartItem[]
   activeAvatarColors: string[] | null
   setUser: (user: { id: string } | null) => void
+  setWngsBalance: (balance: number) => void
+  setIsLoading: (loading: boolean) => void
+  fetchWngsBalance: (userId: string) => Promise<void>
   addPoints: (amount: number) => void
   collectStamp: (stampId: number) => void
   setIdentityType: (type: 'AGENT' | 'HUMAN' | null) => void
@@ -35,7 +40,8 @@ const useStore = create<UserState>()(
   persist(
     (set) => ({
       user: null,
-      points: 0,
+      wngsBalance: 0,
+      isLoading: false,
       identityType: null,
       stamps: [
         { id: 1, name: 'Spring 2024', image: '/stamps/spring.png', collected: false },
@@ -46,8 +52,33 @@ const useStore = create<UserState>()(
       cart: [],
       activeAvatarColors: null,
       setUser: (user) => set({ user }),
+      setWngsBalance: (balance) => set({ wngsBalance: balance }),
+      setIsLoading: (loading) => set({ isLoading: loading }),
+      fetchWngsBalance: async (userId) => {
+        set({ isLoading: true });
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('wngs_balance')
+            .eq('id', userId)
+            .single();
+
+          if (error) {
+            console.error('Error fetching wngs balance:', error);
+            return;
+          }
+
+          if (data) {
+            set({ wngsBalance: data.wngs_balance || 0 });
+          }
+        } catch (err) {
+          console.error('Unexpected error fetching wngs balance:', err);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
       addPoints: (amount) => 
-        set((state) => ({ points: state.points + amount })),
+        set((state) => ({ wngsBalance: state.wngsBalance + amount })),
       collectStamp: (stampId) =>
         set((state) => ({
           stamps: state.stamps.map((stamp) =>

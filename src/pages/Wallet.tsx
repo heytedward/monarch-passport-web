@@ -15,7 +15,7 @@ import { MdOutlineElectricBolt, MdHistory, MdCreditCard, MdTrendingUp } from 're
 import useStore from '../store/useStore'
 
 const Wallet = () => {
-  const { points } = useStore()
+  const { wngsBalance, isLoading } = useStore()
   
   const bg = useColorModeValue("white", "black");
   const cardBg = useColorModeValue("gray.50", "gray.900");
@@ -65,8 +65,8 @@ const Wallet = () => {
             <Text fontSize="10px" fontWeight="900" fontFamily="monospace">AVAILABLE_WNGS</Text>
             <Icon as={MdOutlineElectricBolt} color="#FFB000" w={6} h={6} />
           </Flex>
-          <Heading fontSize="6xl" fontWeight="900" fontStyle="italic" lineHeight="1" mb={2} fontFamily="'Archivo Black', sans-serif">
-            {points}
+          <Heading fontSize={isLoading ? "4xl" : "6xl"} fontWeight="900" fontStyle="italic" lineHeight="1" mb={2} fontFamily="'Archivo Black', sans-serif">
+            {isLoading ? "SYNCING..." : wngsBalance}
           </Heading>
           <Text fontSize="12px" fontWeight="900" fontFamily="monospace" mb={8} opacity={0.6}>
             $WNGS // MONARCH_CREDITS
@@ -109,7 +109,9 @@ const Wallet = () => {
         <SimpleGrid columns={2} spacing={4}>
           <Box bg={cardBg} border={`1px solid ${border}`} p={6}>
             <Text fontSize="8px" fontWeight="900" color={mutedText} mb={2} fontFamily="monospace">TOTAL_EARNED</Text>
-            <Text fontSize="3xl" fontWeight="900" color={text} fontFamily="monospace">01250</Text>
+            <Text fontSize="3xl" fontWeight="900" color={text} fontFamily="monospace">
+              {isLoading ? "..." : wngsBalance.toString().padStart(5, '0')}
+            </Text>
           </Box>
           <Box bg={cardBg} border={`1px solid ${border}`} p={6}>
             <Text fontSize="8px" fontWeight="900" color={mutedText} mb={2} fontFamily="monospace">XP_MULTIPLIER</Text>
