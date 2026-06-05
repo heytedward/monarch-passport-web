@@ -9,11 +9,12 @@ import useStore from '../store/useStore'
 const Claim = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user, authenticated, ready, login } = usePrivy()
+  const { user, authenticated, ready, login, getAccessToken } = usePrivy()
   const { fetchWngsBalance } = useStore()
 
   const [status, setStatus] = useState<'LOADING' | 'SUCCESS' | 'ERROR'>('LOADING')
   const [errorMessage, setErrorMessage] = useState('ESTABLISHING SECURE CONNECTION...')
+  const [rawError, setRawError] = useState<string | null>(null)
   const [rewardAmount, setRewardAmount] = useState<number>(0)
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -38,6 +39,15 @@ const Claim = () => {
     setErrorMessage("VERIFYING ARTIFACT...")
 
     try {
+      // 0. Set Supabase Session with Privy Token for RLS
+      const token = await getAccessToken();
+      if (token) {
+        await supabase.auth.setSession({
+          access_token: token,
+          refresh_token: '',
+        });
+      }
+
       // 1. Check if already claimed in transactions
       const { data: existingTx, error: txError } = await supabase
         .from('transactions')
@@ -45,6 +55,8 @@ const Claim = () => {
         .eq('user_id', userId)
         .eq('metadata->claim_id', claimId)
         .maybeSingle()
+
+      if (txError) throw txError;
 
       if (existingTx) {
         setStatus('ERROR')
@@ -60,6 +72,8 @@ const Claim = () => {
         .eq('short_code', claimId)
         .maybeSingle()
 
+      if (claimError) throw claimError;
+
       let amount = 0
       if (claimLink) {
         amount = claimLink.wngs_award
@@ -70,6 +84,8 @@ const Claim = () => {
           .select('tier')
           .eq('tag_id', claimId)
           .maybeSingle()
+        
+        if (artError) throw artError;
         
         if (artifact) {
           // Default rewards based on tier
@@ -125,10 +141,11 @@ const Claim = () => {
       // 5. Success
       setStatus('SUCCESS')
       fetchWngsBalance(userId) // Sync global state
-    } catch (err) {
+    } catch (err: any) {
       console.error('Claim error:', err)
       setStatus('ERROR')
       setErrorMessage("CLAIM FAILED // SYSTEM ERROR")
+      setRawError(err?.message || String(err))
     } finally {
       setIsProcessing(false)
     }
@@ -196,7 +213,14 @@ const Claim = () => {
               <Box p={10} border={`4px solid #FF1744`} bg="#FF1744" color="white">
                 <Icon as={MdErrorOutline} w={20} h={20} mb={4} />
                 <Heading size="xl" fontWeight="900" mb={2}>{errorMessage}</Heading>
-                <Text fontSize="xs" fontWeight="900">STAMINA DEPLETED OR ALREADY SCANNED</Text>
+                <Text fontSize="xs" fontWeight="900" mb={4}>STAMINA DEPLETED OR ALREADY SCANNED</Text>
+                {rawError && (
+                  <Box p={2} bg="blackAlpha.400" borderRadius="md" mt={2}>
+                    <Text fontSize="8px" fontWeight="900" color="white" textAlign="left" wordBreak="break-all">
+                      DIAGNOSTIC_DATA: {rawError}
+                    </Text>
+                  </Box>
+                )}
               </Box>
               <Button 
                 variant="outline" 
