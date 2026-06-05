@@ -1,0 +1,112 @@
+import React, { useMemo } from 'react';
+
+interface DeStijlAvatarProps {
+  seed: string;
+  size?: number;
+}
+
+const PALETTE = [
+  '#FFFFFF', // White
+  '#1A202C', // Black (Monarch)
+  '#E53E3E', // Red
+  '#3182CE', // Blue
+  '#FFB000', // Monarch Gold
+];
+
+const DeStijlAvatar: React.FC<DeStijlAvatarProps> = ({ seed, size = 100 }) => {
+  // Simple deterministic hash function
+  const hash = useMemo(() => {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) {
+      h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
+    }
+    return h;
+  }, [seed]);
+
+  // Generate pseudo-random numbers from hash
+  const getRand = (index: number) => {
+    const x = Math.sin(hash + index) * 10000;
+    return x - Math.floor(x);
+  };
+
+  const getColor = (index: number) => {
+    const r = getRand(index);
+    return PALETTE[Math.floor(r * PALETTE.length)];
+  };
+
+  const blocks = useMemo(() => {
+    const result = [];
+    for (let i = 1; i <= 9; i++) {
+      result.push({
+        id: i,
+        x: ((i - 1) % 3) * 100,
+        y: Math.floor((i - 1) / 3) * 100,
+        fill: getColor(i)
+      });
+    }
+    return result;
+  }, [hash]);
+
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 300 300" 
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ display: 'block' }}
+    >
+      <style>
+        {`
+          @keyframes mechanicalBlink {
+            0%, 93%, 97%, 100% { transform: scaleY(1); }
+            95% { transform: scaleY(0); }
+          }
+          .destijl-pupil {
+            transform-origin: center;
+            transform-box: fill-box;
+            animation: mechanicalBlink 4s infinite;
+          }
+        `}
+      </style>
+      {blocks.map((b) => (
+        <React.Fragment key={b.id}>
+          {/* Main Block */}
+          <rect
+            x={b.x}
+            y={b.y}
+            width="100"
+            height="100"
+            fill={b.fill}
+            stroke="#000000"
+            strokeWidth="8"
+          />
+          
+          {/* Eyes (Blocks 4 & 6) */}
+          {(b.id === 4 || b.id === 6) && (
+            <rect
+              className="destijl-pupil"
+              x={b.x + 30}
+              y={b.y + 30}
+              width="40"
+              height="40"
+              fill="#000000"
+            />
+          )}
+
+          {/* Mouth (Block 8) */}
+          {b.id === 8 && (
+            <rect
+              x={b.x + 20}
+              y={b.y + 40}
+              width="60"
+              height="20"
+              fill="#000000"
+            />
+          )}
+        </React.Fragment>
+      ))}
+    </svg>
+  );
+};
+
+export default DeStijlAvatar;

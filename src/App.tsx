@@ -9,6 +9,7 @@ import Rewards from './pages/Rewards'
 import Scanner from './pages/Scanner'
 import Closet from './pages/Closet'
 import Profile from './pages/Profile'
+import Settings from './pages/Settings'
 import Landing from './pages/Landing'
 import Claim from './pages/Claim'
 import Wallet from './pages/Wallet'
@@ -70,6 +71,7 @@ function AppContent() {
             <Route path="/scan" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
             <Route path="/closet" element={<ProtectedRoute><Closet /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/v/:id" element={<Verify />} />
             <Route path="/recruit" element={<Recruit />} />
             <Route path="/claim/:id" element={<Claim />} />

@@ -33,7 +33,7 @@ import {
   MdMemory,
   MdPerson
 } from 'react-icons/md'
-import { Facehash } from 'facehash'
+import DeStijlAvatar from '../components/DeStijlAvatar'
 import useStore from '../store/useStore'
 
 const MotionBox = motion.create(Box)
@@ -144,7 +144,7 @@ const CommentItem = ({ comment, text, mutedText, border }: { comment: Comment, t
   </Box>
 )
 
-const DeStijlAvatar = ({ handle, border, bg }: { handle: string, border: string, bg: string }) => (
+const DeStijlAvatarLocal = ({ handle, border, bg }: { handle: string, border: string, bg: string }) => (
   <Box 
     w="60px" 
     h="60px" 
@@ -153,23 +153,9 @@ const DeStijlAvatar = ({ handle, border, bg }: { handle: string, border: string,
     position="relative"
     flexShrink={0}
     boxShadow={`4px 4px 0px 0px ${border === "white" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"}`}
+    overflow="hidden"
   >
-    <SimpleGrid columns={3} spacing={1} h="full" p={0.5}>
-      <Box bg="#00E5FF" border="1px solid black" />
-      <Box bg="#FFEB3B" border="1px solid black" />
-      <Box bg="#2979FF" border="1px solid black" />
-      <Box bg="#FF1744" border="1px solid black" />
-      {/* CENTER FACEHASH AVATAR */}
-      <Box bg="black" border="1px solid black" position="relative" overflow="hidden">
-        <Center position="absolute" inset={0}>
-          <Facehash name={handle} size={20} />
-        </Center>
-      </Box>
-      <Box bg="#D500F9" border="1px solid black" />
-      <Box bg="white" border="1px solid black" />
-      <Box bg="white" border="1px solid black" />
-      <Box bg="#FF9100" border="1px solid black" />
-    </SimpleGrid>
+    <DeStijlAvatar seed={handle} size={52} />
   </Box>
 )
 
@@ -184,7 +170,7 @@ const IntelCard = ({ intel, onOpen, bg, cardBg, text, mutedText, border }: { int
       transition="all 0.2s"
     >
       <Flex gap={5}>
-        <DeStijlAvatar handle={intel.handle} border={text} bg={bg} />
+        <DeStijlAvatarLocal handle={intel.handle} border={text} bg={bg} />
         
         <VStack align="start" spacing={3} flex={1}>
           <HStack w="full" justify="space-between" align="start">

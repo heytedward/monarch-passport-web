@@ -11,11 +11,15 @@ import {
   useColorModeValue
 } from '@chakra-ui/react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MdSettings, MdLock } from 'react-icons/md'
-import { Facehash } from 'facehash'
+import { usePrivy } from '@privy-io/react-auth'
+import DeStijlAvatar from '../components/DeStijlAvatar'
 import useStore from '../store/useStore'
 
 const Profile = () => {
+  const navigate = useNavigate()
+  const { user } = usePrivy()
   const { wngsBalance, isLoading } = useStore()
   const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'LOG'>('STATS');
 
@@ -99,35 +103,21 @@ const Profile = () => {
 
       {/* Identity Matrix Section */}
       <Box bg={text} p={10} position="relative">
-        <Box position="absolute" top={4} right={4} cursor="pointer" _hover={{ transform: "rotate(90deg)" }} transition="all 0.4s">
+        <Box 
+          position="absolute" 
+          top={4} 
+          right={4} 
+          cursor="pointer" 
+          _hover={{ transform: "rotate(90deg)" }} 
+          transition="all 0.4s"
+          onClick={() => navigate('/settings')}
+        >
           <Icon as={MdSettings} color={bg} w={6} h={6} />
         </Box>
 
         <VStack spacing={6}>
           {/* Identity Matrix (The colorful grid) */}
-          <Box border={`8px solid ${bg}`} p={1.5} bg={bg} boxShadow={`10px 10px 0px 0px ${mutedText}`}>
-            <SimpleGrid columns={3} spacing={1.5}>
-              <Box w="35px" h="35px" bg="#00E5FF" border={`2px solid ${bg}`} />
-              <Box w="35px" h="35px" bg="#FFEB3B" border={`2px solid ${bg}`} />
-              <Box w="35px" h="35px" bg="#2979FF" border={`2px solid ${bg}`} />
-              <Box w="35px" h="35px" bg="#FF1744" border={`2px solid ${bg}`} />
-              {/* CENTER SQUARE: FACEHASH */}
-              <Box w="35px" h="35px" bg="black" border={`2px solid ${bg}`} position="relative" overflow="hidden">
-                 <Center position="absolute" inset={0}>
-                    <Facehash name="butterflyboy" size={28} />
-                 </Center>
-              </Box>
-              <Box w="35px" h="35px" bg="#D500F9" border={`2px solid ${bg}`} />
-              <Box w="35px" h="35px" bg="white" border={`2px solid ${bg}`} />
-              <Box w="35px" h="35px" bg="white" border={`2px solid ${bg}`} />
-              <Box w="35px" h="35px" bg="#FF9100" border={`2px solid ${bg}`} position="relative">
-                 <Box position="absolute" bottom={1} right={1} w="12px" h="12px" bg="black" borderRadius="full" border="2px solid white" />
-              </Box>
-            </SimpleGrid>
-            <Center bg={bg} color={text} py={1.5}>
-              <Text fontSize="10px" fontWeight="900" fontFamily="monospace">LVL 1</Text>
-            </Center>
-          </Box>
+          <DeStijlAvatar seed={user?.id || 'default'} size={200} />
 
           <Heading fontSize="3xl" fontWeight="900" color={bg} fontStyle="italic" fontFamily="'Archivo Black', sans-serif" letterSpacing="-0.02em">
             @BUTTERFLYBOY

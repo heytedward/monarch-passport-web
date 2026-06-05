@@ -17,7 +17,6 @@
     "@supabase/supabase-js": "^2.106.1",
     "@vercel/node": "^5.8.3",
     "dotenv": "^17.4.2",
-    "facehash": "^0.1.0",
     "framer-motion": "^11.18.2",
     "magic-sdk": "^11.0.0",
     "react": "^18.2.0",
