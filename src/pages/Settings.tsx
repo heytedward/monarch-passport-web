@@ -131,6 +131,29 @@ const Settings = () => {
             </Button>
           </VStack>
         </Box>
+
+        {/* Admin Override Section */}
+        <Box p={8} borderBottom={`1px solid ${border}`}>
+          <Text fontSize="xs" fontWeight="900" color={monarchYellow} fontFamily="monospace" mb={6}>
+            // ADMIN_OVERRIDE
+          </Text>
+          <Button 
+            bg={monarchYellow}
+            color="black"
+            borderRadius="0" 
+            h="60px"
+            w="full"
+            fontSize="md"
+            fontWeight="900"
+            _hover={{ bg: text, color: monarchYellow, transform: 'translateY(-2px)' }}
+            _active={{ transform: 'translateY(0)' }}
+            onClick={() => navigate('/command-center')}
+            boxShadow={`4px 4px 0px 0px ${text === 'white' ? 'whiteAlpha.300' : 'blackAlpha.300'}`}
+            transition="all 0.2s"
+          >
+            INITIALIZE COMMAND CENTER
+          </Button>
+        </Box>
       </VStack>
 
       {/* Footer */}
