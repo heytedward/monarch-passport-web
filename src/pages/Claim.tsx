@@ -64,8 +64,7 @@ const Claim = () => {
         return
       }
 
-      // 2. Fetch reward amount from claim_links or artifacts
-      // First try claim_links
+      // 2. Fetch reward amount from claim_links
       let { data: claimLink, error: claimError } = await supabase
         .from('claim_links')
         .select('wngs_award')
@@ -73,31 +72,9 @@ const Claim = () => {
         .maybeSingle()
 
       if (claimError) throw claimError;
+      if (!claimLink) throw new Error("ARTIFACT_NOT_FOUND: This claim link does not exist.");
 
-      let amount = 0
-      if (claimLink) {
-        amount = claimLink.wngs_award
-      } else {
-        // Fallback to artifacts if claim_links doesn't have it
-        const { data: artifact, error: artError } = await supabase
-          .from('artifacts')
-          .select('tier')
-          .eq('tag_id', claimId)
-          .maybeSingle()
-        
-        if (artError) throw artError;
-        
-        if (artifact) {
-          // Default rewards based on tier
-          const tierRewards: Record<string, number> = {
-            'BRONZE': 50,
-            'SILVER': 100,
-            'GOLD': 500,
-            'BLACK': 1000
-          }
-          amount = tierRewards[artifact.tier] || 25
-        }
-      }
+      let amount = claimLink.wngs_award;
 
       if (amount === 0) {
         setStatus('ERROR')
@@ -107,15 +84,15 @@ const Claim = () => {
 
       setRewardAmount(amount)
 
-      // 3. Update profiles (Atomic increment is better but we'll fetch and update for simplicity here, 
-      // though RPC or increment is preferred)
+      // 3. Update profiles
       const { data: profile, error: profError } = await supabase
         .from('profiles')
         .select('wngs_balance')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
-      if (profError) throw profError
+      if (profError) throw profError;
+      if (!profile) throw new Error("PROFILE_NOT_FOUND: User identity not registered in database.");
 
       const newBalance = (profile.wngs_balance || 0) + amount
 
