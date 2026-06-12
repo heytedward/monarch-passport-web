@@ -18,6 +18,7 @@ import TerminalScanner from './pages/TerminalScanner'
 import Recruit from './pages/Recruit'
 import CommandCenter from './pages/CommandCenter'
 import Verify from './pages/Verify'
+import Social from './pages/Social'
 import useStore from './store/useStore'
 
 import { PRIVY_APP_ID } from './config'
@@ -75,6 +76,7 @@ function AppContent() {
             <Route path="/v/:id" element={<Verify />} />
             <Route path="/recruit" element={<Recruit />} />
             <Route path="/claim/:id" element={<Claim />} />
+            <Route path="/social/:userId" element={<Social />} />
             <Route path="/command-center" element={<CommandCenter />} />
           </Routes>
         </Box>

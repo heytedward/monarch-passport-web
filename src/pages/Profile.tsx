@@ -8,12 +8,14 @@ import {
   Icon, 
   Center,
   SimpleGrid,
+  Button,
   useColorModeValue
 } from '@chakra-ui/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MdSettings, MdLock } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
+import { supabase } from '../lib/supabase'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import useStore from '../store/useStore'
 
@@ -22,6 +24,30 @@ const Profile = () => {
   const { user } = usePrivy()
   const { wngsBalance, isLoading } = useStore()
   const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'LOG'>('STATS');
+  const [activeQuests, setActiveQuests] = useState<any[]>([]);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    // Generate the unique link using the user's Privy ID or wallet
+    const socialUrl = `${window.location.origin}/social/${user?.id || 'guest'}`;
+    navigator.clipboard.writeText(socialUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 3000);
+  };
+
+  useEffect(() => {
+    const fetchQuests = async () => {
+      const { data, error } = await supabase
+        .from('quests')
+        .select('*')
+        .eq('is_active', true);
+      
+      if (!error && data) {
+        setActiveQuests(data);
+      }
+    };
+    fetchQuests();
+  }, []);
 
   const bg = useColorModeValue("white", "black");
   const cardBg = useColorModeValue("gray.50", "gray.900");
@@ -33,7 +59,7 @@ const Profile = () => {
     { label: 'WNGS_BALANCE', value: isLoading ? "..." : wngsBalance.toString() },
     { label: 'TOTAL_XP', value: '0' },
     { label: 'QUESTS_CLEARED', value: '1/4' },
-    { label: 'IDENTITY_TYPE', value: 'AGENT' },
+    { label: 'ARTIFACT_LEVEL', value: '01' },
   ];
 
   const renderTabContent = () => {
@@ -60,16 +86,26 @@ const Profile = () => {
       case 'QUESTS':
         return (
           <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
-            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">ACTIVE_DIRECTIVES</Text>
-            {[1, 2, 3].map(i => (
-              <HStack key={i} p={4} border={`4px solid ${text}`} justify="space-between">
-                <VStack align="start" spacing={0}>
-                  <Text fontSize="xs" fontWeight="900" color={text}>QUEST_ID_00{i}</Text>
-                  <Text fontSize="9px" color={mutedText}>ENCRYPTED_DATA_TRANSMISSION</Text>
-                </VStack>
-                <Icon as={MdLock} color={mutedText} opacity={0.4} />
-              </HStack>
-            ))}
+            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">ACTIVE_QUESTS</Text>
+            {activeQuests.length > 0 ? (
+              activeQuests.map((quest) => (
+                <HStack key={quest.id} p={4} border={`4px solid ${text}`} justify="space-between" bg={bg}>
+                  <VStack align="start" spacing={0}>
+                    <Text fontSize="xs" fontWeight="900" color={text}>// {quest.title.toUpperCase()}</Text>
+                    <Text fontSize="9px" color={mutedText}>{quest.description}</Text>
+                  </VStack>
+                  <Text fontSize="xs" fontWeight="900" color="#FFB000" fontFamily="monospace">
+                    +{quest.reward_wngs} WNGS
+                  </Text>
+                </HStack>
+              ))
+            ) : (
+              <Center p={8}>
+                <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace">
+                  [ NO_ACTIVE_QUESTS_FOUND ]
+                </Text>
+              </Center>
+            )}
           </VStack>
         );
       case 'LOG':
@@ -151,9 +187,31 @@ const Profile = () => {
 
       {/* Social Miner Hub Footer */}
       <Box p={6} borderTop={`4px solid ${text}`}>
-        <Text fontSize="9px" fontWeight="900" color={text} fontFamily="monospace">
+        <Text fontSize="9px" fontWeight="900" color={text} fontFamily="monospace" mb={4}>
           SOCIAL_MINER_HUB // SEASON_01
         </Text>
+        
+        <VStack align="stretch" spacing={4}>
+          <Text fontSize="10px" color={mutedText} fontFamily="monospace">
+            SHARE YOUR DIGITAL ARTIFACT LINK TO MINE WNGS. LIMIT: 3 SUCCESSFUL MINES PER DAY.
+          </Text>
+          
+          <Button
+            onClick={handleCopyLink}
+            bg="#FFB000"
+            color="black"
+            height="50px"
+            borderRadius="0"
+            fontWeight="900"
+            fontSize="sm"
+            fontFamily="monospace"
+            _hover={{ bg: "#e69e00" }}
+            _active={{ bg: "#cc8c00" }}
+            width="full"
+          >
+            {linkCopied ? '[ SIGNAL_COPIED_TO_CLIPBOARD ]' : 'GENERATE_SOCIAL_LINK'}
+          </Button>
+        </VStack>
       </Box>
     </Box>
   )
