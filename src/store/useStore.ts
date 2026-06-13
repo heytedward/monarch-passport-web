@@ -14,6 +14,9 @@ interface UserState {
   wngsBalance: number
   isLoading: boolean
   identityType: 'AGENT' | 'HUMAN' | null
+  activeTheme: string | null
+  activeAvatar: string | null
+  totalTaps: number
   stamps: {
     id: number
     name: string
@@ -25,7 +28,7 @@ interface UserState {
   setUser: (user: { id: string } | null) => void
   setWngsBalance: (balance: number) => void
   setIsLoading: (loading: boolean) => void
-  fetchWngsBalance: (userId: string) => Promise<void>
+  fetchUserProfile: (userId: string) => Promise<void>
   addPoints: (amount: number) => void
   collectStamp: (stampId: number) => void
   setIdentityType: (type: 'AGENT' | 'HUMAN' | null) => void
@@ -34,6 +37,7 @@ interface UserState {
   clearCart: () => void
   executeHandshake: (tagId: string) => void
   setActiveAvatarColors: (colors: string[] | null) => void
+  setActiveTheme: (theme: string | null) => void
 }
 
 const useStore = create<UserState>()(
@@ -43,6 +47,9 @@ const useStore = create<UserState>()(
       wngsBalance: 0,
       isLoading: false,
       identityType: null,
+      activeTheme: 'SYSTEM_DARK',
+      activeAvatar: null,
+      totalTaps: 0,
       stamps: [
         { id: 1, name: 'Spring 2024', image: '/stamps/spring.png', collected: false },
         { id: 2, name: 'Summer 2024', image: '/stamps/summer.png', collected: false },
@@ -54,25 +61,33 @@ const useStore = create<UserState>()(
       setUser: (user) => set({ user }),
       setWngsBalance: (balance) => set({ wngsBalance: balance }),
       setIsLoading: (loading) => set({ isLoading: loading }),
-      fetchWngsBalance: async (userId) => {
+      fetchUserProfile: async (userId) => {
         set({ isLoading: true });
         try {
           const { data, error } = await supabase
             .from('profiles')
-            .select('wngs_balance')
+            .select('wngs_balance, active_theme, active_avatar, total_taps')
             .eq('id', userId)
-            .single();
+            .maybeSingle(); // Use maybeSingle to handle 0 rows gracefully
 
           if (error) {
-            console.error('Error fetching wngs balance:', error);
+            console.error('Error fetching profile:', error);
             return;
           }
 
           if (data) {
-            set({ wngsBalance: data.wngs_balance || 0 });
+            set({ 
+              wngsBalance: data.wngs_balance || 0,
+              activeTheme: data.active_theme || 'SYSTEM_DARK',
+              activeAvatar: data.active_avatar,
+              totalTaps: data.total_taps || 0
+            });
+          } else {
+            // Handle case where profile doesn't exist yet
+            console.warn(`[System] No profile found for ID: ${userId}.`);
           }
         } catch (err) {
-          console.error('Unexpected error fetching wngs balance:', err);
+          console.error('Unexpected error fetching profile:', err);
         } finally {
           set({ isLoading: false });
         }
@@ -93,6 +108,7 @@ const useStore = create<UserState>()(
         console.log(`Executing handshake for tag: ${tagId}`);
       },
       setActiveAvatarColors: (colors) => set({ activeAvatarColors: colors }),
+      setActiveTheme: (theme) => set({ activeTheme: theme }),
     }),
     {
       name: 'monarch-passport-storage',

@@ -47,19 +47,28 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const bgColor = useColorModeValue("gray.50", "black");
   const { user, ready, authenticated } = usePrivy();
-  const { fetchWngsBalance } = useStore();
+  const { fetchUserProfile, activeTheme } = useStore();
+  
+  const brandAccent = activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000';
+  const bgColor = useColorModeValue("gray.50", "black");
 
   React.useEffect(() => {
     if (ready && authenticated && user?.id) {
-      fetchWngsBalance(user.id);
+      fetchUserProfile(user.id);
     }
-  }, [ready, authenticated, user?.id, fetchWngsBalance]);
+  }, [ready, authenticated, user?.id, fetchUserProfile]);
 
   return (
     <Router>
       <Box minH="100vh" bg={bgColor} pb="70px">
+        <style>{`
+          :root {
+            --monarch-accent: ${brandAccent};
+          }
+          .de-stijl-heading { font-family: 'Archivo Black', sans-serif !important; }
+          .de-stijl-body { font-family: 'Space Mono', monospace !important; }
+        `}</style>
         <Navbar />
         <Box as="main" pt="0" px={0} pb={0}>
           <Routes>

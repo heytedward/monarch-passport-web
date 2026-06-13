@@ -23,12 +23,15 @@ import {
   MenuItem,
   useColorModeValue
 } from '@chakra-ui/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PiShoppingBagFill, PiCreditCardFill, PiCubeFill } from 'react-icons/pi'
 import { Logo } from '../components/Logo'
 import { MdFilterList, MdRefresh, MdClose } from 'react-icons/md'
 import { motion } from 'framer-motion'
+import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
+
+import { WngsCoin } from '../components/WngsCoin'
 
 const MotionBox = motion.create(Box)
 
@@ -70,13 +73,17 @@ const ShopSlot = ({ index, item, onOpen, text, border, bg, cardBg }: { index: st
         bg={bg}
         cursor="pointer"
         onClick={() => onOpen(item)}
-        _hover={{ borderColor: "#FFB000" }}
+        _hover={{ borderColor: "var(--monarch-accent)" }}
         transition="all 0.2s"
       >
         <Text position="absolute" top={1} left={1} fontSize="6px" color={text} opacity={0.4} fontFamily="monospace">{index}</Text>
         <Center h="full" flexDirection="column">
           {item.type === 'physical' ? (
             <TShirtIcon color={text} />
+          ) : (item as any).category === 'WNGS' ? (
+            <Box w="60px" h="60px">
+              <WngsCoin isStatic={true} />
+            </Box>
           ) : (
             <AvatarGrid colors={item.avatarColors || []} size="60px" />
           )}
@@ -106,6 +113,9 @@ const ShopSlot = ({ index, item, onOpen, text, border, bg, cardBg }: { index: st
 const Shop = () => {
   const [mode, setMode] = useState<'physical' | 'digital'>('physical');
   const [filter, setFilter] = useState<'ALL' | 'PREMIUM' | 'BASIC'>('ALL');
+  const [digitalFilter, setDigitalFilter] = useState<'ALL' | 'AVATARS' | 'THEMES' | 'WNGS'>('ALL');
+  const [products, setProducts] = useState<ShopItemData[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const bg = useColorModeValue("white", "black");
   const cardBg = useColorModeValue("gray.50", "gray.900");
@@ -123,138 +133,60 @@ const Shop = () => {
   
   const { cart, addToCart, removeFromCart } = useStore();
 
-  const physicalItems: ShopItemData[] = [
-    { 
-      id: 'P01', 
-      type: 'physical',
-      price: 79,
-      priceString: '$79', 
-      name: 'NEO_HOODIE_v1',
-      specs: [
-        { label: 'MATERIAL', value: 'PREMIUM_FIBER // 450GSM' },
-        { label: 'HARDWARE', value: 'NTAG_424_DNA_CHIP' },
-        { label: 'CLEARANCE', value: 'PROTOCOL_X402' }
-      ]
-    },
-    { 
-      id: 'P02', 
-      type: 'physical',
-      price: 29,
-      priceString: '$29', 
-      name: 'MONARCH_TEE_v1',
-      specs: [
-        { label: 'MATERIAL', value: 'ORGANIC_COTTON // 220GSM' },
-        { label: 'HARDWARE', value: 'NFC_LINK_ENABLED' },
-        { label: 'CLEARANCE', value: 'PROTOCOL_V1' }
-      ]
-    },
-    { 
-      id: 'P03', 
-      type: 'physical',
-      price: 49,
-      priceString: '$49', 
-      name: 'AGENT_SHELL_v2',
-      specs: [
-        { label: 'MATERIAL', value: 'TECH_NYLON // WATERPROOF' },
-        { label: 'HARDWARE', value: 'DUAL_SYNC_HANDSHAKE' },
-        { label: 'CLEARANCE', value: 'AGENTIC_COMMERCE' }
-      ]
-    },
-  ];
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*');
+      
+      if (!error && data) {
+        const mappedProducts: ShopItemData[] = data.map((p: any) => ({
+          id: p.id,
+          type: p.type,
+          price: p.price,
+          priceString: p.type === 'physical' ? `$${p.price}` : `${p.price} WNGS`,
+          name: p.name,
+          specs: p.specs || [],
+          avatarColors: p.avatar_colors,
+          borderColor: p.border_color,
+          category: p.category
+        }));
 
-  const digitalItems: ShopItemData[] = [
-    {
-      id: 'D01',
-      type: 'digital',
-      price: 499,
-      priceString: '499 WNGS',
-      name: 'IDENTITY_MATRIX_01',
-      borderColor: '#FFB000',
-      avatarColors: ['white', 'purple.500', 'black', 'orange.400', 'white', 'purple.500', 'black', 'black', 'white'],
-      specs: [
-        { label: 'TYPE', value: 'DIGITAL_IDENTITY' },
-        { label: 'RARITY', value: 'LEGENDARY' },
-        { label: 'SYNC', value: 'X402_COMPATIBLE' }
-      ]
-    },
-    {
-      id: 'D02',
-      type: 'digital',
-      price: 299,
-      priceString: '299 WNGS',
-      name: 'IDENTITY_MATRIX_02',
-      borderColor: 'cyan.400',
-      avatarColors: ['black', 'yellow.400', 'black', 'yellow.400', 'purple.500', 'yellow.400', 'black', 'yellow.400', 'black'],
-      specs: [
-        { label: 'TYPE', value: 'DIGITAL_IDENTITY' },
-        { label: 'RARITY', value: 'RARE' },
-        { label: 'SYNC', value: 'V1_SYNC' }
-      ]
-    },
-    {
-      id: 'D03',
-      type: 'digital',
-      price: 750,
-      priceString: '750 WNGS',
-      name: 'IDENTITY_MATRIX_03',
-      borderColor: 'purple.500',
-      avatarColors: ['white', 'white', 'orange.400', 'white', 'black', 'white', 'orange.400', 'white', 'white'],
-      specs: [
-        { label: 'TYPE', value: 'DIGITAL_IDENTITY' },
-        { label: 'RARITY', value: 'MONARCH' },
-        { label: 'SYNC', value: 'X402_COMPATIBLE' }
-      ]
-    },
-    {
-      id: 'D04',
-      type: 'digital',
-      price: 999,
-      priceString: '999 WNGS',
-      name: 'IDENTITY_MATRIX_04',
-      borderColor: 'red.500',
-      avatarColors: ['yellow.400', 'red.500', 'cyan.400', 'red.500', 'black', 'red.500', 'cyan.400', 'red.500', 'yellow.400'],
-      specs: [
-        { label: 'TYPE', value: 'DIGITAL_IDENTITY' },
-        { label: 'RARITY', value: 'ULTRA_RARE' },
-        { label: 'SYNC', value: 'X402_COMPATIBLE' }
-      ]
-    },
-    {
-      id: 'D05',
-      type: 'digital',
-      price: 150,
-      priceString: '150 WNGS',
-      name: 'IDENTITY_MATRIX_05',
-      borderColor: 'orange.400',
-      avatarColors: ['black', 'black', 'red.500', 'black', 'cyan.400', 'black', 'red.500', 'black', 'black'],
-      specs: [
-        { label: 'TYPE', value: 'DIGITAL_IDENTITY' },
-        { label: 'RARITY', value: 'BASIC' },
-        { label: 'SYNC', value: 'V1_SYNC' }
-      ]
-    },
-    {
-      id: 'D06',
-      type: 'digital',
-      price: 600,
-      priceString: '600 WNGS',
-      name: 'IDENTITY_MATRIX_06',
-      borderColor: 'blue.500',
-      avatarColors: ['cyan.400', 'white', 'cyan.400', 'white', 'red.500', 'white', 'cyan.400', 'white', 'cyan.400'],
-      specs: [
-        { label: 'TYPE', value: 'DIGITAL_IDENTITY' },
-        { label: 'RARITY', value: 'MONARCH' },
-        { label: 'SYNC', value: 'X402_COMPATIBLE' }
-      ]
-    },
-  ];
+        const mockWngs: ShopItemData[] = [
+          { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE // 1000', specs: [] },
+          { id: 'W02', type: 'digital', category: 'WNGS', price: 45, priceString: '5000 WNGS', name: 'LOOT // 5000', specs: [] },
+          { id: 'W03', type: 'digital', category: 'WNGS', price: 80, priceString: '10000 WNGS', name: 'VAULT // 10000', specs: [] },
+          { id: 'W04', type: 'digital', category: 'WNGS', price: 350, priceString: '50000 WNGS', name: 'MAINFRAME // 50000', specs: [] },
+        ];
 
-  const currentItems = mode === 'physical' ? physicalItems : digitalItems;
+        setProducts([...mappedProducts, ...mockWngs]);
+      } else {
+        const mockWngs: ShopItemData[] = [
+          { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE // 1000', specs: [] },
+          { id: 'W02', type: 'digital', category: 'WNGS', price: 45, priceString: '5000 WNGS', name: 'LOOT // 5000', specs: [] },
+          { id: 'W03', type: 'digital', category: 'WNGS', price: 80, priceString: '10000 WNGS', name: 'VAULT // 10000', specs: [] },
+          { id: 'W04', type: 'digital', category: 'WNGS', price: 350, priceString: '50000 WNGS', name: 'MAINFRAME // 50000', specs: [] },
+        ];
+        setProducts(mockWngs);
+      }
+      setLoading(false);
+    };
+    fetchProducts();
+  }, []);
+
+  const currentItems = products.filter(item => item.type === mode);
   
   const filteredItems = currentItems.filter(item => {
-    if (filter === 'ALL') return true;
-    if (filter === 'PREMIUM') return item.price > 100;
-    if (filter === 'BASIC') return item.price <= 100;
+    // Apply Price Filter
+    if (filter === 'PREMIUM' && item.price <= 100) return false;
+    if (filter === 'BASIC' && item.price > 100) return false;
+
+    // Apply Digital Category Filter
+    if (mode === 'digital' && digitalFilter !== 'ALL') {
+      if ((item as any).category !== digitalFilter) return false;
+    }
+
     return true;
   });
 
@@ -288,7 +220,7 @@ const Shop = () => {
             <HStack spacing={4}>
               <Logo boxSize="35px" color={text} />
               <VStack align="start" spacing={0}>
-                <Text fontSize="8px" fontWeight="900" color="#FFB000" fontFamily="monospace">PAPILLON</Text>
+                <Text fontSize="8px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">PAPILLON</Text>
                 <Heading fontSize="3xl" fontWeight="900" fontStyle="italic" color={text} lineHeight="1" fontFamily="'Archivo Black', sans-serif">
                   {mode === 'physical' ? 'PHYSICAL' : 'DIGITAL'}
                 </Heading>
@@ -306,7 +238,7 @@ const Shop = () => {
               {cart.length > 0 && (
                 <Circle 
                   size="14px" 
-                  bg="#FFB000" 
+                  bg="var(--monarch-accent)" 
                   color="black" 
                   fontSize="8px" 
                   fontWeight="900" 
@@ -333,7 +265,7 @@ const Shop = () => {
               flex={1} 
               h="36px"
               borderRadius="full" 
-              bg={mode === 'physical' ? "#FFB000" : "transparent"}
+              bg={mode === 'physical' ? "var(--monarch-accent)" : "transparent"}
               color={mode === 'physical' ? inverseText : text}
               fontSize="9px"
               fontWeight="900"
@@ -347,7 +279,7 @@ const Shop = () => {
               flex={1} 
               h="36px"
               borderRadius="full" 
-              bg={mode === 'digital' ? "#FFB000" : "transparent"}
+              bg={mode === 'digital' ? "var(--monarch-accent)" : "transparent"}
               color={mode === 'digital' ? inverseText : text}
               fontSize="9px"
               fontWeight="900"
@@ -358,6 +290,37 @@ const Shop = () => {
               DIGITAL
             </Button>
           </Flex>
+
+          {/* Digital Sub-navigation Filter */}
+          {mode === 'digital' && (
+            <Center mt={4}>
+              <HStack 
+                spacing={0} 
+                bg={cardBg} 
+                border={`1px solid ${border}`} 
+                p={1}
+                w="full"
+                justify="space-evenly"
+              >
+                {['ALL', 'AVATARS', 'THEMES', 'WNGS'].map((cat) => (
+                  <Button
+                    key={cat}
+                    variant="ghost"
+                    size="xs"
+                    fontSize="9px"
+                    fontFamily="monospace"
+                    fontWeight="900"
+                    color={digitalFilter === cat ? "var(--monarch-accent)" : mutedText}
+                    onClick={() => setDigitalFilter(cat as any)}
+                    _hover={{ color: text }}
+                    borderRadius="0"
+                  >
+                    {cat}
+                  </Button>
+                ))}
+              </HStack>
+            </Center>
+          )}
         </Box>
 
         {/* Info Bar */}
@@ -368,67 +331,114 @@ const Shop = () => {
           </Flex>
         </Box>
 
-        {/* Grid Section */}
-        <Box p={6}>
-          <Box border="1px solid" borderColor={text} borderBottom="none" p={4} bg={bg}>
-            <Flex justify="space-between" align="center">
-              <VStack align="start" spacing={1}>
-                <Heading fontSize="xs" fontWeight="900" color={text} fontFamily="'Archivo Black', sans-serif">
-                  ASSET_SLOTS // {filteredItems.length}
-                </Heading>
-              </VStack>
-              
-              <Menu>
-                <MenuButton 
-                  as={Button}
-                  size="xs" 
-                  variant="outline" 
-                  color={text} 
-                  borderColor={text} 
-                  borderRadius="0"
-                  leftIcon={<MdFilterList />}
-                  fontSize="8px"
-                  fontWeight="900"
-                  h="24px"
-                  _hover={{ bg: cardBg }}
-                  _active={{ bg: border }}
+        {/* Specialized WNGS Grid or Standard Grid */}
+        {mode === 'digital' && digitalFilter === 'WNGS' ? (
+          <Box p={6}>
+            <SimpleGrid columns={2} spacing={6}>
+              {filteredItems.map((item) => (
+                <Box 
+                  key={item.id} 
+                  bg="black" 
+                  border="2px solid" 
+                  borderColor="var(--monarch-accent)"
+                  position="relative"
+                  cursor="pointer"
+                  onClick={() => handleItemOpen(item)}
+                  _hover={{ transform: 'translateY(-4px)', boxShadow: '0 0 25px var(--monarch-accent)' }}
+                  transition="all 0.3s"
+                  aspectRatio="1/1"
                 >
-                  FILTER: {filter}
-                </MenuButton>
-                <MenuList bg={bg} border={`1px solid ${text}`} borderRadius="0" minW="100px">
-                  <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('ALL')}>ALL_ASSETS</MenuItem>
-                  <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('PREMIUM')}>PREMIUM_PROTOCOL</MenuItem>
-                  <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('BASIC')}>BASIC_PROTOCOL</MenuItem>
-                </MenuList>
-              </Menu>
-            </Flex>
-          </Box>
-
-          <Box border="1px solid" borderColor={text} p={4}>
-            <Flex justify="space-between" mb={4} borderBottom="1px solid" borderColor={border} pb={1}>
-              <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">ID_INDEX</Text>
-              <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">VALUATION</Text>
-            </Flex>
-            
-            <SimpleGrid columns={3} spacing={3}>
-              {/* Render Filtered Items */}
-              {filteredItems.map((item, idx) => (
-                <ShopSlot key={item.id} index={(idx + 1).toString().padStart(2, '0')} item={item} onOpen={handleItemOpen} text={text} border={border} bg={bg} cardBg={cardBg} />
-              ))}
-              
-              {/* Fill remaining slots with empty dashed boxes (up to 9) */}
-              {Array.from({ length: Math.max(0, 9 - filteredItems.length) }).map((_, idx) => (
-                <ShopSlot key={`empty-${idx}`} index={(filteredItems.length + idx + 1).toString().padStart(2, '0')} onOpen={handleItemOpen} text={text} border={border} bg={bg} cardBg={cardBg} />
+                  <Center h="full" flexDirection="column" p={6} textAlign="center">
+                    <VStack spacing={6} w="full" h="full" justify="center">
+                       <Box w="80%" h="80%" position="relative">
+                          <WngsCoin isStatic={true} />
+                       </Box>
+                       <VStack spacing={0}>
+                          <Text 
+                            fontSize={{ base: "xs", md: "sm" }} 
+                            fontWeight="900" 
+                            color="white" 
+                            fontFamily="monospace" 
+                            lineHeight="1.1"
+                            textTransform="uppercase"
+                          >
+                            {item.name.includes(' // ') ? item.name.split(' // ')[0] : item.name}: {item.name.includes(' // ') ? item.name.split(' // ')[1] : item.priceString.split(' ')[0]} / ${item.price}
+                          </Text>
+                       </VStack>
+                    </VStack>
+                  </Center>
+                </Box>
               ))}
             </SimpleGrid>
-
-            <Flex justify="end" mt={4}>
-              <Text fontSize="6px" fontWeight="900" color={mutedText} opacity={0.4} fontFamily="monospace">
-                SYSTEM_STABILITY: 100% // LOAD_COMPLETE
-              </Text>
-            </Flex>
           </Box>
-        </Box>
+        ) : (
+          <Box p={6}>
+            <Box border="1px solid" borderColor={text} borderBottom="none" p={4} bg={bg}>
+              <Flex justify="space-between" align="center">
+                <VStack align="start" spacing={1}>
+                  <Heading fontSize="xs" fontWeight="900" color={text} fontFamily="'Archivo Black', sans-serif">
+                    ASSET_SLOTS // {loading ? "..." : filteredItems.length}
+                  </Heading>
+                </VStack>
+                
+                <Menu>
+                  <MenuButton 
+                    as={Button}
+                    size="xs" 
+                    variant="outline" 
+                    color={text} 
+                    borderColor={text} 
+                    borderRadius="0"
+                    leftIcon={<MdFilterList />}
+                    fontSize="8px"
+                    fontWeight="900"
+                    h="24px"
+                    _hover={{ bg: cardBg }}
+                    _active={{ bg: border }}
+                  >
+                    FILTER: {filter}
+                  </MenuButton>
+                  <MenuList bg={bg} border={`1px solid ${text}`} borderRadius="0" minW="100px">
+                    <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('ALL')}>ALL_ASSETS</MenuItem>
+                    <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('PREMIUM')}>PREMIUM_PROTOCOL</MenuItem>
+                    <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('BASIC')}>BASIC_PROTOCOL</MenuItem>
+                  </MenuList>
+                </Menu>
+              </Flex>
+            </Box>
+
+            <Box border="1px solid" borderColor={text} p={4}>
+              <Flex justify="space-between" mb={4} borderBottom="1px solid" borderColor={border} pb={1}>
+                <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">ID_INDEX</Text>
+                <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">VALUATION</Text>
+              </Flex>
+              
+              <SimpleGrid columns={3} spacing={3}>
+                {loading ? (
+                  Array.from({ length: 6 }).map((_, idx) => (
+                    <ShopSlot key={`loading-${idx}`} index={(idx + 1).toString().padStart(2, '0')} onOpen={() => {}} text={text} border={border} bg={bg} cardBg={cardBg} />
+                  ))
+                ) : (
+                  <>
+                    {filteredItems.map((item, idx) => (
+                      <ShopSlot key={item.id} index={(idx + 1).toString().padStart(2, '0')} item={item} onOpen={handleItemOpen} text={text} border={border} bg={bg} cardBg={cardBg} />
+                    ))}
+                    
+                    {Array.from({ length: Math.max(0, 9 - filteredItems.length) }).map((_, idx) => (
+                      <ShopSlot key={`empty-${idx}`} index={(filteredItems.length + idx + 1).toString().padStart(2, '0')} onOpen={handleItemOpen} text={text} border={border} bg={bg} cardBg={cardBg} />
+                    ))}
+                  </>
+                )}
+              </SimpleGrid>
+
+              <Flex justify="end" mt={4}>
+                <Text fontSize="6px" fontWeight="900" color={mutedText} opacity={0.4} fontFamily="monospace">
+                  SYSTEM_STABILITY: 100% // {loading ? "LOADING..." : "LOAD_COMPLETE"}
+                </Text>
+              </Flex>
+            </Box>
+          </Box>
+        )}
       </Container>
 
       {/* Item Detail Modal */}
@@ -463,6 +473,10 @@ const Shop = () => {
                       <Box border={`2px solid ${text}`} p={6}>
                         {selectedItem.type === 'physical' ? (
                           <TShirtIcon color={text} boxSize="100px" />
+                        ) : (selectedItem as any).category === 'WNGS' ? (
+                          <Box w="120px" h="120px">
+                             <WngsCoin />
+                          </Box>
                         ) : (
                           <AvatarGrid colors={selectedItem.avatarColors || []} size="120px" />
                         )}
@@ -471,7 +485,7 @@ const Shop = () => {
                         <Text fontSize="2xl" fontWeight="900" color={bg} bg={text} px={4} fontStyle="italic">
                           {selectedItem.priceString}
                         </Text>
-                        <Text fontSize="10px" fontWeight="900" color="#FFB000" fontFamily="monospace">
+                        <Text fontSize="10px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
                           {selectedItem.name}
                         </Text>
                       </VStack>
@@ -498,7 +512,7 @@ const Shop = () => {
                     <VStack spacing={6} w="full">
                       <VStack spacing={1}>
                         <Text fontSize="xs" fontWeight="900" color={text}>ASSET_SPECIFICATIONS</Text>
-                        <Box h="2px" w="40px" bg="#FFB000" />
+                        <Box h="2px" w="40px" bg="var(--monarch-accent)" />
                       </VStack>
                       
                       <VStack align="start" spacing={4} w="full">
@@ -546,10 +560,17 @@ const Shop = () => {
                         borderRadius="0" 
                         fontSize="sm" 
                         fontWeight="900" 
-                        onClick={(e) => { e.stopPropagation(); handleAddToCart(); }}
-                        _hover={{ bg: "#FFB000", color: "black" }}
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          if (selectedItem.type === 'physical' && (selectedItem as any).external_buy_url) {
+                            window.open((selectedItem as any).external_buy_url, '_blank');
+                          } else {
+                            handleAddToCart();
+                          }
+                        }}
+                        _hover={{ bg: "var(--monarch-accent)", color: "black" }}
                       >
-                        ADD_TO_CART
+                        {selectedItem.type === 'physical' && (selectedItem as any).external_buy_url ? 'BUY_NOW' : 'ADD_TO_CART'}
                       </Button>
                       
                       <HStack color={mutedText}>
@@ -569,7 +590,7 @@ const Shop = () => {
                 bg={text} 
                 color={bg} 
                 borderRadius="full"
-                _hover={{ bg: "#FFB000", color: "black" }}
+                _hover={{ bg: "var(--monarch-accent)", color: "black" }}
               />
             </Center>
           </ModalBody>
@@ -586,11 +607,11 @@ const Shop = () => {
               <Box p={6} borderBottom={`1px solid ${border}`}>
                 <Flex justify="space-between" align="center">
                   <HStack spacing={3}>
-                    <Icon as={PiShoppingBagFill} color="#FFB000" boxSize="20px" />
+                    <Icon as={PiShoppingBagFill} color="var(--monarch-accent)" boxSize="20px" />
                     <Heading fontSize="xl" fontWeight="900" color={text} fontStyle="italic">
                       MY_CART
                     </Heading>
-                    <Circle size="18px" bg="#FFB000" color="black" fontSize="10px" fontWeight="900">
+                    <Circle size="18px" bg="var(--monarch-accent)" color="black" fontSize="10px" fontWeight="900">
                       {cart.length}
                     </Circle>
                   </HStack>
@@ -648,7 +669,7 @@ const Shop = () => {
                 <VStack spacing={4} align="stretch">
                   <Flex justify="space-between" align="center">
                     <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">ESTIMATED_REWARDS</Text>
-                    <HStack spacing={1} color="#FFB000">
+                    <HStack spacing={1} color="var(--monarch-accent)">
                       <Icon as={MdRefresh} boxSize="10px" />
                       <Text fontSize="10px" fontWeight="900">+{estimatedRewards} WNGS</Text>
                     </HStack>

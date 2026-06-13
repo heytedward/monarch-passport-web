@@ -80,7 +80,7 @@ const Navbar = () => {
                 <Text 
                   fontSize="8px" 
                   fontWeight="900" 
-                  color={isActive ? "#FFB000" : iconColor} 
+                  color={isActive ? "var(--monarch-accent)" : iconColor} 
                   fontFamily="monospace"
                   letterSpacing="0.05em"
                 >
@@ -112,11 +112,11 @@ const Navbar = () => {
                 position: 'absolute',
                 inset: "-6px",
                 borderRadius: "full",
-                border: "4px solid #FFB000",
-                boxShadow: "0 0 15px #FFB000, inset 0 0 15px #FFB000",
+                border: "4px solid var(--monarch-accent)",
+                boxShadow: "0 0 15px var(--monarch-accent), inset 0 0 15px var(--monarch-accent)",
               }}
             >
-              <Logo boxSize="35px" color={location.pathname === '/shop' ? "#FFB000" : iconColor} />
+              <Logo boxSize="35px" color={location.pathname === '/shop' ? "var(--monarch-accent)" : iconColor} />
             </Center>
           </VStack>
         </Box>
@@ -139,7 +139,7 @@ const Navbar = () => {
                 <Text 
                   fontSize="8px" 
                   fontWeight="900" 
-                  color={isActive ? "#FFB000" : iconColor} 
+                  color={isActive ? "var(--monarch-accent)" : iconColor} 
                   fontFamily="monospace"
                   letterSpacing="0.05em"
                 >
@@ -158,7 +158,7 @@ const IconBox = ({ icon: Icon, isActive, iconColor }: { icon: any, isActive: boo
   <Center 
     w="32px" 
     h="32px" 
-    color={isActive ? "#FFB000" : iconColor}
+    color={isActive ? "var(--monarch-accent)" : iconColor}
   >
     <Icon size={24} />
   </Center>

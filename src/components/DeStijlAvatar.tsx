@@ -1,8 +1,11 @@
 import React, { useMemo } from 'react';
 
+import useStore from '../store/useStore';
+
 interface DeStijlAvatarProps {
   seed: string;
   size?: number;
+  colors?: string[];
 }
 
 const PALETTE = [
@@ -13,7 +16,10 @@ const PALETTE = [
   '#FFB000', // Monarch Gold
 ];
 
-const DeStijlAvatar: React.FC<DeStijlAvatarProps> = ({ seed, size = 100 }) => {
+const DeStijlAvatar: React.FC<DeStijlAvatarProps> = ({ seed, size = 100, colors }) => {
+  const { activeAvatarColors } = useStore();
+  const effectiveColors = colors || activeAvatarColors;
+
   // Simple deterministic hash function
   const hash = useMemo(() => {
     let h = 0;
@@ -30,6 +36,9 @@ const DeStijlAvatar: React.FC<DeStijlAvatarProps> = ({ seed, size = 100 }) => {
   };
 
   const getColor = (index: number) => {
+    if (effectiveColors && effectiveColors[index - 1]) {
+      return effectiveColors[index - 1];
+    }
     const r = getRand(index);
     return PALETTE[Math.floor(r * PALETTE.length)];
   };

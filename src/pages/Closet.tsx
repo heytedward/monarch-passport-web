@@ -16,11 +16,14 @@ import {
   ModalBody,
   useDisclosure,
   IconButton,
-  Divider,
   useColorMode,
   useColorModeValue,
   Spinner,
-  useToast
+  useToast,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { MdTune, MdRefresh, MdClose } from 'react-icons/md'
@@ -68,8 +71,6 @@ interface ClosetItemData {
 
 const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, item?: ClosetItemData, onOpen: (item: ClosetItemData) => void, text: string, border: string, bg: string }) => {
   if (item) {
-    const isActiveTheme = item.type === 'theme' && item.borderColor === '#FFB000';
-
     return (
       <Box 
         border="1px solid" 
@@ -80,7 +81,7 @@ const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, 
         cursor="pointer"
         transition="all 0.2s"
         onClick={() => !item.locked && onOpen(item)}
-        _hover={!item.locked ? { transform: 'scale(1.02)', borderColor: "#FFB000" } : {}}
+        _hover={!item.locked ? { transform: 'scale(1.02)', borderColor: "var(--monarch-accent)" } : {}}
       >
         <Text position="absolute" top={1} left={1} fontSize="6px" color={text} opacity={0.4} fontFamily="monospace">{index}</Text>
         <Center h="full">
@@ -99,7 +100,7 @@ const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, 
             )
           )}
         </Center>
-        {item.borderColor && <Box position="absolute" bottom={0} left={0} right={0} h="15px" bg={item.borderColor} opacity={isActiveTheme ? 0.8 : 0.3} />}
+        {item.borderColor && <Box position="absolute" bottom={0} left={0} right={0} h="15px" bg={item.borderColor} opacity={0.3} />}
       </Box>
     )
   }
@@ -121,8 +122,9 @@ const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, 
 
 const Closet = () => {
   const [mode, setMode] = useState<'physical' | 'digital'>('physical');
+  const [filter, setFilter] = useState<'ALL' | 'AVATARS' | 'THEMES'>('ALL');
   const { colorMode, setColorMode } = useColorMode();
-  const { setActiveAvatarColors } = useStore();
+  const { setActiveAvatarColors, setActiveTheme, activeTheme, activeAvatar, fetchUserProfile } = useStore();
   const toast = useToast();
   
   const bg = useColorModeValue("white", "black");
@@ -135,122 +137,172 @@ const Closet = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedItem, setSelectedItem] = useState<ClosetItemData | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
-
-  const handleEquip = () => {
-    if (!selectedItem) return;
-
-    const name = selectedItem.name.toUpperCase();
-    if (name.includes('LIGHT_THEME') || selectedItem.themeMode === 'light') {
-      setColorMode('light');
-      toast({ title: 'PROTOCOL_EQUIPPED: LIGHT_MODE', status: 'success', duration: 2000 });
-    } else if (name.includes('DARK_THEME') || selectedItem.themeMode === 'dark') {
-      setColorMode('dark');
-      toast({ title: 'PROTOCOL_EQUIPPED: DARK_MODE', status: 'success', duration: 2000 });
-    } else if (selectedItem.avatarColors) {
-      setActiveAvatarColors(selectedItem.avatarColors);
-      toast({ title: 'PROTOCOL_EQUIPPED: AVATAR_SYNCED', status: 'success', duration: 2000 });
-    }
-    onClose();
-  };
   
-  // LIVE DATA STATES
   const { user } = usePrivy();
-  const [livePhysicalItems, setLivePhysicalItems] = useState<Record<string, ClosetItemData>>({});
+  const [ownedAssets, setOwnedAssets] = useState<ClosetItemData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // FETCH ARTIFACTS FROM DATABASE
+  const brandAccent = activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000';
+
+  const handleEquip = async () => {
+    if (!selectedItem || !user?.id) return;
+
+    try {
+      const isTheme = selectedItem.type === 'theme';
+      const updateData = isTheme 
+        ? { active_theme: selectedItem.id } 
+        : { active_avatar: selectedItem.id };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Immediate local sync
+      if (isTheme) setActiveTheme(selectedItem.id);
+      
+      // Sync full profile from server
+      await fetchUserProfile(user.id);
+      
+      // Additional effects
+      if (isTheme) {
+        if (selectedItem.name.includes('LIGHT')) setColorMode('light');
+        if (selectedItem.name.includes('DARK') || selectedItem.id === 'CRIMSON_OVERRIDE') setColorMode('dark');
+      } else if (selectedItem.avatarColors) {
+        setActiveAvatarColors(selectedItem.avatarColors);
+      }
+
+      toast({ 
+        title: `PROTOCOL_EQUIPPED: ${selectedItem.name.toUpperCase()}`, 
+        status: 'success', 
+        duration: 2000 
+      });
+      onClose();
+    } catch (err) {
+      console.error("Equip Failed:", err);
+      toast({ title: 'EQUIP_FAILED', status: 'error', duration: 2000 });
+    }
+  };
+
   useEffect(() => {
-    const fetchArtifacts = async () => {
+    const fetchOwnedAssets = async () => {
       if (!user?.id) {
         setIsLoading(false);
         return;
       }
       
       try {
+        setIsLoading(true);
+        // Fetch from user_assets joined with products
         const { data, error } = await supabase
-          .from('artifacts')
-          .select('*')
-          .eq('owner_id', user.id)
-          .eq('is_activated', true); // Only fetch successfully claimed items
+          .from('user_assets')
+          .select(`
+            id,
+            product_id,
+            products (*)
+          `)
+          .eq('user_id', user.id);
 
         if (error) throw error;
 
-        if (data) {
-          const fetchedItems: Record<string, ClosetItemData> = {};
-          
-          // Map DB records to UI slots (01, 02, etc.)
-          data.forEach((artifact, index) => {
-            const slotKey = `0${index + 1}`.slice(-2);
-            
-            // Strictly dynamic: Use product_name if available, fallback to name, or 'ARTIFACT'
-            const product_name = (artifact.product_name || artifact.name || 'ARTIFACT').toUpperCase();
+        // Default assets (Light/Dark/Crimson themes)
+        const defaults: ClosetItemData[] = [
+          {
+            id: 'SYSTEM_LIGHT',
+            type: 'theme',
+            name: 'SYSTEM_LIGHT',
+            themeMode: 'light',
+            borderColor: activeTheme === 'SYSTEM_LIGHT' ? brandAccent : border,
+            dossier: {
+              collection: 'SYSTEM_PROTOCOLS',
+              releaseDate: '2024-01-01',
+              serialId: 'THM-L-001',
+              xpPerTap: '0',
+              composition: 'HIGH_CONTRAST',
+              activeMissions: ['Sync interface to Solar Day']
+            }
+          },
+          {
+            id: 'SYSTEM_DARK',
+            type: 'theme',
+            name: 'SYSTEM_DARK',
+            themeMode: 'dark',
+            borderColor: (activeTheme === 'SYSTEM_DARK' || !activeTheme) ? brandAccent : border,
+            dossier: {
+              collection: 'SYSTEM_PROTOCOLS',
+              releaseDate: '2024-01-01',
+              serialId: 'THM-D-001',
+              xpPerTap: '0',
+              composition: 'LOW_LIGHT',
+              activeMissions: ['Maintain stealth protocols']
+            }
+          },
+          {
+            id: 'CRIMSON_OVERRIDE',
+            type: 'theme',
+            name: 'CRIMSON_OVERRIDE',
+            themeMode: 'dark',
+            borderColor: activeTheme === 'CRIMSON_OVERRIDE' ? brandAccent : border,
+            dossier: {
+              collection: 'SYSTEM_PROTOCOLS',
+              releaseDate: '2024-01-01',
+              serialId: 'THM-C-001',
+              xpPerTap: '0',
+              composition: 'CRIMSON_EMISSION',
+              activeMissions: ['Override default palette']
+            }
+          }
+        ];
 
-            fetchedItems[slotKey] = {
-              id: artifact.tag_id,
-              type: 'physical',
-              name: product_name,
-              borderColor: '#FFB000', // Monarch Gold for active items
+        if (data) {
+          const mapped: ClosetItemData[] = data.map((asset: any) => {
+            const p = asset.products;
+            return {
+              id: p.id,
+              type: p.type === 'digital' ? (p.category === 'THEMES' ? 'theme' : 'digital') : 'physical',
+              name: p.name.toUpperCase(),
+              avatarColors: p.avatar_colors,
+              borderColor: (activeTheme === p.id || activeAvatar === p.id) ? brandAccent : border,
               dossier: {
-                collection: artifact.collection?.toUpperCase() || 'GENERAL_RELEASE',
-                releaseDate: new Date(artifact.created_at).toISOString().split('T')[0],
-                serialId: `SN-${artifact.tag_id.toUpperCase()}`,
+                collection: p.category || 'GENERAL_RELEASE',
+                releaseDate: new Date(p.created_at || Date.now()).toISOString().split('T')[0],
+                serialId: `SN-${p.id.slice(0, 8).toUpperCase()}`,
                 xpPerTap: '50',
-                composition: `${artifact.season?.toUpperCase() || 'CORE'}_COLLECTION`,
-                activeMissions: [
-                  'Initialize system handshake',
-                  'Register phygital vault'
-                ]
+                composition: `${p.type.toUpperCase()}_ASSET`,
+                activeMissions: ['Verified in local vault']
               }
             };
           });
-          
-          setLivePhysicalItems(fetchedItems);
+          setOwnedAssets([...defaults, ...mapped]);
+        } else {
+          setOwnedAssets(defaults);
         }
       } catch (err) {
-        console.error("Uplink to Registry Failed:", err);
+        console.error("Registry Sync Failed:", err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchArtifacts();
-  }, [user]);
+    fetchOwnedAssets();
+  }, [user, activeTheme, activeAvatar, brandAccent]);
 
-  // Keep digital items hardcoded for now (Themes/Avatars)
-  const digital_items: Record<string, ClosetItemData> = {
-    '01': {
-      id: 'T01',
-      type: 'theme',
-      name: 'LIGHT_THEME',
-      themeMode: 'light',
-      borderColor: colorMode === 'light' ? '#FFB000' : border,
-      dossier: {
-        collection: 'SYSTEM_PROTOCOLS',
-        releaseDate: '2024-01-01',
-        serialId: 'THM-L-001',
-        xpPerTap: '0',
-        composition: 'HIGH_CONTRAST_EMISSION',
-        activeMissions: ['Sync interface to Solar Day']
-      }
-    },
-    '02': {
-      id: 'T02',
-      type: 'theme',
-      name: 'DARK_THEME',
-      themeMode: 'dark',
-      borderColor: colorMode === 'dark' ? '#FFB000' : border,
-      dossier: {
-        collection: 'SYSTEM_PROTOCOLS',
-        releaseDate: '2024-01-01',
-        serialId: 'THM-D-001',
-        xpPerTap: '0',
-        composition: 'LOW_LIGHT_ENCRYPTION',
-        activeMissions: ['Maintain stealth protocols']
-      }
+  const current_items = ownedAssets.filter(item => {
+    const isPhysicalMode = mode === 'physical';
+    const isDigitalMode = mode === 'digital';
+
+    if (isPhysicalMode) return item.type === 'physical';
+    
+    if (isDigitalMode) {
+      if (filter === 'AVATARS') return item.type === 'digital'; // 'digital' type is used for avatars
+      if (filter === 'THEMES') return item.type === 'theme';
+      return item.type === 'digital' || item.type === 'theme';
     }
-  };
 
-  const current_items = mode === 'physical' ? livePhysicalItems : digital_items;
+    return false;
+  });
 
   const handleOpen = (item: ClosetItemData) => {
     setSelectedItem(item);
@@ -267,11 +319,11 @@ const Closet = () => {
             <Heading fontSize="5xl" fontWeight="900" fontStyle="italic" color={text} fontFamily="'Archivo Black', sans-serif">
               CLOSET
             </Heading>
-            <Text fontSize="9px" fontWeight="900" color="#FFB000" fontFamily="monospace" letterSpacing="0.1em">
-              {isLoading ? 'SYNCING_REGISTRY...' : `ASSETS_VERIFIED // ${Object.keys(current_items).filter(k => !current_items[k].locked).length}`}
+            <Text fontSize="9px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace" letterSpacing="0.1em">
+              {isLoading ? 'SYNCING_REGISTRY...' : `ASSETS_VERIFIED // ${current_items.length}`}
             </Text>
           </VStack>
-          <Box h="12px" bg="#FFB000" w="100%" mt={6} />
+          <Box h="12px" bg="var(--monarch-accent)" w="100%" mt={6} />
         </Box>
 
         {/* Tab Switcher */}
@@ -287,7 +339,7 @@ const Closet = () => {
               flex={1} 
               h="36px"
               borderRadius="full" 
-              bg={mode === 'physical' ? "#FFB000" : "transparent"}
+              bg={mode === 'physical' ? "var(--monarch-accent)" : "transparent"}
               color={mode === 'physical' ? inverseText : text}
               fontSize="9px"
               fontWeight="900"
@@ -301,7 +353,7 @@ const Closet = () => {
               flex={1} 
               h="36px"
               borderRadius="full" 
-              bg={mode === 'digital' ? "#FFB000" : "transparent"}
+              bg={mode === 'digital' ? "var(--monarch-accent)" : "transparent"}
               color={mode === 'digital' ? inverseText : text}
               fontSize="9px"
               fontWeight="900"
@@ -329,22 +381,36 @@ const Closet = () => {
             <Flex justify="space-between" align="center">
               <VStack align="start" spacing={1}>
                 <Heading fontSize="xs" fontWeight="900" color={text} fontFamily="'Archivo Black', sans-serif">
-                  STORAGE_SLOTS // {Object.keys(current_items).length}
+                  STORAGE_SLOTS // {isLoading ? "..." : current_items.length}
                 </Heading>
               </VStack>
-              <Button 
-                size="xs" 
-                variant="outline" 
-                color={text} 
-                borderColor={text} 
-                borderRadius="0"
-                leftIcon={<MdTune />}
-                fontSize="8px"
-                fontWeight="900"
-                h="24px"
-              >
-                REFINE
-              </Button>
+              <Menu>
+                <MenuButton 
+                  as={Button}
+                  size="xs" 
+                  variant="outline" 
+                  color={text} 
+                  borderColor={text} 
+                  borderRadius="0"
+                  leftIcon={<MdTune />}
+                  fontSize="8px"
+                  fontWeight="900"
+                  h="24px"
+                  _hover={{ bg: cardBg }}
+                  _active={{ bg: border }}
+                >
+                  REFINE: {filter}
+                </MenuButton>
+                <MenuList bg={bg} border={`1px solid ${text}`} borderRadius="0" minW="120px">
+                  <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('ALL')}>ALL_ASSETS</MenuItem>
+                  {mode === 'digital' && (
+                    <>
+                      <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('AVATARS')}>AVATARS_ONLY</MenuItem>
+                      <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('THEMES')}>THEMES_ONLY</MenuItem>
+                    </>
+                  )}
+                </MenuList>
+              </Menu>
             </Flex>
           </Box>
 
@@ -357,26 +423,24 @@ const Closet = () => {
             
             {isLoading ? (
               <Center h="200px">
-                <Spinner color="#FFB000" />
+                <Spinner color="var(--monarch-accent)" />
               </Center>
             ) : (
               <SimpleGrid columns={3} spacing={3}>
-                <ClosetSlot index="01" item={current_items['01']} onOpen={handleOpen} text={text} border={border} bg={bg} />
-                <ClosetSlot index="02" item={current_items['02']} onOpen={handleOpen} text={text} border={border} bg={bg} />
-                <ClosetSlot index="03" item={current_items['03']} onOpen={handleOpen} text={text} border={border} bg={bg} />
-                <ClosetSlot index="04" item={current_items['04']} onOpen={handleOpen} text={text} border={border} bg={bg} />
-                <ClosetSlot index="05" item={current_items['05']} onOpen={handleOpen} text={text} border={border} bg={bg} />
-                <ClosetSlot index="06" item={current_items['06']} onOpen={handleOpen} text={text} border={border} bg={bg} />
-                <ClosetSlot index="07" item={current_items['07']} onOpen={handleOpen} text={text} border={border} bg={bg} />
-                <ClosetSlot index="08" item={current_items['08']} onOpen={handleOpen} text={text} border={border} bg={bg} />
-                <ClosetSlot index="09" item={current_items['09']} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                {current_items.map((item, idx) => (
+                  <ClosetSlot key={item.id} index={(idx + 1).toString().padStart(2, '0')} item={item} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                ))}
+                
+                {Array.from({ length: Math.max(0, 9 - current_items.length) }).map((_, idx) => (
+                  <ClosetSlot key={`empty-${idx}`} index={(current_items.length + idx + 1).toString().padStart(2, '0')} onOpen={() => {}} text={text} border={border} bg={bg} />
+                ))}
               </SimpleGrid>
             )}
 
             {/* Grid Footer Info */}
             <Flex justify="end" mt={4}>
               <Text fontSize="6px" fontWeight="900" color={mutedText} opacity={0.4} fontFamily="monospace">
-                SYSTEM_STABILITY: 100% // LOAD_COMPLETE
+                SYSTEM_STABILITY: 100% // {isLoading ? "LOADING..." : "LOAD_COMPLETE"}
               </Text>
             </Flex>
           </Box>
@@ -422,16 +486,11 @@ const Closet = () => {
                         )}
                       </Box>
                       <VStack spacing={2} textAlign="center">
-                        {(() => {
-                          const product_name = (selectedItem.name || "ARTIFACT").toUpperCase();
-                          return (
-                            <Text color={text} fontFamily="'Archivo Black', sans-serif" fontSize="xl" lineHeight="1">
-                              {product_name}
-                            </Text>
-                          );
-                        })()}
-                        <Text fontSize="9px" fontWeight="900" color="#FFB000" fontFamily="monospace">
-                          {selectedItem.dossier.collection} // {selectedItem.dossier.composition.replace('_COLLECTION', '')}
+                        <Text color={text} fontFamily="'Archivo Black', sans-serif" fontSize="xl" lineHeight="1">
+                          {selectedItem.name}
+                        </Text>
+                        <Text fontSize="9px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
+                          {selectedItem.dossier.collection} // {selectedItem.dossier.composition}
                         </Text>
                         <Box pt={2}>
                           <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" border="1px solid" borderColor={border} px={2} py={0.5}>
@@ -477,7 +536,7 @@ const Closet = () => {
                         <Text color={text} fontFamily="'Archivo Black', sans-serif" fontSize="3xl" lineHeight="1.1">
                           {selectedItem.name}
                         </Text>
-                        <Box h="2px" bg="#FFB000" w="40px" />
+                        <Box h="2px" bg="var(--monarch-accent)" w="40px" />
                       </VStack>
 
                       <VStack spacing={4} w="full">
@@ -487,10 +546,8 @@ const Closet = () => {
                         </Box>
                         
                         <Box>
-                          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mb={1}>SEASON</Text>
-                          <Text fontSize="sm" fontWeight="900" color={text} letterSpacing="0.05em">
-                            {selectedItem.dossier.composition.replace('_COLLECTION', '')}
-                          </Text>
+                          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mb={1}>TYPE</Text>
+                          <Text fontSize="sm" fontWeight="900" color={text} letterSpacing="0.05em">{selectedItem.dossier.composition}</Text>
                         </Box>
 
                         <Box>
@@ -504,23 +561,35 @@ const Closet = () => {
                         </Box>
                       </VStack>
 
-                      {(selectedItem.type === 'theme' || 
-                        selectedItem.type === 'digital' || 
-                        selectedItem.name.toUpperCase().includes('MODE') ||
-                        selectedItem.dossier.collection === 'SYSTEM_PROTOCOLS') && (
+                      {((selectedItem.id === activeTheme || selectedItem.id === activeAvatar) || (selectedItem.id === 'SYSTEM_DARK' && !activeTheme)) ? (
                         <Button 
                           w="full" 
                           h="50px" 
-                          bg="#FFB000" 
-                          color="black" 
+                          bg="gray.100" 
+                          color="gray.400" 
                           borderRadius="0" 
                           fontSize="xs" 
                           fontWeight="900" 
-                          onClick={handleEquip}
-                          _hover={{ bg: text, color: bg }}
+                          disabled
                         >
-                          EQUIP
+                          [ EQUIPPED ]
                         </Button>
+                      ) : (
+                        (selectedItem.type === 'theme' || selectedItem.type === 'digital') && (
+                          <Button 
+                            w="full" 
+                            h="50px" 
+                            bg="var(--monarch-accent)" 
+                            color="black" 
+                            borderRadius="0" 
+                            fontSize="xs" 
+                            fontWeight="900" 
+                            onClick={handleEquip}
+                            _hover={{ bg: text, color: bg }}
+                          >
+                            EQUIP
+                          </Button>
+                        )
                       )}
                     </VStack>
 

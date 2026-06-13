@@ -22,7 +22,7 @@ import useStore from '../store/useStore'
 const Profile = () => {
   const navigate = useNavigate()
   const { user } = usePrivy()
-  const { wngsBalance, isLoading } = useStore()
+  const { wngsBalance, totalTaps, isLoading } = useStore()
   const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'LOG'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -57,8 +57,8 @@ const Profile = () => {
 
   const stats = [
     { label: 'WNGS_BALANCE', value: isLoading ? "..." : wngsBalance.toString() },
-    { label: 'TOTAL_XP', value: '0' },
     { label: 'QUESTS_CLEARED', value: '1/4' },
+    { label: 'TOTAL_TAPS', value: isLoading ? "..." : totalTaps.toString() },
     { label: 'ARTIFACT_LEVEL', value: '01' },
   ];
 
@@ -94,7 +94,7 @@ const Profile = () => {
                     <Text fontSize="xs" fontWeight="900" color={text}>// {quest.title.toUpperCase()}</Text>
                     <Text fontSize="9px" color={mutedText}>{quest.description}</Text>
                   </VStack>
-                  <Text fontSize="xs" fontWeight="900" color="#FFB000" fontFamily="monospace">
+                  <Text fontSize="xs" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
                     +{quest.reward_wngs} WNGS
                   </Text>
                 </HStack>
@@ -170,7 +170,7 @@ const Profile = () => {
               flex={1} 
               py={5} 
               textAlign="center" 
-              borderBottom={activeTab === tab ? "8px solid #FFB000" : "none"}
+              borderBottom={activeTab === tab ? "8px solid var(--monarch-accent)" : "none"}
               cursor="pointer"
               onClick={() => setActiveTab(tab as any)}
             >
@@ -198,7 +198,7 @@ const Profile = () => {
           
           <Button
             onClick={handleCopyLink}
-            bg="#FFB000"
+            bg="var(--monarch-accent)"
             color="black"
             height="50px"
             borderRadius="0"
@@ -211,6 +211,17 @@ const Profile = () => {
           >
             {linkCopied ? '[ SIGNAL_COPIED_TO_CLIPBOARD ]' : 'GENERATE_SOCIAL_LINK'}
           </Button>
+
+          <HStack spacing={4} pt={2}>
+            <VStack align="start" spacing={0} flex={1} borderLeft="2px solid" borderColor="var(--monarch-accent)" pl={3}>
+              <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">SOCIAL_MINES</Text>
+              <Text fontSize="12px" fontWeight="900" color={text} fontFamily="monospace">3/3</Text>
+            </VStack>
+            <VStack align="start" spacing={0} flex={1} borderLeft="2px solid" borderColor="gray.600" pl={3}>
+              <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">AGENT_BANDWIDTH</Text>
+              <Text fontSize="12px" fontWeight="900" color={text} fontFamily="monospace">100/100</Text>
+            </VStack>
+          </HStack>
         </VStack>
       </Box>
     </Box>

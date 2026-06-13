@@ -9,13 +9,22 @@ import {
   Flex, 
   Button,
   Center,
+  Spinner,
   useColorModeValue
 } from '@chakra-ui/react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MdOutlineElectricBolt, MdHistory, MdCreditCard, MdTrendingUp } from 'react-icons/md'
+import { usePrivy } from '@privy-io/react-auth'
+import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
 
 const Wallet = () => {
+  const navigate = useNavigate()
+  const { user } = usePrivy()
   const { wngsBalance, isLoading } = useStore()
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [isTransLoading, setIsTransLoading] = useState(true)
   
   const bg = useColorModeValue("white", "black");
   const cardBg = useColorModeValue("gray.50", "gray.900");
@@ -23,11 +32,28 @@ const Wallet = () => {
   const mutedText = useColorModeValue("gray.600", "whiteAlpha.600");
   const border = useColorModeValue("gray.300", "whiteAlpha.300");
 
-  const activities = [
-    { title: 'NFC TAP REGISTERED', wngs: '1', date: 'TODAY', desc: 'REGISTERED' },
-    { title: 'PROFILE SHARED', wngs: '0', date: 'YESTERDAY', desc: 'SHARED' },
-    { title: 'INVITE ACCEPTED', wngs: '0', date: 'APR 20, 2026', desc: 'ACCEPTED' },
-  ];
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      if (!user?.id) return;
+      setIsTransLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          setTransactions(data);
+        }
+      } catch (err) {
+        console.error('Error fetching transactions:', err);
+      } finally {
+        setIsTransLoading(false);
+      }
+    };
+    fetchTransactions();
+  }, [user?.id]);
 
   return (
     <Box bg={bg} minH="100vh" pb="100px">
@@ -84,6 +110,7 @@ const Wallet = () => {
               leftIcon={<MdCreditCard />}
               _hover={{ bg: "#e69e00" }}
               fontFamily="monospace"
+              onClick={() => navigate('/shop')}
             >
               BUY_WNGS
             </Button>
@@ -99,6 +126,7 @@ const Wallet = () => {
               leftIcon={<MdTrendingUp />}
               _hover={{ bg: useColorModeValue("gray.800", "whiteAlpha.100") }}
               fontFamily="monospace"
+              onClick={() => navigate('/profile')}
             >
               EARN_WNGS
             </Button>
@@ -115,7 +143,7 @@ const Wallet = () => {
           </Box>
           <Box bg={cardBg} border={`1px solid ${border}`} p={6}>
             <Text fontSize="8px" fontWeight="900" color={mutedText} mb={2} fontFamily="monospace">XP_MULTIPLIER</Text>
-            <Text fontSize="3xl" fontWeight="900" color="#FFB000" fontFamily="monospace">x1.25</Text>
+            <Text fontSize="3xl" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">1.0x</Text>
           </Box>
         </SimpleGrid>
 
@@ -124,34 +152,51 @@ const Wallet = () => {
           <Text fontSize="10px" fontWeight="900" color={mutedText} mb={6} fontFamily="monospace">TRANSACTION_HISTORY</Text>
 
           <VStack align="stretch" spacing={0}>
-            {activities.map((item, idx) => (
-              <Box 
-                key={idx} 
-                py={6} 
-                borderBottom="1px solid" 
-                borderColor={border}
-              >
-                <Flex align="center" justify="space-between">
-                  <HStack spacing={4}>
-                    <Center 
-                      bg={cardBg} 
-                      w="40px" 
-                      h="40px" 
-                      borderRadius="full"
-                    >
-                      <Icon as={MdHistory} color={mutedText} />
-                    </Center>
-                    <VStack align="start" spacing={0}>
-                      <Text fontWeight="900" fontSize="xs" color={text} textTransform="uppercase">{item.title}</Text>
+            {isTransLoading ? (
+              <Center py={10}>
+                <Spinner color="var(--monarch-accent)" />
+              </Center>
+            ) : transactions.length > 0 ? (
+              transactions.map((item, idx) => (
+                <Box 
+                  key={item.id || idx} 
+                  py={6} 
+                  borderBottom="1px solid" 
+                  borderColor={border}
+                >
+                  <Flex align="center" justify="space-between">
+                    <HStack spacing={4}>
+                      <Center 
+                        bg={cardBg} 
+                        w="40px" 
+                        h="40px" 
+                        borderRadius="full"
+                      >
+                        <Icon as={MdHistory} color={mutedText} />
+                      </Center>
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="900" fontSize="xs" color={text} textTransform="uppercase">{item.type || 'TRANSACTION'}</Text>
+                        <Text fontSize="8px" color={mutedText} fontFamily="monospace">
+                          {new Date(item.created_at).toLocaleDateString()}
+                        </Text>
+                      </VStack>
+                    </HStack>
+                    <VStack align="end" spacing={0}>
+                      <Text fontWeight="900" fontSize="md" color={text}>
+                        {item.amount > 0 ? `+${item.amount}` : item.amount}
+                      </Text>
+                      <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">WNGS</Text>
                     </VStack>
-                  </HStack>
-                  <VStack align="end" spacing={0}>
-                    <Text fontWeight="900" fontSize="md" color={text}>{item.wngs}</Text>
-                    <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">WNGS</Text>
-                  </VStack>
-                </Flex>
-              </Box>
-            ))}
+                  </Flex>
+                </Box>
+              ))
+            ) : (
+              <Center py={10} border={`1px dashed ${border}`}>
+                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">
+                  [ NO_TRANSACTIONS_LOGGED ]
+                </Text>
+              </Center>
+            )}
           </VStack>
         </Box>
       </VStack>
