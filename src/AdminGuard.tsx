@@ -9,8 +9,6 @@ interface AdminGuardProps {
 }
 
 export const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
-  return <>{children}</>;
-  /*
   const { ready, authenticated, user } = usePrivy();
 
   if (!ready) {
@@ -44,5 +42,4 @@ export const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
   }
 
   return <>{children}</>;
-  */
 };

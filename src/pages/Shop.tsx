@@ -21,15 +21,18 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  useColorModeValue
+  useColorModeValue,
+  useToast
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { PiShoppingBagFill, PiCreditCardFill, PiCubeFill } from 'react-icons/pi'
 import { Logo } from '../components/Logo'
 import { MdFilterList, MdRefresh, MdClose } from 'react-icons/md'
 import { motion } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
+import { usePrivy } from '@privy-io/react-auth'
 
 import { WngsCoin } from '../components/WngsCoin'
 
@@ -60,6 +63,7 @@ interface ShopItemData {
   specs: { label: string; value: string }[];
   avatarColors?: string[];
   borderColor?: string;
+  wngsAmount?: number;
 }
 
 const ShopSlot = ({ index, item, onOpen, text, border, bg, cardBg }: { index: string, item?: ShopItemData, onOpen: (item: ShopItemData) => void, text: string, border: string, bg: string, cardBg: string }) => {
@@ -111,11 +115,18 @@ const ShopSlot = ({ index, item, onOpen, text, border, bg, cardBg }: { index: st
 }
 
 const Shop = () => {
-  const [mode, setMode] = useState<'physical' | 'digital'>('physical');
+  const { user } = usePrivy();
+  const toast = useToast();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialFilter = searchParams.get('filter');
+
+  const [mode, setMode] = useState<'physical' | 'digital'>(initialFilter === 'WNGS' ? 'digital' : 'physical');
   const [filter, setFilter] = useState<'ALL' | 'PREMIUM' | 'BASIC'>('ALL');
-  const [digitalFilter, setDigitalFilter] = useState<'ALL' | 'AVATARS' | 'THEMES' | 'WNGS'>('ALL');
+  const [digitalFilter, setDigitalFilter] = useState<'ALL' | 'AVATARS' | 'THEMES' | 'WNGS'>(initialFilter === 'WNGS' ? 'WNGS' : 'ALL');
   const [products, setProducts] = useState<ShopItemData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   
   const bg = useColorModeValue("white", "black");
   const cardBg = useColorModeValue("gray.50", "gray.900");
@@ -132,6 +143,51 @@ const Shop = () => {
   const [selectedSize, setSelectedSize] = useState<string>('M');
   
   const { cart, addToCart, removeFromCart } = useStore();
+
+  const handleAcquireWngs = async (item: ShopItemData) => {
+    if (!user) {
+      toast({
+        title: "AUTHENTICATION REQUIRED",
+        description: "PLEASE LOG IN TO ACQUIRE WNGS.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch('/api/checkout/wngs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bundleName: item.name,
+          priceInCents: item.price * 100,
+          wngsAmount: item.wngsAmount,
+          userId: user.id,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+    } catch (error: any) {
+      toast({
+        title: "CHECKOUT ERROR",
+        description: error.message || "COULD NOT INITIALIZE STRIPE CHECKOUT.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      setIsProcessing(false);
+    }
+  };
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -154,19 +210,19 @@ const Shop = () => {
         }));
 
         const mockWngs: ShopItemData[] = [
-          { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE // 1000', specs: [] },
-          { id: 'W02', type: 'digital', category: 'WNGS', price: 45, priceString: '5000 WNGS', name: 'LOOT // 5000', specs: [] },
-          { id: 'W03', type: 'digital', category: 'WNGS', price: 80, priceString: '10000 WNGS', name: 'VAULT // 10000', specs: [] },
-          { id: 'W04', type: 'digital', category: 'WNGS', price: 350, priceString: '50000 WNGS', name: 'MAINFRAME // 50000', specs: [] },
+          { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE // 1000 WNGS', specs: [], wngsAmount: 1000 },
+          { id: 'W02', type: 'digital', category: 'WNGS', price: 45, priceString: '5000 WNGS', name: 'LOOT // 5000 WNGS', specs: [], wngsAmount: 5000 },
+          { id: 'W03', type: 'digital', category: 'WNGS', price: 80, priceString: '10000 WNGS', name: 'VAULT // 10000 WNGS', specs: [], wngsAmount: 10000 },
+          { id: 'W04', type: 'digital', category: 'WNGS', price: 350, priceString: '50000 WNGS', name: 'MAINFRAME // 50000 WNGS', specs: [], wngsAmount: 50000 },
         ];
 
         setProducts([...mappedProducts, ...mockWngs]);
       } else {
         const mockWngs: ShopItemData[] = [
-          { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE // 1000', specs: [] },
-          { id: 'W02', type: 'digital', category: 'WNGS', price: 45, priceString: '5000 WNGS', name: 'LOOT // 5000', specs: [] },
-          { id: 'W03', type: 'digital', category: 'WNGS', price: 80, priceString: '10000 WNGS', name: 'VAULT // 10000', specs: [] },
-          { id: 'W04', type: 'digital', category: 'WNGS', price: 350, priceString: '50000 WNGS', name: 'MAINFRAME // 50000', specs: [] },
+          { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE // 1000 WNGS', specs: [], wngsAmount: 1000 },
+          { id: 'W02', type: 'digital', category: 'WNGS', price: 45, priceString: '5000 WNGS', name: 'LOOT // 5000 WNGS', specs: [], wngsAmount: 5000 },
+          { id: 'W03', type: 'digital', category: 'WNGS', price: 80, priceString: '10000 WNGS', name: 'VAULT // 10000 WNGS', specs: [], wngsAmount: 10000 },
+          { id: 'W04', type: 'digital', category: 'WNGS', price: 350, priceString: '50000 WNGS', name: 'MAINFRAME // 50000 WNGS', specs: [], wngsAmount: 50000 },
         ];
         setProducts(mockWngs);
       }
@@ -350,10 +406,10 @@ const Shop = () => {
                 >
                   <Center h="full" flexDirection="column" p={6} textAlign="center">
                     <VStack spacing={6} w="full" h="full" justify="center">
-                       <Box w="80%" h="80%" position="relative">
+                       <Box w="60%" h="60%" position="relative">
                           <WngsCoin isStatic={true} />
                        </Box>
-                       <VStack spacing={0}>
+                       <VStack spacing={2}>
                           <Text 
                             fontSize={{ base: "xs", md: "sm" }} 
                             fontWeight="900" 
@@ -364,6 +420,24 @@ const Shop = () => {
                           >
                             {item.name.includes(' // ') ? item.name.split(' // ')[0] : item.name}: {item.name.includes(' // ') ? item.name.split(' // ')[1] : item.priceString.split(' ')[0]} / ${item.price}
                           </Text>
+                          <Button
+                            size="xs"
+                            bg="var(--monarch-accent)"
+                            color="black"
+                            borderRadius="0"
+                            fontSize="8px"
+                            fontWeight="900"
+                            fontFamily="monospace"
+                            px={4}
+                            isLoading={isProcessing && selectedItem?.id === item.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAcquireWngs(item);
+                            }}
+                            _hover={{ bg: "white" }}
+                          >
+                            [ ACQUIRE ]
+                          </Button>
                        </VStack>
                     </VStack>
                   </Center>
@@ -560,17 +634,24 @@ const Shop = () => {
                         borderRadius="0" 
                         fontSize="sm" 
                         fontWeight="900" 
+                        isLoading={isProcessing && selectedItem.category === 'WNGS'}
                         onClick={(e) => { 
                           e.stopPropagation(); 
                           if (selectedItem.type === 'physical' && (selectedItem as any).external_buy_url) {
                             window.open((selectedItem as any).external_buy_url, '_blank');
+                          } else if ((selectedItem as any).category === 'WNGS') {
+                            handleAcquireWngs(selectedItem);
                           } else {
                             handleAddToCart();
                           }
                         }}
                         _hover={{ bg: "var(--monarch-accent)", color: "black" }}
                       >
-                        {selectedItem.type === 'physical' && (selectedItem as any).external_buy_url ? 'BUY_NOW' : 'ADD_TO_CART'}
+                        {selectedItem.type === 'physical' && (selectedItem as any).external_buy_url 
+                          ? 'BUY_NOW' 
+                          : (selectedItem as any).category === 'WNGS' 
+                            ? 'ACQUIRE_WNGS' 
+                            : 'ADD_TO_CART'}
                       </Button>
                       
                       <HStack color={mutedText}>

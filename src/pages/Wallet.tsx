@@ -19,6 +19,11 @@ import { usePrivy } from '@privy-io/react-auth'
 import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
 
+const truncateAddress = (addr?: string) => {
+  if (!addr) return "";
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+};
+
 const Wallet = () => {
   const navigate = useNavigate()
   const { user } = usePrivy()
@@ -110,7 +115,7 @@ const Wallet = () => {
               leftIcon={<MdCreditCard />}
               _hover={{ bg: "#e69e00" }}
               fontFamily="monospace"
-              onClick={() => navigate('/shop')}
+              onClick={() => navigate('/shop?filter=WNGS')}
             >
               BUY_WNGS
             </Button>

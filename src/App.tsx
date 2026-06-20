@@ -94,6 +94,21 @@ function AppContent() {
   );
 }
 
+const dummyEthereumChain = {
+  id: 1,
+  name: 'Ethereum',
+  network: 'mainnet',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: {
+      http: ['https://cloudflare-eth.com']
+    },
+    public: {
+      http: ['https://cloudflare-eth.com']
+    }
+  }
+};
+
 function App() {
   const { setIdentityType, identityType } = useStore();
 
@@ -115,6 +130,7 @@ function App() {
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
         },
+        supportedChains: [dummyEthereumChain],
         solanaClusters: [{
           name: 'devnet',
           rpcUrl: 'https://api.devnet.solana.com'

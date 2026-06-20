@@ -38,6 +38,7 @@ interface UserState {
   executeHandshake: (tagId: string) => void
   setActiveAvatarColors: (colors: string[] | null) => void
   setActiveTheme: (theme: string | null) => void
+  setActiveAvatar: (avatar: string | null) => void
 }
 
 const useStore = create<UserState>()(
@@ -76,12 +77,28 @@ const useStore = create<UserState>()(
           }
 
           if (data) {
-            set({ 
+            set({
               wngsBalance: data.wngs_balance || 0,
               activeTheme: data.active_theme || 'SYSTEM_DARK',
               activeAvatar: data.active_avatar,
               totalTaps: data.total_taps || 0
             });
+
+            // Avatar colors are a static property of the equipped avatar's
+            // product definition, not separately stored per-user, so they're
+            // derived here rather than read from a `profiles` column. This
+            // restores them on every login/device, not just after equipping
+            // within the current session.
+            if (data.active_avatar) {
+              const { data: product } = await supabase
+                .from('products')
+                .select('avatar_colors')
+                .eq('id', data.active_avatar)
+                .maybeSingle();
+              set({ activeAvatarColors: product?.avatar_colors || null });
+            } else {
+              set({ activeAvatarColors: null });
+            }
           } else {
             // Handle case where profile doesn't exist yet
             console.warn(`[System] No profile found for ID: ${userId}.`);
@@ -109,6 +126,7 @@ const useStore = create<UserState>()(
       },
       setActiveAvatarColors: (colors) => set({ activeAvatarColors: colors }),
       setActiveTheme: (theme) => set({ activeTheme: theme }),
+      setActiveAvatar: (avatar) => set({ activeAvatar: avatar }),
     }),
     {
       name: 'monarch-passport-storage',

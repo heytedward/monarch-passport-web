@@ -57,62 +57,54 @@ export default async function handler(req, res) {
   try {
     // 2. Auth Check (static passphrase for scripts/automation, or a Privy
     // session token belonging to an admin in VITE_ADMIN_PRIVY_ID)
-    let { prefix, startNum, count, tier, product, collection, season, isSeasonArtifact, adminId } = req.body || {};
+    const { shortCode, wngsAward, itemName, itemType, adminId } = req.body || {};
     if (!(await isAuthorizedAdmin(req, adminId))) {
       return res.status(401).json({ error: 'Unauthorized // Invalid Credentials' });
     }
 
     // 3. Validate Body
-    if (!prefix || startNum === undefined || !count || !tier) {
-      return res.status(400).json({ error: 'Missing required parameters' });
+    if (
+      !shortCode ||
+      typeof shortCode !== 'string' ||
+      !itemName ||
+      !itemType ||
+      !Number.isInteger(wngsAward) ||
+      wngsAward <= 0
+    ) {
+      return res.status(400).json({ error: 'Missing or invalid parameters' });
     }
 
-    // Default product if missing
-    if (!product) product = 'Hoodie';
+    const safeShortCode = shortCode.trim().toLowerCase();
 
     // 4. Supabase Logic
-    if (!(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error("Missing Supabase Environment Variables");
+    if (!SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Missing Supabase Environment Variables');
     }
 
-    const supabase = createClient(
-      (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL),
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const admin = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    const records = [];
-    const generatedUrls = [];
-    const baseUrl = process.env.BASE_URL || 'https://monarch-passport.vercel.app';
-
-    for (let i = 0; i < count; i++) {
-      const num = startNum + i;
-      const tagId = `${prefix}${num.toString().padStart(3, '0')}`;
-      
-      records.push({
-        tag_id: tagId,
-        tier: tier,
-        is_activated: false,
-        name: product,
-        collection: collection || null,
-        season: season || null,
-        is_season_artifact: !!isSeasonArtifact
+    const { error } = await admin
+      .from('claim_links')
+      .insert({
+        short_code: safeShortCode,
+        wngs_award: wngsAward,
+        item_name: itemName,
+        item_type: itemType,
       });
 
-      generatedUrls.push(`${baseUrl}/v/${tagId}`);
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'CLAIM_LINK_ALREADY_EXISTS' });
+      }
+      throw error;
     }
 
-    const { error } = await supabase
-      .from('artifacts')
-      .insert(records);
-
-    if (error) throw error;
-
-    // 5. SUCCESS: Return the generated URLs
-    return res.status(200).json({ success: true, urls: generatedUrls });
+    // 5. SUCCESS
+    return res.status(200).json({ success: true });
 
   } catch (error) {
     // 6. CATCH ALL: Never let the function hang
-    console.error("MINT_API_ERROR:", error);
+    console.error('CREATE_CLAIM_LINK_ERROR:', error);
     return res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 }

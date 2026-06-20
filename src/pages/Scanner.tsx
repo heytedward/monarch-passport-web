@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Box,
   Container,
@@ -15,10 +16,10 @@ import {
 } from '@chakra-ui/react'
 import { MdNfc } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
-import { API_URL } from '../config'
 
 const Scanner = () => {
-  const { getAccessToken, authenticated } = usePrivy()
+  const { authenticated } = usePrivy()
+  const navigate = useNavigate()
   const [isScanning, setIsScanning] = useState(false)
   const [isClaiming, setIsClaiming] = useState(false)
   const [debugToken, setDebugToken] = useState('')
@@ -28,7 +29,10 @@ const Scanner = () => {
   const isDev = import.meta.env.DEV;
   const devBypass = isDev && localStorage.getItem('monarch_dev_bypass') === 'true';
 
-  const handleClaim = async (token: string) => {
+  // Hands off to the real verification/claim flow (src/pages/Verify.tsx ->
+  // src/pages/Claim.tsx) instead of an old standalone NFC claim endpoint
+  // that no longer exists.
+  const handleClaim = (token: string) => {
     if (!authenticated && !devBypass) {
       toast({
         title: "AUTH_REQUIRED",
@@ -38,46 +42,17 @@ const Scanner = () => {
       return
     }
 
+    setIsClaiming(true)
+
+    let tagId = token
     try {
-      setIsClaiming(true)
-      const accessToken = devBypass ? 'dev_bypass_token' : await getAccessToken()
-      
-      const response = await fetch(`${API_URL}/api/nfc/claim`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ token }),
-      })
-
-      const result = await response.json()
-
-      if (response.ok && result.success) {
-        toast({
-          title: "PROTOCOL_SYNCED",
-          description: `+${result.awarded} $WNGS // ${result.item}`,
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-        })
-      } else {
-        toast({
-          title: "HANDSHAKE_FAILED",
-          description: result.message || "Verification failed",
-          status: "error",
-        })
-      }
-    } catch (error: any) {
-      toast({
-        title: "PROTOCOL_ERROR",
-        description: error.message,
-        status: "error",
-      })
-    } finally {
-      setIsClaiming(false)
-      setIsScanning(false)
+      const url = new URL(token)
+      tagId = url.pathname.split('/').filter(Boolean).pop() || token
+    } catch {
+      // token wasn't a URL, treat it as a raw tag ID
     }
+
+    navigate(`/v/${tagId}`)
   }
 
   const startScanning = async () => {

@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, VStack, Heading, Text, Button, Center } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabase';
 import { Logo } from '../components/Logo';
 
 const MotionBox = motion(Box);
@@ -14,17 +13,19 @@ const Social = () => {
     const logScan = async () => {
       if (userId) {
         // Log the social click as an artifact scan
-        const { error } = await supabase
-          .from('artifact_scans')
-          .insert([
-            { 
-              owner_id: userId, 
-              scan_type: 'SOCIAL_LINK' 
-            }
-          ]);
-        
-        if (error) {
-          console.error('Error logging social scan:', error);
+        try {
+          const response = await fetch('/api/v2/log-social-scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId }),
+          });
+
+          if (!response.ok) {
+            const data = await response.json();
+            console.error('Error logging social scan:', data.error);
+          }
+        } catch (err) {
+          console.error('Error logging social scan:', err);
         }
       }
     };

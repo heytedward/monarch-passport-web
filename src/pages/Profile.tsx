@@ -9,6 +9,7 @@ import {
   Center,
   SimpleGrid,
   Button,
+  Spinner,
   useColorModeValue
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
@@ -22,6 +23,12 @@ import useStore from '../store/useStore'
 const Profile = () => {
   const navigate = useNavigate()
   const { user } = usePrivy()
+  
+  const solanaWallet = user?.linkedAccounts?.find(
+    (account: any) => account.type === 'wallet' && account.walletClientType === 'privy' && account.connectorType === 'embedded'
+  ) || user?.wallets?.find((w: any) => w.chainType === 'solana');
+  const solanaAddress = (solanaWallet as any)?.address;
+
   const { wngsBalance, totalTaps, isLoading } = useStore()
   const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'LOG'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
@@ -151,13 +158,31 @@ const Profile = () => {
           <Icon as={MdSettings} color={bg} w={6} h={6} />
         </Box>
 
-        <VStack spacing={6}>
+        <VStack spacing={4}>
           {/* Identity Matrix (The colorful grid) */}
           <DeStijlAvatar seed={user?.id || 'default'} size={200} />
 
-          <Heading fontSize="3xl" fontWeight="900" color={bg} fontStyle="italic" fontFamily="'Archivo Black', sans-serif" letterSpacing="-0.02em">
-            @BUTTERFLYBOY
-          </Heading>
+          <VStack spacing={2} align="center">
+            <Heading fontSize="3xl" fontWeight="900" color={bg} fontStyle="italic" fontFamily="'Archivo Black', sans-serif" letterSpacing="-0.02em">
+              @BUTTERFLYBOY
+            </Heading>
+            
+            {solanaAddress ? (
+              <HStack spacing={1.5} bg={useColorModeValue("blackAlpha.100", "whiteAlpha.200")} px={3} py={1} border="1px solid" borderColor={bg}>
+                <Box w="6px" h="6px" borderRadius="full" bg="#00FF66" boxShadow="0 0 6px #00FF66" />
+                <Text fontSize="10px" fontWeight="900" fontFamily="monospace" color={bg}>
+                  SOL: {solanaAddress.slice(0, 6)}...{solanaAddress.slice(-4)}
+                </Text>
+              </HStack>
+            ) : (
+              <HStack spacing={1.5} bg={useColorModeValue("blackAlpha.100", "whiteAlpha.200")} px={3} py={1} border="1px solid" borderColor={bg}>
+                <Spinner size="xs" color={bg} />
+                <Text fontSize="9px" fontWeight="900" fontFamily="monospace" color={bg} opacity={0.8}>
+                  SECURE_ENCLAVE_GENERATING...
+                </Text>
+              </HStack>
+            )}
+          </VStack>
         </VStack>
       </Box>
 

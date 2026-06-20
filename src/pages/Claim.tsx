@@ -3,14 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Heading, Text, VStack, Center, Spinner, Button, Icon, useColorModeValue } from '@chakra-ui/react'
 import { MdOutlineElectricBolt, MdErrorOutline, MdCheckCircleOutline } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
-import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
 
 const Claim = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user, authenticated, ready, login, getAccessToken } = usePrivy()
-  const { fetchWngsBalance } = useStore()
+  const { fetchUserProfile } = useStore()
 
   const [status, setStatus] = useState<'LOADING' | 'SUCCESS' | 'ERROR'>('LOADING')
   const [errorMessage, setErrorMessage] = useState('ESTABLISHING SECURE CONNECTION...')
@@ -39,85 +38,37 @@ const Claim = () => {
     setErrorMessage("VERIFYING ARTIFACT...")
 
     try {
-      // 0. Set Supabase Session with Privy Token for RLS
-      const token = await getAccessToken();
-      if (token) {
-        await supabase.auth.setSession({
-          access_token: token,
-          refresh_token: '',
-        });
-      }
+      const accessToken = await getAccessToken();
+      if (!accessToken) throw new Error("IDENTITY_TOKEN_UNAVAILABLE");
 
-      // 1. Check if already claimed in transactions
-      const { data: existingTx, error: txError } = await supabase
-        .from('transactions')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('metadata->claim_id', claimId)
-        .maybeSingle()
+      // Balance crediting happens server-side (see api/v2/redeem-claim.js) so
+      // the browser never gets to write wngs_balance/transactions directly.
+      const response = await fetch('/api/v2/redeem-claim', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ shortCode: claimId, userId }),
+      })
 
-      if (txError) throw txError;
+      const result = await response.json()
 
-      if (existingTx) {
+      if (!response.ok) {
         setStatus('ERROR')
-        setErrorMessage("CLAIM FAILED // ALREADY SCANNED")
+        setErrorMessage(
+          response.status === 409 ? "CLAIM FAILED // ALREADY SCANNED" :
+          response.status === 404 ? "ARTIFACT_NOT_FOUND: This claim link does not exist." :
+          response.status === 400 ? "CLAIM FAILED // INVALID ARTIFACT" :
+          "CLAIM FAILED // SYSTEM ERROR"
+        )
+        setRawError(result?.error || null)
         return
       }
 
-      // 2. Fetch reward amount from claim_links
-      let { data: claimLink, error: claimError } = await supabase
-        .from('claim_links')
-        .select('wngs_award')
-        .eq('short_code', claimId)
-        .maybeSingle()
-
-      if (claimError) throw claimError;
-      if (!claimLink) throw new Error("ARTIFACT_NOT_FOUND: This claim link does not exist.");
-
-      let amount = claimLink.wngs_award;
-
-      if (amount === 0) {
-        setStatus('ERROR')
-        setErrorMessage("CLAIM FAILED // INVALID ARTIFACT")
-        return
-      }
-
-      setRewardAmount(amount)
-
-      // 3. Update profiles
-      const { data: profile, error: profError } = await supabase
-        .from('profiles')
-        .select('wngs_balance')
-        .eq('id', userId)
-        .maybeSingle()
-
-      if (profError) throw profError;
-      if (!profile) throw new Error("PROFILE_NOT_FOUND: User identity not registered in database.");
-
-      const newBalance = (profile.wngs_balance || 0) + amount
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ wngs_balance: newBalance })
-        .eq('id', userId)
-
-      if (updateError) throw updateError
-
-      // 4. Insert transaction
-      const { error: insertError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId,
-          amount: amount,
-          type: 'NFC_TAP',
-          metadata: { claim_id: claimId }
-        })
-
-      if (insertError) throw insertError
-
-      // 5. Success
+      setRewardAmount(result.awarded)
       setStatus('SUCCESS')
-      fetchWngsBalance(userId) // Sync global state
+      fetchUserProfile(userId) // Sync global state
     } catch (err: any) {
       console.error('Claim error:', err)
       setStatus('ERROR')
