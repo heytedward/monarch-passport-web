@@ -54,6 +54,18 @@ const AvatarGrid = ({ colors, size = "40px" }: { colors: string[], size?: string
   </SimpleGrid>
 )
 
+// Rarity tiers for digital cosmetics. COMMON/RARE/EPIC/MONARCH stay within
+// the De Stijl palette (MONARCH = top in-house tier, in brand gold); MYTHIC
+// (cross-brand collabs) deliberately breaks from it with an off-brand cyan
+// so collab pieces read as distinct from pure Monarch.
+const RARITY_COLORS: Record<string, string> = {
+  COMMON: '#71717A',
+  RARE: '#D4D4D8',
+  EPIC: '#DC143C',
+  MONARCH: '#FFB000',
+  MYTHIC: '#00F0FF',
+};
+
 interface ShopItemData {
   id: string;
   type: 'physical' | 'digital';
@@ -64,23 +76,45 @@ interface ShopItemData {
   avatarColors?: string[];
   borderColor?: string;
   wngsAmount?: number;
+  external_buy_url?: string;
+  category?: string;
+  rarity?: string;
+  featuredUntil?: string | null;
 }
 
-const ShopSlot = ({ index, item, onOpen, text, border, bg, cardBg }: { index: string, item?: ShopItemData, onOpen: (item: ShopItemData) => void, text: string, border: string, bg: string, cardBg: string }) => {
+const isItemFeatured = (item: ShopItemData) =>
+  !!item.featuredUntil && new Date(item.featuredUntil).getTime() > Date.now();
+
+const ShopSlot = ({ index, item, owned, onOpen, text, border, bg, cardBg }: { index: string, item?: ShopItemData, owned?: boolean, onOpen: (item: ShopItemData) => void, text: string, border: string, bg: string, cardBg: string }) => {
   if (item) {
     return (
-      <Box 
+      <Box
         border="1px solid"
         borderColor={item.borderColor || border}
-        h="140px" 
-        position="relative" 
+        h="140px"
+        position="relative"
         bg={bg}
         cursor="pointer"
         onClick={() => onOpen(item)}
         _hover={{ borderColor: "var(--monarch-accent)" }}
         transition="all 0.2s"
+        opacity={owned ? 0.6 : 1}
       >
         <Text position="absolute" top={1} left={1} fontSize="6px" color={text} opacity={0.4} fontFamily="monospace">{index}</Text>
+        {owned ? (
+          <Box position="absolute" top={1} right={1} bg="var(--monarch-accent)" px={1}>
+            <Text fontSize="6px" fontWeight="900" color="black" fontFamily="monospace">OWNED</Text>
+          </Box>
+        ) : isItemFeatured(item) && (
+          <Box position="absolute" top={1} right={1} bg="#FFB000" px={1}>
+            <Text fontSize="6px" fontWeight="900" color="black" fontFamily="monospace">FEATURED</Text>
+          </Box>
+        )}
+        {item.rarity && (
+          <Text position="absolute" bottom={1} left={1} fontSize="6px" fontWeight="900" color={RARITY_COLORS[item.rarity] || text} fontFamily="monospace">
+            {item.rarity}
+          </Text>
+        )}
         <Center h="full" flexDirection="column">
           {item.type === 'physical' ? (
             <TShirtIcon color={text} />
@@ -115,7 +149,7 @@ const ShopSlot = ({ index, item, onOpen, text, border, bg, cardBg }: { index: st
 }
 
 const Shop = () => {
-  const { user } = usePrivy();
+  const { user, getAccessToken } = usePrivy();
   const toast = useToast();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -123,10 +157,11 @@ const Shop = () => {
 
   const [mode, setMode] = useState<'physical' | 'digital'>(initialFilter === 'WNGS' ? 'digital' : 'physical');
   const [filter, setFilter] = useState<'ALL' | 'PREMIUM' | 'BASIC'>('ALL');
-  const [digitalFilter, setDigitalFilter] = useState<'ALL' | 'AVATARS' | 'THEMES' | 'WNGS'>(initialFilter === 'WNGS' ? 'WNGS' : 'ALL');
+  const [digitalFilter, setDigitalFilter] = useState<'ALL' | 'FEATURED' | 'AVATARS' | 'THEMES' | 'WNGS'>(initialFilter === 'WNGS' ? 'WNGS' : 'ALL');
   const [products, setProducts] = useState<ShopItemData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [ownedProductIds, setOwnedProductIds] = useState<Set<string>>(new Set());
   
   const bg = useColorModeValue("white", "black");
   const cardBg = useColorModeValue("gray.50", "gray.900");
@@ -142,7 +177,70 @@ const Shop = () => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [selectedSize, setSelectedSize] = useState<string>('M');
   
-  const { cart, addToCart, removeFromCart } = useStore();
+  const { cart, addToCart, removeFromCart, wngsBalance, setWngsBalance } = useStore();
+
+  const handlePurchaseDigital = async (item: ShopItemData) => {
+    if (!user) {
+      toast({
+        title: "AUTHENTICATION REQUIRED",
+        description: "PLEASE LOG IN TO ACQUIRE THIS ITEM.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (wngsBalance < item.price) {
+      toast({
+        title: "INSUFFICIENT_WNGS",
+        description: "YOU DON'T HAVE ENOUGH WNGS FOR THIS ITEM.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const accessToken = await getAccessToken();
+      const response = await fetch('/api/v2/purchase', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ userId: user.id, productId: item.id }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'PURCHASE_FAILED');
+      }
+
+      setWngsBalance(data.newBalance);
+      setOwnedProductIds((prev) => new Set(prev).add(item.id));
+      toast({
+        title: "ITEM_ACQUIRED",
+        description: `${item.name} HAS BEEN ADDED TO YOUR CLOSET.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      onItemClose();
+    } catch (error: any) {
+      toast({
+        title: "PURCHASE_ERROR",
+        description: error.message || "COULD NOT COMPLETE PURCHASE.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleAcquireWngs = async (item: ShopItemData) => {
     if (!user) {
@@ -194,20 +292,31 @@ const Shop = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('products')
-        .select('*');
-      
+        .select('*')
+        .eq('is_active', true);
+
       if (!error && data) {
-        const mappedProducts: ShopItemData[] = data.map((p: any) => ({
-          id: p.id,
-          type: p.type,
-          price: p.price,
-          priceString: p.type === 'physical' ? `$${p.price}` : `${p.price} WNGS`,
-          name: p.name,
-          specs: p.specs || [],
-          avatarColors: p.avatar_colors,
-          borderColor: p.border_color,
-          category: p.category
-        }));
+        // The live `products` table has no `type`/`price` columns -- it's
+        // priced via price_wngs (digital) and/or price_usd (physical), so
+        // type is derived from which price column is actually set.
+        const mappedProducts: ShopItemData[] = data.map((p: any) => {
+          const itemType: 'physical' | 'digital' = p.price_wngs != null ? 'digital' : 'physical';
+          const price = itemType === 'digital' ? p.price_wngs : (p.price_usd || 0);
+          return {
+            id: p.id,
+            type: itemType,
+            price,
+            priceString: itemType === 'physical' ? `$${price}` : `${price} WNGS`,
+            name: p.name,
+            specs: p.specs || [],
+            avatarColors: p.avatar_colors,
+            borderColor: (p.rarity && RARITY_COLORS[p.rarity]) || p.border_color,
+            category: p.category,
+            rarity: itemType === 'digital' && p.category !== 'WNGS' ? (p.rarity || 'COMMON') : undefined,
+            featuredUntil: p.featured_until,
+            external_buy_url: p.external_buy_url,
+          };
+        });
 
         const mockWngs: ShopItemData[] = [
           { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE // 1000 WNGS', specs: [], wngsAmount: 1000 },
@@ -231,6 +340,24 @@ const Shop = () => {
     fetchProducts();
   }, []);
 
+  useEffect(() => {
+    const fetchOwnedAssets = async () => {
+      if (!user?.id) {
+        setOwnedProductIds(new Set());
+        return;
+      }
+      const { data, error } = await supabase
+        .from('user_assets')
+        .select('product_id')
+        .eq('user_id', user.id);
+
+      if (!error && data) {
+        setOwnedProductIds(new Set(data.map((a: any) => a.product_id)));
+      }
+    };
+    fetchOwnedAssets();
+  }, [user?.id]);
+
   const currentItems = products.filter(item => item.type === mode);
   
   const filteredItems = currentItems.filter(item => {
@@ -239,11 +366,18 @@ const Shop = () => {
     if (filter === 'BASIC' && item.price > 100) return false;
 
     // Apply Digital Category Filter
+    if (mode === 'digital' && digitalFilter === 'FEATURED') {
+      return isItemFeatured(item);
+    }
     if (mode === 'digital' && digitalFilter !== 'ALL') {
       if ((item as any).category !== digitalFilter) return false;
     }
 
     return true;
+  }).sort((a, b) => {
+    // Surface featured items first when browsing the full catalog.
+    if (mode !== 'digital' || digitalFilter !== 'ALL') return 0;
+    return Number(isItemFeatured(b)) - Number(isItemFeatured(a));
   });
 
   const handleItemOpen = (item: ShopItemData) => {
@@ -358,7 +492,7 @@ const Shop = () => {
                 w="full"
                 justify="space-evenly"
               >
-                {['ALL', 'AVATARS', 'THEMES', 'WNGS'].map((cat) => (
+                {['ALL', 'FEATURED', 'AVATARS', 'THEMES', 'WNGS'].map((cat) => (
                   <Button
                     key={cat}
                     variant="ghost"
@@ -495,7 +629,7 @@ const Shop = () => {
                 ) : (
                   <>
                     {filteredItems.map((item, idx) => (
-                      <ShopSlot key={item.id} index={(idx + 1).toString().padStart(2, '0')} item={item} onOpen={handleItemOpen} text={text} border={border} bg={bg} cardBg={cardBg} />
+                      <ShopSlot key={item.id} index={(idx + 1).toString().padStart(2, '0')} item={item} owned={ownedProductIds.has(item.id)} onOpen={handleItemOpen} text={text} border={border} bg={bg} cardBg={cardBg} />
                     ))}
                     
                     {Array.from({ length: Math.max(0, 9 - filteredItems.length) }).map((_, idx) => (
@@ -562,6 +696,16 @@ const Shop = () => {
                         <Text fontSize="10px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
                           {selectedItem.name}
                         </Text>
+                        {selectedItem.rarity && (
+                          <Text fontSize="8px" fontWeight="900" color={RARITY_COLORS[selectedItem.rarity] || mutedText} fontFamily="monospace">
+                            [ {selectedItem.rarity} ]
+                          </Text>
+                        )}
+                        {isItemFeatured(selectedItem) && (
+                          <Text fontSize="8px" fontWeight="900" color="#FFB000" fontFamily="monospace">
+                            *** FEATURED_DROP ***
+                          </Text>
+                        )}
                       </VStack>
                       <HStack color={mutedText}>
                         <Icon as={MdRefresh} />
@@ -634,24 +778,31 @@ const Shop = () => {
                         borderRadius="0" 
                         fontSize="sm" 
                         fontWeight="900" 
-                        isLoading={isProcessing && selectedItem.category === 'WNGS'}
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
+                        isDisabled={selectedItem.type === 'digital' && (selectedItem as any).category !== 'WNGS' && ownedProductIds.has(selectedItem.id)}
+                        isLoading={isProcessing && ((selectedItem as any).category === 'WNGS' || selectedItem.type === 'digital')}
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (selectedItem.type === 'physical' && (selectedItem as any).external_buy_url) {
                             window.open((selectedItem as any).external_buy_url, '_blank');
                           } else if ((selectedItem as any).category === 'WNGS') {
                             handleAcquireWngs(selectedItem);
+                          } else if (selectedItem.type === 'digital') {
+                            if (!ownedProductIds.has(selectedItem.id)) handlePurchaseDigital(selectedItem);
                           } else {
                             handleAddToCart();
                           }
                         }}
                         _hover={{ bg: "var(--monarch-accent)", color: "black" }}
                       >
-                        {selectedItem.type === 'physical' && (selectedItem as any).external_buy_url 
-                          ? 'BUY_NOW' 
-                          : (selectedItem as any).category === 'WNGS' 
-                            ? 'ACQUIRE_WNGS' 
-                            : 'ADD_TO_CART'}
+                        {selectedItem.type === 'digital' && (selectedItem as any).category !== 'WNGS' && ownedProductIds.has(selectedItem.id)
+                          ? 'OWNED'
+                          : selectedItem.type === 'physical' && (selectedItem as any).external_buy_url
+                            ? 'BUY_NOW'
+                            : (selectedItem as any).category === 'WNGS'
+                              ? 'ACQUIRE_WNGS'
+                              : selectedItem.type === 'digital'
+                                ? 'ACQUIRE_ITEM'
+                                : 'ADD_TO_CART'}
                       </Button>
                       
                       <HStack color={mutedText}>

@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       .from('transactions')
       .select('created_at')
       .eq('user_id', userId)
-      .eq('type', 'ARTIFACT_TAP')
+      .eq('transaction_type', 'ARTIFACT_TAP')
       .eq('metadata->>tag_id', tagId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -111,7 +111,7 @@ export default async function handler(req, res) {
       .insert({
         user_id: userId,
         amount: reward,
-        type: 'ARTIFACT_TAP',
+        transaction_type: 'ARTIFACT_TAP',
         metadata: { tag_id: tagId },
       });
 

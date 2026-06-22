@@ -100,7 +100,7 @@ export default async function handler(req, res) {
       .insert({
         user_id: ownerId,
         amount: bonus,
-        type: 'ARTIFACT_ACTIVATION',
+        transaction_type: 'ARTIFACT_ACTIVATION',
         metadata: { tag_id: tagId },
       });
 

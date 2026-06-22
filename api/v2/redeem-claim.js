@@ -107,7 +107,7 @@ export default async function handler(req, res) {
       .insert({
         user_id: userId,
         amount,
-        type: 'NFC_TAP',
+        transaction_type: 'NFC_TAP',
         metadata: { claim_id: shortCode },
       });
 
