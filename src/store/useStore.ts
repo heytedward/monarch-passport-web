@@ -81,24 +81,13 @@ const useStore = create<UserState>()(
               wngsBalance: data.wngs_balance || 0,
               activeTheme: data.active_theme || 'SYSTEM_DARK',
               activeAvatar: data.active_avatar,
-              totalTaps: data.total_taps || 0
+              totalTaps: data.total_taps || 0,
+              // `products` has no avatar_colors column in the live schema --
+              // there's no per-user/per-avatar color data to restore here.
+              // DeStijlAvatar falls back to its own procedural palette
+              // whenever this is null, which is the real current behavior.
+              activeAvatarColors: null
             });
-
-            // Avatar colors are a static property of the equipped avatar's
-            // product definition, not separately stored per-user, so they're
-            // derived here rather than read from a `profiles` column. This
-            // restores them on every login/device, not just after equipping
-            // within the current session.
-            if (data.active_avatar) {
-              const { data: product } = await supabase
-                .from('products')
-                .select('avatar_colors')
-                .eq('id', data.active_avatar)
-                .maybeSingle();
-              set({ activeAvatarColors: product?.avatar_colors || null });
-            } else {
-              set({ activeAvatarColors: null });
-            }
           } else {
             // Handle case where profile doesn't exist yet
             console.warn(`[System] No profile found for ID: ${userId}.`);
