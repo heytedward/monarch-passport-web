@@ -85,6 +85,19 @@ interface ShopItemData {
 const isItemFeatured = (item: ShopItemData) =>
   !!item.featuredUntil && new Date(item.featuredUntil).getTime() > Date.now();
 
+// The live `products` table uses singular/specific category values
+// (AVATAR, THEME, WNGS_BUNDLE), while the mock WNGS bundles below and the
+// Shop's filter tabs use the plural/display forms (AVATARS, THEMES, WNGS).
+// These are the only digital categories that exist -- anything else is
+// physical, regardless of what price_wngs happens to default to.
+const isWngsCategory = (category?: string) => category === 'WNGS' || category === 'WNGS_BUNDLE';
+const DIGITAL_CATEGORIES = new Set(['AVATAR', 'THEME', 'WNGS_BUNDLE']);
+const CATEGORY_FILTER_MATCHERS: Record<string, (category?: string) => boolean> = {
+  AVATARS: (category) => category === 'AVATAR',
+  THEMES: (category) => category === 'THEME',
+  WNGS: isWngsCategory,
+};
+
 const ShopSlot = ({ index, item, owned, onOpen, text, border, bg, cardBg }: { index: string, item?: ShopItemData, owned?: boolean, onOpen: (item: ShopItemData) => void, text: string, border: string, bg: string, cardBg: string }) => {
   if (item) {
     return (
@@ -118,7 +131,7 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg, cardBg }: { in
         <Center h="full" flexDirection="column">
           {item.type === 'physical' ? (
             <TShirtIcon color={text} />
-          ) : (item as any).category === 'WNGS' ? (
+          ) : isWngsCategory((item as any).category) ? (
             <Box w="60px" h="60px">
               <WngsCoin isStatic={true} />
             </Box>
@@ -296,27 +309,32 @@ const Shop = () => {
         .eq('is_active', true);
 
       if (!error && data) {
-        // The live `products` table has no `type`/`price` columns -- it's
-        // priced via price_wngs (digital) and/or price_usd (physical), so
-        // type is derived from which price column is actually set.
-        const mappedProducts: ShopItemData[] = data.map((p: any) => {
-          const itemType: 'physical' | 'digital' = p.price_wngs != null ? 'digital' : 'physical';
-          const price = itemType === 'digital' ? p.price_wngs : (p.price_usd || 0);
-          return {
-            id: p.id,
-            type: itemType,
-            price,
-            priceString: itemType === 'physical' ? `$${price}` : `${price} WNGS`,
-            name: p.name,
-            specs: p.specs || [],
-            avatarColors: p.avatar_colors,
-            borderColor: (p.rarity && RARITY_COLORS[p.rarity]) || p.border_color,
-            category: p.category,
-            rarity: itemType === 'digital' && p.category !== 'WNGS' ? (p.rarity || 'COMMON') : undefined,
-            featuredUntil: p.featured_until,
-            external_buy_url: p.external_buy_url,
-          };
-        });
+        // The live `products` table has no `type`/`price` columns. price_wngs
+        // defaults to 0 (never null) even on physical rows, so it can't be
+        // used to detect digital-ness -- category is the reliable signal.
+        const mappedProducts: ShopItemData[] = data
+          // Real WNGS_BUNDLE rows have no granted-amount data wired up yet
+          // (price_usd/wngs_amount aren't populated) -- the hardcoded
+          // mockWngs below are the only working WNGS bundles for now.
+          .filter((p: any) => p.category !== 'WNGS_BUNDLE')
+          .map((p: any) => {
+            const itemType: 'physical' | 'digital' = DIGITAL_CATEGORIES.has(p.category) ? 'digital' : 'physical';
+            const price = itemType === 'digital' ? p.price_wngs : (p.price_usd || 0);
+            return {
+              id: p.id,
+              type: itemType,
+              price,
+              priceString: itemType === 'physical' ? `$${price}` : `${price} WNGS`,
+              name: p.name,
+              specs: p.specs || [],
+              avatarColors: p.avatar_colors,
+              borderColor: (p.rarity && RARITY_COLORS[p.rarity]) || p.border_color,
+              category: p.category,
+              rarity: itemType === 'digital' && !isWngsCategory(p.category) ? (p.rarity || 'COMMON') : undefined,
+              featuredUntil: p.featured_until,
+              external_buy_url: p.external_buy_url,
+            };
+          });
 
         const mockWngs: ShopItemData[] = [
           { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE // 1000 WNGS', specs: [], wngsAmount: 1000 },
@@ -370,7 +388,8 @@ const Shop = () => {
       return isItemFeatured(item);
     }
     if (mode === 'digital' && digitalFilter !== 'ALL') {
-      if ((item as any).category !== digitalFilter) return false;
+      const matcher = CATEGORY_FILTER_MATCHERS[digitalFilter];
+      if (!matcher?.((item as any).category)) return false;
     }
 
     return true;
@@ -681,7 +700,7 @@ const Shop = () => {
                       <Box border={`2px solid ${text}`} p={6}>
                         {selectedItem.type === 'physical' ? (
                           <TShirtIcon color={text} boxSize="100px" />
-                        ) : (selectedItem as any).category === 'WNGS' ? (
+                        ) : isWngsCategory((selectedItem as any).category) ? (
                           <Box w="120px" h="120px">
                              <WngsCoin />
                           </Box>
@@ -778,13 +797,13 @@ const Shop = () => {
                         borderRadius="0" 
                         fontSize="sm" 
                         fontWeight="900" 
-                        isDisabled={selectedItem.type === 'digital' && (selectedItem as any).category !== 'WNGS' && ownedProductIds.has(selectedItem.id)}
-                        isLoading={isProcessing && ((selectedItem as any).category === 'WNGS' || selectedItem.type === 'digital')}
+                        isDisabled={selectedItem.type === 'digital' && !isWngsCategory((selectedItem as any).category) && ownedProductIds.has(selectedItem.id)}
+                        isLoading={isProcessing && (isWngsCategory((selectedItem as any).category) || selectedItem.type === 'digital')}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (selectedItem.type === 'physical' && (selectedItem as any).external_buy_url) {
                             window.open((selectedItem as any).external_buy_url, '_blank');
-                          } else if ((selectedItem as any).category === 'WNGS') {
+                          } else if (isWngsCategory((selectedItem as any).category)) {
                             handleAcquireWngs(selectedItem);
                           } else if (selectedItem.type === 'digital') {
                             if (!ownedProductIds.has(selectedItem.id)) handlePurchaseDigital(selectedItem);
@@ -794,11 +813,11 @@ const Shop = () => {
                         }}
                         _hover={{ bg: "var(--monarch-accent)", color: "black" }}
                       >
-                        {selectedItem.type === 'digital' && (selectedItem as any).category !== 'WNGS' && ownedProductIds.has(selectedItem.id)
+                        {selectedItem.type === 'digital' && !isWngsCategory((selectedItem as any).category) && ownedProductIds.has(selectedItem.id)
                           ? 'OWNED'
                           : selectedItem.type === 'physical' && (selectedItem as any).external_buy_url
                             ? 'BUY_NOW'
-                            : (selectedItem as any).category === 'WNGS'
+                            : isWngsCategory((selectedItem as any).category)
                               ? 'ACQUIRE_WNGS'
                               : selectedItem.type === 'digital'
                                 ? 'ACQUIRE_ITEM'
