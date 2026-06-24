@@ -25,6 +25,7 @@ interface UserState {
   }[]
   cart: CartItem[]
   activeAvatarColors: string[] | null
+  activeThemeAccent: string | null
   setUser: (user: { id: string } | null) => void
   setWngsBalance: (balance: number) => void
   setIsLoading: (loading: boolean) => void
@@ -39,7 +40,16 @@ interface UserState {
   setActiveAvatarColors: (colors: string[] | null) => void
   setActiveTheme: (theme: string | null) => void
   setActiveAvatar: (avatar: string | null) => void
+  setActiveThemeAccent: (accent: string | null) => void
 }
+
+// The 3 built-in themes ship free and aren't looked up by product id; their
+// accents are fixed. Custom themes carry their accent in products.accent_color.
+const DEFAULT_THEME_ACCENTS: Record<string, string> = {
+  SYSTEM_LIGHT: '#FFB000',
+  SYSTEM_DARK: '#FFB000',
+  CRIMSON_OVERRIDE: '#DC143C',
+};
 
 const useStore = create<UserState>()(
   persist(
@@ -59,6 +69,7 @@ const useStore = create<UserState>()(
       ],
       cart: [],
       activeAvatarColors: null,
+      activeThemeAccent: null,
       setUser: (user) => set({ user }),
       setWngsBalance: (balance) => set({ wngsBalance: balance }),
       setIsLoading: (loading) => set({ isLoading: loading }),
@@ -77,11 +88,26 @@ const useStore = create<UserState>()(
           }
 
           if (data) {
+            const activeTheme = data.active_theme || 'SYSTEM_DARK';
+
+            // Resolve the equipped theme's accent. Defaults are fixed; a custom
+            // theme (its id is a product UUID) carries accent_color in products.
+            let activeThemeAccent: string | null = DEFAULT_THEME_ACCENTS[activeTheme] ?? null;
+            if (activeThemeAccent === null && activeTheme) {
+              const { data: themeRow } = await supabase
+                .from('products')
+                .select('accent_color')
+                .eq('id', activeTheme)
+                .maybeSingle();
+              activeThemeAccent = themeRow?.accent_color || null;
+            }
+
             set({
               wngsBalance: data.wngs_balance || 0,
-              activeTheme: data.active_theme || 'SYSTEM_DARK',
+              activeTheme,
               activeAvatar: data.active_avatar,
               totalTaps: data.total_taps || 0,
+              activeThemeAccent,
               // `products` has no avatar_colors column in the live schema --
               // there's no per-user/per-avatar color data to restore here.
               // DeStijlAvatar falls back to its own procedural palette
@@ -116,6 +142,7 @@ const useStore = create<UserState>()(
       setActiveAvatarColors: (colors) => set({ activeAvatarColors: colors }),
       setActiveTheme: (theme) => set({ activeTheme: theme }),
       setActiveAvatar: (avatar) => set({ activeAvatar: avatar }),
+      setActiveThemeAccent: (accent) => set({ activeThemeAccent: accent }),
     }),
     {
       name: 'monarch-passport-storage',

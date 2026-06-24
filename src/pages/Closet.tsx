@@ -23,15 +23,20 @@ import {
   Menu,
   MenuButton,
   MenuList,
-  MenuItem
+  MenuItem,
+  Input,
+  Wrap,
+  WrapItem,
+  Link
 } from '@chakra-ui/react'
-import { useState, useEffect } from 'react'
-import { MdTune, MdRefresh, MdClose } from 'react-icons/md'
+import { useState, useEffect, useMemo } from 'react'
+import { MdRefresh, MdClose, MdSearch } from 'react-icons/md'
 import { PiShoppingBagFill, PiSunFill, PiMoonFill } from 'react-icons/pi'
 import { motion } from 'framer-motion'
 import { usePrivy } from '@privy-io/react-auth'
 import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
+import DeStijlAvatar from '../components/DeStijlAvatar'
 
 const MotionBox = motion.create(Box)
 
@@ -126,22 +131,21 @@ const TShirtIcon = ({ color = "white", boxSize = "40px" }: { color?: string, box
   </Box>
 )
 
-const AvatarGrid = ({ colors, size = "40px" }: { colors: string[], size?: string }) => (
-  <SimpleGrid columns={3} spacing={0.5} w={size} h={size} border="1px solid white" p={0.5} bg="black">
-    {colors.map((c, i) => (
-      <Box key={i} bg={c} w="100%" h="100%" />
-    ))}
-  </SimpleGrid>
-)
-
 interface ClosetItemData {
   id: string;
   type: 'physical' | 'digital' | 'theme';
   name: string;
   borderColor?: string;
   locked?: boolean;
-  avatarColors?: string[];
+  palette?: string[];
   themeMode?: 'light' | 'dark';
+  rarity?: string;
+  season?: string;
+  collection?: string;
+  edition?: string;
+  assetId?: string;        // user_assets.id (the owned instance, for minting)
+  mintAddress?: string;    // set once minted on-chain
+  mintStatus?: string;
   dossier: {
     collection: string;
     releaseDate: string;
@@ -179,7 +183,7 @@ const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, 
             ) : item.type === 'physical' ? (
               <TShirtIcon color={text} />
             ) : (
-              <AvatarGrid colors={item.avatarColors || []} size="60px" />
+              <DeStijlAvatar seed={item.id} colors={item.palette} size={60} />
             )
           )}
         </Center>
@@ -205,8 +209,8 @@ const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, 
 
 const Closet = () => {
   const [mode, setMode] = useState<'physical' | 'digital'>('physical');
-  const { colorMode, setColorMode } = useColorMode();
-  const { setActiveTheme, setActiveAvatar, activeTheme, activeAvatar, fetchUserProfile } = useStore();
+  const { setColorMode } = useColorMode();
+  const { setActiveTheme, setActiveAvatar, activeTheme, activeAvatar, activeThemeAccent, fetchUserProfile } = useStore();
   const toast = useToast();
   
   const bg = useColorModeValue("white", "black");
@@ -225,8 +229,21 @@ const Closet = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [digitalGarments, setDigitalGarments] = useState<any[]>([]);
   const [isGarmentsLoading, setIsGarmentsLoading] = useState(false);
+  const [isMinting, setIsMinting] = useState(false);
 
-  const brandAccent = activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000';
+  // The user's embedded Solana wallet (mint recipient).
+  const solanaWallet =
+    (user as any)?.linkedAccounts?.find((a: any) => a.type === 'wallet' && a.chainType === 'solana') ||
+    (user as any)?.wallets?.find((w: any) => w.chainType === 'solana');
+  const solanaAddress = (solanaWallet as any)?.address as string | undefined;
+
+  // VAULT search/filter state
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'GEAR' | 'THEMES' | 'AVATARS'>('ALL');
+  const [collectionFilter, setCollectionFilter] = useState<string>('ALL');
+  const [rarityFilter, setRarityFilter] = useState<string>('ALL');
+
+  const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
 
   const handleEquip = async () => {
     if (!selectedItem || !user?.id) return;
@@ -279,6 +296,35 @@ const Closet = () => {
     }
   };
 
+  const handleMint = async () => {
+    if (!selectedItem?.assetId || !user?.id) return;
+    if (!solanaAddress) {
+      toast({ title: 'NO_SOLANA_WALLET', description: 'NO EMBEDDED SOLANA WALLET FOUND.', status: 'error', duration: 3000 });
+      return;
+    }
+    setIsMinting(true);
+    try {
+      const accessToken = await getAccessToken();
+      const response = await fetch('/api/v2/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ userId: user.id, action: 'mint_avatar', assetId: selectedItem.assetId, recipient: solanaAddress }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'MINT_FAILED');
+
+      // Reflect minted state locally.
+      setOwnedAssets((prev) => prev.map((a) => a.assetId === selectedItem.assetId ? { ...a, mintAddress: data.mintAddress, mintStatus: 'minted' } : a));
+      setSelectedItem((prev) => prev ? { ...prev, mintAddress: data.mintAddress, mintStatus: 'minted' } : prev);
+      toast({ title: 'MINTED_ON_CHAIN', description: `${selectedItem.name} IS NOW AN NFT.`, status: 'success', duration: 4000 });
+    } catch (err: any) {
+      console.error('Mint Failed:', err);
+      toast({ title: 'MINT_FAILED', description: err.message, status: 'error', duration: 4000 });
+    } finally {
+      setIsMinting(false);
+    }
+  };
+
   useEffect(() => {
     const fetchOwnedAssets = async () => {
       if (!user?.id) {
@@ -294,6 +340,8 @@ const Closet = () => {
           .select(`
             id,
             product_id,
+            mint_address,
+            mint_status,
             products (*)
           `)
           .eq('user_id', user.id);
@@ -352,18 +400,30 @@ const Closet = () => {
         if (data) {
           const mapped: ClosetItemData[] = data.map((asset: any) => {
             const p = asset.products;
+            // Live `products` has no `type` column; category is the signal.
+            // Singular live values are AVATAR / THEME (not the old plural forms).
+            const itemType: ClosetItemData['type'] =
+              p.category === 'THEME' ? 'theme' : p.category === 'AVATAR' ? 'digital' : 'physical';
             return {
               id: p.id,
-              type: p.type === 'digital' ? (p.category === 'THEMES' ? 'theme' : 'digital') : 'physical',
+              type: itemType,
               name: p.name.toUpperCase(),
-              avatarColors: p.avatar_colors,
+              palette: p.palette || undefined,
+              themeMode: p.theme_mode || undefined,
+              rarity: p.rarity || undefined,
+              season: p.season || undefined,
+              collection: p.collection || undefined,
+              edition: p.edition || undefined,
+              assetId: asset.id,
+              mintAddress: asset.mint_address || undefined,
+              mintStatus: asset.mint_status || undefined,
               borderColor: (activeTheme === p.id || activeAvatar === p.id) ? brandAccent : border,
               dossier: {
-                collection: p.category || 'GENERAL_RELEASE',
+                collection: p.collection || p.category || 'GENERAL_RELEASE',
                 releaseDate: new Date(p.created_at || Date.now()).toISOString().split('T')[0],
                 serialId: `SN-${p.id.slice(0, 8).toUpperCase()}`,
                 xpPerTap: '50',
-                composition: `${p.type.toUpperCase()}_ASSET`,
+                composition: `${itemType.toUpperCase()}_ASSET`,
                 activeMissions: ['Verified in local vault']
               }
             };
@@ -432,7 +492,37 @@ const Closet = () => {
     }
   }, [user?.id, mode]);
 
-  const current_items = ownedAssets.filter(item => item.type === 'physical');
+  // Map a vault item's type to the coarse TYPE filter buckets.
+  const matchesType = (item: ClosetItemData) =>
+    typeFilter === 'ALL' ||
+    (typeFilter === 'GEAR' && item.type === 'physical') ||
+    (typeFilter === 'THEMES' && item.type === 'theme') ||
+    (typeFilter === 'AVATARS' && item.type === 'digital');
+
+  // Distinct collection + rarity values present in the vault, for filter chips.
+  const collectionOptions = useMemo(() => {
+    const set = new Set<string>();
+    ownedAssets.forEach((i) => { if (i.collection) set.add(i.collection); });
+    return Array.from(set).sort();
+  }, [ownedAssets]);
+
+  const rarityOptions = useMemo(() => {
+    const set = new Set<string>();
+    ownedAssets.forEach((i) => { if (i.rarity) set.add(i.rarity); });
+    return Array.from(set).sort();
+  }, [ownedAssets]);
+
+  const current_items = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return ownedAssets.filter((item) => {
+      if (!matchesType(item)) return false;
+      if (collectionFilter !== 'ALL' && item.collection !== collectionFilter) return false;
+      if (rarityFilter !== 'ALL' && item.rarity !== rarityFilter) return false;
+      if (q && !item.name.toLowerCase().includes(q) && !(item.collection || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [ownedAssets, search, typeFilter, collectionFilter, rarityFilter]);
+
   const verifiedCount = mode === 'physical' ? current_items.length : digitalGarments.length;
   const isCurrentLoading = mode === 'physical' ? isLoading : isGarmentsLoading;
 
@@ -479,7 +569,7 @@ const Closet = () => {
               leftIcon={<Box as="span" h="8px" w="8px" border="1px solid" borderColor={mode === 'physical' ? inverseText : text} borderRadius="full" bg={mode === 'physical' ? inverseText : "transparent"} />}
               _hover={{}}
             >
-              PHYSICAL
+              VAULT
             </Button>
             <Button 
               flex={1} 
@@ -493,15 +583,117 @@ const Closet = () => {
               leftIcon={<Box as="span" h="8px" w="8px" border="1px solid" borderColor={mode === 'digital' ? inverseText : text} borderRadius="full" bg={mode === 'digital' ? inverseText : "transparent"} />}
               _hover={{}}
             >
-              DIGITAL
+              ON-CHAIN
             </Button>
           </Flex>
+
+          {/* VAULT search + filters */}
+          {mode === 'physical' && (
+            <VStack align="stretch" spacing={3} mt={4}>
+              <Flex
+                align="center"
+                border="1px solid"
+                borderColor={border}
+                bg={cardBg}
+                px={3}
+                h="36px"
+              >
+                <Icon as={MdSearch} color={mutedText} boxSize="16px" mr={2} />
+                <Input
+                  variant="unstyled"
+                  placeholder="SEARCH_VAULT"
+                  fontSize="10px"
+                  fontWeight="900"
+                  fontFamily="monospace"
+                  color={text}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </Flex>
+
+              {/* TYPE chips */}
+              <Wrap spacing={1}>
+                {(['ALL', 'GEAR', 'THEMES', 'AVATARS'] as const).map((t) => (
+                  <WrapItem key={t}>
+                    <Button
+                      size="xs"
+                      h="24px"
+                      borderRadius="0"
+                      fontSize="8px"
+                      fontWeight="900"
+                      fontFamily="monospace"
+                      bg={typeFilter === t ? "var(--monarch-accent)" : "transparent"}
+                      color={typeFilter === t ? "black" : mutedText}
+                      border="1px solid"
+                      borderColor={typeFilter === t ? "var(--monarch-accent)" : border}
+                      onClick={() => setTypeFilter(t)}
+                      _hover={{ color: typeFilter === t ? "black" : text }}
+                    >
+                      {t}
+                    </Button>
+                  </WrapItem>
+                ))}
+              </Wrap>
+
+              {/* COLLECTION + RARITY menus (only when there's something to filter) */}
+              {(collectionOptions.length > 0 || rarityOptions.length > 0) && (
+                <HStack spacing={2}>
+                  {collectionOptions.length > 0 && (
+                    <Menu>
+                      <MenuButton
+                        as={Button}
+                        size="xs"
+                        h="24px"
+                        variant="outline"
+                        borderRadius="0"
+                        fontSize="8px"
+                        fontWeight="900"
+                        color={text}
+                        borderColor={border}
+                      >
+                        COLLECTION: {collectionFilter}
+                      </MenuButton>
+                      <MenuList bg={bg} border={`1px solid ${text}`} borderRadius="0" minW="160px">
+                        <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setCollectionFilter('ALL')}>ALL</MenuItem>
+                        {collectionOptions.map((c) => (
+                          <MenuItem key={c} bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setCollectionFilter(c)}>{c}</MenuItem>
+                        ))}
+                      </MenuList>
+                    </Menu>
+                  )}
+                  {rarityOptions.length > 0 && (
+                    <Menu>
+                      <MenuButton
+                        as={Button}
+                        size="xs"
+                        h="24px"
+                        variant="outline"
+                        borderRadius="0"
+                        fontSize="8px"
+                        fontWeight="900"
+                        color={text}
+                        borderColor={border}
+                      >
+                        RARITY: {rarityFilter}
+                      </MenuButton>
+                      <MenuList bg={bg} border={`1px solid ${text}`} borderRadius="0" minW="120px">
+                        <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setRarityFilter('ALL')}>ALL</MenuItem>
+                        {rarityOptions.map((r) => (
+                          <MenuItem key={r} bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setRarityFilter(r)}>{r}</MenuItem>
+                        ))}
+                      </MenuList>
+                    </Menu>
+                  )}
+                </HStack>
+              )}
+            </VStack>
+          )}
         </Box>
 
         {/* Info Bar */}
         <Box borderY="1px solid" borderColor={border} px={6} py={2}>
           <Flex justify="space-between" align="center">
-            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">PROTOCOL: {mode.toUpperCase()}_STORAGE</Text>
+            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">PROTOCOL: {mode === 'physical' ? 'VAULT' : 'ON_CHAIN'}_STORAGE</Text>
             <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">VAULT_SYNC: {isCurrentLoading ? 'PENDING' : 'ONLINE'}</Text>
           </Flex>
         </Box>
@@ -574,7 +766,7 @@ const Closet = () => {
             {/* Grid Footer Info */}
             <Flex justify="end" mt={4}>
               <Text fontSize="6px" fontWeight="900" color={mutedText} opacity={0.4} fontFamily="monospace">
-                SYSTEM_STABILITY: 100% // {mode === 'onchain' ? (isGarmentsLoading ? "LOADING..." : "LOAD_COMPLETE") : (isLoading ? "LOADING..." : "LOAD_COMPLETE")}
+                SYSTEM_STABILITY: 100% // {isCurrentLoading ? "LOADING..." : "LOAD_COMPLETE"}
               </Text>
             </Flex>
           </Box>
@@ -616,7 +808,7 @@ const Closet = () => {
                         ) : selectedItem.type === 'physical' ? (
                           <TShirtIcon color={text} boxSize="100px" />
                         ) : (
-                          <AvatarGrid colors={selectedItem.avatarColors || []} size="120px" />
+                          <DeStijlAvatar seed={selectedItem.id} colors={selectedItem.palette} size={120} />
                         )}
                       </Box>
                       <VStack spacing={2} textAlign="center">
@@ -722,6 +914,44 @@ const Closet = () => {
                             _hover={{ bg: text, color: bg }}
                           >
                             EQUIP
+                          </Button>
+                        )
+                      )}
+
+                      {/* On-chain minting (avatars only) */}
+                      {selectedItem.type === 'digital' && (
+                        selectedItem.mintAddress ? (
+                          <VStack spacing={0.5} w="full" pt={1}>
+                            <Text fontSize="8px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">◆ ON-CHAIN</Text>
+                            <Link
+                              href={`https://explorer.solana.com/address/${selectedItem.mintAddress}?cluster=devnet`}
+                              isExternal
+                              onClick={(e) => e.stopPropagation()}
+                              fontSize="8px"
+                              color={mutedText}
+                              fontFamily="monospace"
+                              textDecoration="underline"
+                            >
+                              {selectedItem.mintAddress.slice(0, 4)}...{selectedItem.mintAddress.slice(-4)}
+                            </Link>
+                          </VStack>
+                        ) : (
+                          <Button
+                            w="full"
+                            h="40px"
+                            variant="outline"
+                            borderColor="var(--monarch-accent)"
+                            color="var(--monarch-accent)"
+                            borderRadius="0"
+                            fontSize="10px"
+                            fontWeight="900"
+                            isLoading={isMinting}
+                            loadingText="MINTING..."
+                            isDisabled={!solanaAddress}
+                            onClick={(e) => { e.stopPropagation(); handleMint(); }}
+                            _hover={{ bg: 'var(--monarch-accent)', color: 'black' }}
+                          >
+                            {solanaAddress ? 'MINT TO CHAIN' : 'NO_SOLANA_WALLET'}
                           </Button>
                         )
                       )}

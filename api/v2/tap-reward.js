@@ -3,6 +3,7 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
+import { addSeasonXp, XP_TAP } from './_ascension.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -117,7 +118,21 @@ export default async function handler(req, res) {
 
     if (txError) throw txError;
 
-    return res.status(200).json({ success: true, awarded: reward });
+    // ASCENSION: a tap also feeds battlepass XP for the active season.
+    // Best-effort -- never fail the (already-committed) tap reward over it.
+    let xpProgress = null;
+    try {
+      xpProgress = await addSeasonXp(admin, userId, XP_TAP);
+    } catch (xpErr) {
+      console.error('TAP_REWARD_XP_WARN:', xpErr);
+    }
+
+    return res.status(200).json({
+      success: true,
+      awarded: reward,
+      xpAwarded: xpProgress ? XP_TAP : 0,
+      level: xpProgress?.level,
+    });
   } catch (err) {
     console.error('TAP_REWARD_ERROR:', err);
     return res.status(500).json({ error: err.message || 'INTERNAL_SERVER_ERROR' });

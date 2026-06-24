@@ -6,6 +6,13 @@ interface DeStijlAvatarProps {
   seed: string;
   size?: number;
   colors?: string[];
+  /**
+   * Frame shape. 'square' is the current De Stijl block grid; 'circle' clips
+   * the same grid to a disc. The blinking eyes + mouth stay constant across
+   * shapes -- this is the lever for evolving the avatar "era" (square -> circle
+   * -> ... ) without ever losing the face.
+   */
+  shape?: 'square' | 'circle';
 }
 
 const PALETTE = [
@@ -16,9 +23,12 @@ const PALETTE = [
   '#FFB000', // Monarch Gold
 ];
 
-const DeStijlAvatar: React.FC<DeStijlAvatarProps> = ({ seed, size = 100, colors }) => {
+const DeStijlAvatar: React.FC<DeStijlAvatarProps> = ({ seed, size = 100, colors, shape = 'square' }) => {
   const { activeAvatarColors } = useStore();
   const effectiveColors = colors || activeAvatarColors;
+
+  // Unique id so multiple avatars on one page don't share a clipPath def.
+  const clipId = React.useId().replace(/:/g, '');
 
   // Simple deterministic hash function
   const hash = useMemo(() => {
@@ -54,13 +64,15 @@ const DeStijlAvatar: React.FC<DeStijlAvatarProps> = ({ seed, size = 100, colors 
       });
     }
     return result;
-  }, [hash]);
+  }, [hash, effectiveColors]);
+
+  const isCircle = shape === 'circle';
 
   return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 300 300" 
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 300 300"
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: 'block' }}
     >
@@ -77,43 +89,59 @@ const DeStijlAvatar: React.FC<DeStijlAvatarProps> = ({ seed, size = 100, colors 
           }
         `}
       </style>
-      {blocks.map((b) => (
-        <React.Fragment key={b.id}>
-          {/* Main Block */}
-          <rect
-            x={b.x}
-            y={b.y}
-            width="100"
-            height="100"
-            fill={b.fill}
-            stroke="#000000"
-            strokeWidth="8"
-          />
-          
-          {/* Eyes (Blocks 4 & 6) */}
-          {(b.id === 4 || b.id === 6) && (
-            <rect
-              className="destijl-pupil"
-              x={b.x + 30}
-              y={b.y + 30}
-              width="40"
-              height="40"
-              fill="#000000"
-            />
-          )}
 
-          {/* Mouth (Block 8) */}
-          {b.id === 8 && (
+      {isCircle && (
+        <defs>
+          <clipPath id={clipId}>
+            <circle cx="150" cy="150" r="150" />
+          </clipPath>
+        </defs>
+      )}
+
+      <g clipPath={isCircle ? `url(#${clipId})` : undefined}>
+        {blocks.map((b) => (
+          <React.Fragment key={b.id}>
+            {/* Main Block */}
             <rect
-              x={b.x + 20}
-              y={b.y + 40}
-              width="60"
-              height="20"
-              fill="#000000"
+              x={b.x}
+              y={b.y}
+              width="100"
+              height="100"
+              fill={b.fill}
+              stroke="#000000"
+              strokeWidth="8"
             />
-          )}
-        </React.Fragment>
-      ))}
+
+            {/* Eyes (Blocks 4 & 6) */}
+            {(b.id === 4 || b.id === 6) && (
+              <rect
+                className="destijl-pupil"
+                x={b.x + 30}
+                y={b.y + 30}
+                width="40"
+                height="40"
+                fill="#000000"
+              />
+            )}
+
+            {/* Mouth (Block 8) */}
+            {b.id === 8 && (
+              <rect
+                x={b.x + 20}
+                y={b.y + 40}
+                width="60"
+                height="20"
+                fill="#000000"
+              />
+            )}
+          </React.Fragment>
+        ))}
+      </g>
+
+      {/* Clean circular frame on top of the clipped grid */}
+      {isCircle && (
+        <circle cx="150" cy="150" r="146" fill="none" stroke="#000000" strokeWidth="8" />
+      )}
     </svg>
   );
 };

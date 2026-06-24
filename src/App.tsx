@@ -19,6 +19,7 @@ import Recruit from './pages/Recruit'
 import CommandCenter from './pages/CommandCenter'
 import Verify from './pages/Verify'
 import Social from './pages/Social'
+import Ascension from './pages/Ascension'
 import useStore from './store/useStore'
 
 import { PRIVY_APP_ID } from './config'
@@ -48,9 +49,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   const { user, ready, authenticated } = usePrivy();
-  const { fetchUserProfile, activeTheme } = useStore();
-  
-  const brandAccent = activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000';
+  const { fetchUserProfile, activeTheme, activeThemeAccent } = useStore();
+
+  const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
   const bgColor = useColorModeValue("gray.50", "black");
 
   React.useEffect(() => {
@@ -80,6 +81,7 @@ function AppContent() {
             <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
             <Route path="/scan" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
             <Route path="/closet" element={<ProtectedRoute><Closet /></ProtectedRoute>} />
+            <Route path="/ascension" element={<ProtectedRoute><Ascension /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/v/:id" element={<Verify />} />

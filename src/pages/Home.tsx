@@ -118,7 +118,7 @@ const PostCard = ({ post, text, mutedText, border, accent }: {
 const whiteAlpha300 = "rgba(255, 255, 255, 0.16)";
 
 const Home = () => {
-  const { wngsBalance, activeTheme } = useStore();
+  const { wngsBalance, activeTheme, activeThemeAccent } = useStore();
   const [posts, setPosts] = useState<MonarchTimesPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -126,7 +126,7 @@ const Home = () => {
   const text = "white";
   const mutedText = "gray.500";
   const border = "whiteAlpha.300";
-  const brandAccent = activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000';
+  const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
 
   useEffect(() => {
     const fetchPosts = async () => {

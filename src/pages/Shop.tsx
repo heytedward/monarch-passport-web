@@ -35,6 +35,7 @@ import useStore from '../store/useStore'
 import { usePrivy } from '@privy-io/react-auth'
 
 import { WngsCoin } from '../components/WngsCoin'
+import DeStijlAvatar from '../components/DeStijlAvatar'
 
 const MotionBox = motion.create(Box)
 
@@ -44,14 +45,6 @@ const TShirtIcon = ({ color = "white", boxSize = "40px" }: { color?: string, box
       <path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
     </svg>
   </Box>
-)
-
-const AvatarGrid = ({ colors, size = "40px" }: { colors: string[], size?: string }) => (
-  <SimpleGrid columns={3} spacing={0.5} w={size} h={size} border="1px solid white" p={0.5} bg="black">
-    {colors.map((c, i) => (
-      <Box key={i} bg={c} w="100%" h="100%" />
-    ))}
-  </SimpleGrid>
 )
 
 // Rarity tiers for digital cosmetics. COMMON/RARE/EPIC/MONARCH stay within
@@ -73,23 +66,20 @@ interface ShopItemData {
   priceString: string;
   name: string;
   specs: { label: string; value: string }[];
-  avatarColors?: string[];
+  palette?: string[];
   borderColor?: string;
   wngsAmount?: number;
   external_buy_url?: string;
   category?: string;
   rarity?: string;
   featuredUntil?: string | null;
+  collection?: string;
+  edition?: string;
 }
 
 const isItemFeatured = (item: ShopItemData) =>
   !!item.featuredUntil && new Date(item.featuredUntil).getTime() > Date.now();
 
-// The live `products` table uses singular/specific category values
-// (AVATAR, THEME, WNGS_BUNDLE), while the mock WNGS bundles below and the
-// Shop's filter tabs use the plural/display forms (AVATARS, THEMES, WNGS).
-// These are the only digital categories that exist -- anything else is
-// physical, regardless of what price_wngs happens to default to.
 const isWngsCategory = (category?: string) => category === 'WNGS' || category === 'WNGS_BUNDLE';
 const DIGITAL_CATEGORIES = new Set(['AVATAR', 'THEME', 'WNGS_BUNDLE']);
 const CATEGORY_FILTER_MATCHERS: Record<string, (category?: string) => boolean> = {
@@ -136,7 +126,7 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg, cardBg }: { in
               <WngsCoin isStatic={true} />
             </Box>
           ) : (
-            <AvatarGrid colors={item.avatarColors || []} size="60px" />
+            <DeStijlAvatar seed={item.id} colors={item.palette} size={60} />
           )}
           <Box mt={2} bg={text} px={2} py={0.5}>
             <Text color={bg} fontSize="10px" fontWeight="900" fontFamily="monospace">{item.priceString}</Text>
@@ -313,37 +303,32 @@ const Shop = () => {
         // defaults to 0 (never null) even on physical rows, so it can't be
         // used to detect digital-ness -- category is the reliable signal.
         const mappedProducts: ShopItemData[] = data
-          // Real WNGS_BUNDLE rows have no granted-amount data wired up yet
-          // (price_usd/wngs_amount aren't populated) -- the hardcoded
-          // mockWngs below are the only working WNGS bundles for now.
-          .filter((p: any) => p.category !== 'WNGS_BUNDLE')
           .map((p: any) => {
             const itemType: 'physical' | 'digital' = DIGITAL_CATEGORIES.has(p.category) ? 'digital' : 'physical';
-            const price = itemType === 'digital' ? p.price_wngs : (p.price_usd || 0);
+            const isWngsBundle = p.category === 'WNGS_BUNDLE';
+            // For WNGS bundles price_wngs stores the grant amount (received), price_usd is the cost
+            const price = isWngsBundle ? (p.price_usd || 0) : itemType === 'digital' ? p.price_wngs : (p.price_usd || 0);
+            const wngsAmount = isWngsBundle ? (p.price_wngs || 0) : undefined;
             return {
               id: p.id,
               type: itemType,
               price,
-              priceString: itemType === 'physical' ? `$${price}` : `${price} WNGS`,
+              priceString: isWngsBundle ? `${wngsAmount} WNGS` : itemType === 'physical' ? `$${price}` : `${price} WNGS`,
               name: p.name,
               specs: p.specs || [],
-              avatarColors: p.avatar_colors,
-              borderColor: (p.rarity && RARITY_COLORS[p.rarity]) || p.border_color,
+              palette: p.palette || undefined,
+              borderColor: (p.rarity && RARITY_COLORS[p.rarity]) || undefined,
               category: p.category,
               rarity: itemType === 'digital' && !isWngsCategory(p.category) ? (p.rarity || 'COMMON') : undefined,
               featuredUntil: p.featured_until,
               external_buy_url: p.external_buy_url,
+              collection: p.collection || undefined,
+              edition: p.edition || undefined,
+              wngsAmount,
             };
           });
 
-        const mockWngs: ShopItemData[] = [
-          { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE // 1000 WNGS', specs: [], wngsAmount: 1000 },
-          { id: 'W02', type: 'digital', category: 'WNGS', price: 45, priceString: '5000 WNGS', name: 'LOOT // 5000 WNGS', specs: [], wngsAmount: 5000 },
-          { id: 'W03', type: 'digital', category: 'WNGS', price: 80, priceString: '10000 WNGS', name: 'VAULT // 10000 WNGS', specs: [], wngsAmount: 10000 },
-          { id: 'W04', type: 'digital', category: 'WNGS', price: 350, priceString: '50000 WNGS', name: 'MAINFRAME // 50000 WNGS', specs: [], wngsAmount: 50000 },
-        ];
-
-        setProducts([...mappedProducts, ...mockWngs]);
+        setProducts(mappedProducts);
       } else {
         const mockWngs: ShopItemData[] = [
           { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE // 1000 WNGS', specs: [], wngsAmount: 1000 },
@@ -705,7 +690,7 @@ const Shop = () => {
                              <WngsCoin />
                           </Box>
                         ) : (
-                          <AvatarGrid colors={selectedItem.avatarColors || []} size="120px" />
+                          <DeStijlAvatar seed={selectedItem.id} colors={selectedItem.palette} size={120} />
                         )}
                       </Box>
                       <VStack spacing={2}>
