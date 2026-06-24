@@ -1,6 +1,6 @@
 import { Box, Flex, IconButton, Text, VStack, Center, useColorModeValue } from '@chakra-ui/react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
-import { PiHouseFill, PiWalletFill, PiCoatHangerFill, PiUserFill } from 'react-icons/pi'
+import { PiHouseFill, PiWalletFill, PiCoatHangerFill, PiUserFill, PiTrophyFill } from 'react-icons/pi'
 import { Logo } from './Logo'
 import { usePrivy } from '@privy-io/react-auth'
 
@@ -18,6 +18,11 @@ const leftNavItems = [
 ]
 
 const rightNavItems = [
+  {
+    label: 'ASCENSION',
+    to: '/ascension',
+    icon: PiTrophyFill,
+  },
   {
     label: 'CLOSET',
     to: '/closet',

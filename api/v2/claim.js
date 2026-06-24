@@ -3,6 +3,7 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
+import { addSeasonXp, getActiveSeason, setSeasonPremium, XP_ACTIVATION } from './_ascension.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -106,7 +107,26 @@ export default async function handler(req, res) {
 
     if (txError) throw txError;
 
-    return res.status(200).json({ success: true, artifact: updated, awarded: bonus });
+    // ASCENSION: activation grants battlepass XP, and activating a season
+    // artifact unlocks the PREMIUM track for the active season. Best-effort --
+    // never fail the (already-committed) claim over battlepass bookkeeping.
+    let isPremiumUnlocked = false;
+    try {
+      await addSeasonXp(admin, ownerId, XP_ACTIVATION);
+      if (updated.is_season_artifact) {
+        const season = await getActiveSeason(admin);
+        const matchesSeason =
+          season && (!updated.season || updated.season === season.code || updated.season === season.name);
+        if (matchesSeason) {
+          await setSeasonPremium(admin, ownerId, season.id);
+          isPremiumUnlocked = true;
+        }
+      }
+    } catch (xpErr) {
+      console.error('CLAIM_XP_WARN:', xpErr);
+    }
+
+    return res.status(200).json({ success: true, artifact: updated, awarded: bonus, premiumUnlocked: isPremiumUnlocked });
   } catch (err) {
     console.error('CLAIM_ERROR:', err);
     return res.status(500).json({ error: err.message || 'INTERNAL_SERVER_ERROR' });
