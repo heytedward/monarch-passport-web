@@ -4,10 +4,15 @@ if (process.env.NODE_ENV !== 'production') {
 }
 import { createClient } from '@supabase/supabase-js';
 import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST } from './_ascension.js';
+import { avatarSvg } from './_avatarSvg.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const NFT_BUCKET = 'nft-assets';
+const SOLANA_RPC = process.env.SOLANA_RPC || 'https://api.devnet.solana.com';
+const SOLANA_CLUSTER = process.env.SOLANA_CLUSTER || 'devnet';
 
 // Spend WNGS to refill social-mining stamina to full (a net WNGS sink).
 async function rechargeStamina(admin, userId, res) {
@@ -124,6 +129,83 @@ async function claimReward(admin, userId, rewardId, res) {
   return res.status(200).json({ success: true, rewardType: reward.reward_type });
 }
 
+// Mint an owned avatar as a Solana NFT to the user's wallet (server-authority).
+// Heavy Metaplex SDK is dynamically imported so it only loads on this path.
+async function mintAvatar(admin, userId, body, res) {
+  const { assetId, recipient } = body;
+  if (!assetId || !recipient) return res.status(400).json({ error: 'MISSING_ASSET_OR_RECIPIENT' });
+  if (!process.env.MINT_AUTHORITY_SECRET) return res.status(500).json({ error: 'MINT_AUTHORITY_NOT_CONFIGURED' });
+
+  const { data: asset, error: aErr } = await admin
+    .from('user_assets')
+    .select('id, user_id, mint_address, products(name, category, palette, rarity, collection)')
+    .eq('id', assetId)
+    .maybeSingle();
+  if (aErr) throw aErr;
+  if (!asset || asset.user_id !== userId) return res.status(403).json({ error: 'ASSET_NOT_OWNED' });
+  if (asset.mint_address) return res.status(409).json({ error: 'ALREADY_MINTED', mintAddress: asset.mint_address });
+  const product = asset.products;
+  if (!product || product.category !== 'AVATAR') return res.status(400).json({ error: 'NOT_AN_AVATAR' });
+
+  const { createUmi } = await import('@metaplex-foundation/umi-bundle-defaults');
+  const { createNft, mplTokenMetadata } = await import('@metaplex-foundation/mpl-token-metadata');
+  const { generateSigner, keypairIdentity, percentAmount, publicKey } = await import('@metaplex-foundation/umi');
+  const { base58 } = await import('@metaplex-foundation/umi/serializers');
+
+  let owner;
+  try { owner = publicKey(recipient); } catch { return res.status(400).json({ error: 'INVALID_RECIPIENT' }); }
+
+  // Render the avatar and host image + metadata in Supabase Storage.
+  const svg = avatarSvg(product.palette);
+  await admin.storage.from(NFT_BUCKET).upload(`${assetId}.svg`, svg, { contentType: 'image/svg+xml', upsert: true });
+  const imageUrl = admin.storage.from(NFT_BUCKET).getPublicUrl(`${assetId}.svg`).data.publicUrl;
+  const metadata = {
+    name: product.name, symbol: 'MONARCH',
+    description: 'Monarch Passport digital identity.',
+    image: imageUrl,
+    attributes: [
+      { trait_type: 'Type', value: 'Avatar' },
+      { trait_type: 'Rarity', value: product.rarity || 'COMMON' },
+      ...(product.collection ? [{ trait_type: 'Collection', value: product.collection }] : []),
+    ],
+  };
+  await admin.storage.from(NFT_BUCKET).upload(`${assetId}.json`, JSON.stringify(metadata), { contentType: 'application/json', upsert: true });
+  const metaUrl = admin.storage.from(NFT_BUCKET).getPublicUrl(`${assetId}.json`).data.publicUrl;
+
+  // Mint with the server authority keypair; NFT lands in the recipient's wallet.
+  const umi = createUmi(SOLANA_RPC).use(mplTokenMetadata());
+  umi.use(keypairIdentity(umi.eddsa.createKeypairFromSecretKey(Uint8Array.from(JSON.parse(process.env.MINT_AUTHORITY_SECRET)))));
+
+  await admin.from('user_assets').update({ mint_status: 'minting' }).eq('id', assetId);
+  try {
+    const mint = generateSigner(umi);
+    const { signature } = await createNft(umi, {
+      mint,
+      name: product.name.slice(0, 32),
+      symbol: 'MONARCH',
+      uri: metaUrl,
+      sellerFeeBasisPoints: percentAmount(0),
+      tokenOwner: owner,
+    }).sendAndConfirm(umi, { confirm: { commitment: 'confirmed' } });
+
+    const mintAddress = mint.publicKey.toString();
+    const sig = base58.deserialize(signature)[0];
+    await admin.from('user_assets')
+      .update({ mint_address: mintAddress, mint_status: 'minted', mint_signature: sig })
+      .eq('id', assetId);
+
+    return res.status(200).json({
+      success: true,
+      mintAddress,
+      signature: sig,
+      explorerUrl: `https://explorer.solana.com/address/${mintAddress}?cluster=${SOLANA_CLUSTER}`,
+    });
+  } catch (e) {
+    await admin.from('user_assets').update({ mint_status: 'failed' }).eq('id', assetId);
+    throw e;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
 
@@ -162,6 +244,7 @@ export default async function handler(req, res) {
     // Dispatch ASCENSION actions (identity already verified above).
     if (action === 'recharge_stamina') return await rechargeStamina(admin, userId, res);
     if (action === 'claim_reward') return await claimReward(admin, userId, rewardId, res);
+    if (action === 'mint_avatar') return await mintAvatar(admin, userId, req.body, res);
 
     // Default: buy a digital product with WNGS.
     if (!productId) return res.status(400).json({ error: 'MISSING_PAYLOAD_DATA' });

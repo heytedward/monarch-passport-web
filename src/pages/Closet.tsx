@@ -26,7 +26,8 @@ import {
   MenuItem,
   Input,
   Wrap,
-  WrapItem
+  WrapItem,
+  Link
 } from '@chakra-ui/react'
 import { useState, useEffect, useMemo } from 'react'
 import { MdRefresh, MdClose, MdSearch } from 'react-icons/md'
@@ -142,6 +143,9 @@ interface ClosetItemData {
   season?: string;
   collection?: string;
   edition?: string;
+  assetId?: string;        // user_assets.id (the owned instance, for minting)
+  mintAddress?: string;    // set once minted on-chain
+  mintStatus?: string;
   dossier: {
     collection: string;
     releaseDate: string;
@@ -225,6 +229,13 @@ const Closet = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [digitalGarments, setDigitalGarments] = useState<any[]>([]);
   const [isGarmentsLoading, setIsGarmentsLoading] = useState(false);
+  const [isMinting, setIsMinting] = useState(false);
+
+  // The user's embedded Solana wallet (mint recipient).
+  const solanaWallet =
+    (user as any)?.linkedAccounts?.find((a: any) => a.type === 'wallet' && a.chainType === 'solana') ||
+    (user as any)?.wallets?.find((w: any) => w.chainType === 'solana');
+  const solanaAddress = (solanaWallet as any)?.address as string | undefined;
 
   // VAULT search/filter state
   const [search, setSearch] = useState('');
@@ -285,6 +296,35 @@ const Closet = () => {
     }
   };
 
+  const handleMint = async () => {
+    if (!selectedItem?.assetId || !user?.id) return;
+    if (!solanaAddress) {
+      toast({ title: 'NO_SOLANA_WALLET', description: 'NO EMBEDDED SOLANA WALLET FOUND.', status: 'error', duration: 3000 });
+      return;
+    }
+    setIsMinting(true);
+    try {
+      const accessToken = await getAccessToken();
+      const response = await fetch('/api/v2/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ userId: user.id, action: 'mint_avatar', assetId: selectedItem.assetId, recipient: solanaAddress }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'MINT_FAILED');
+
+      // Reflect minted state locally.
+      setOwnedAssets((prev) => prev.map((a) => a.assetId === selectedItem.assetId ? { ...a, mintAddress: data.mintAddress, mintStatus: 'minted' } : a));
+      setSelectedItem((prev) => prev ? { ...prev, mintAddress: data.mintAddress, mintStatus: 'minted' } : prev);
+      toast({ title: 'MINTED_ON_CHAIN', description: `${selectedItem.name} IS NOW AN NFT.`, status: 'success', duration: 4000 });
+    } catch (err: any) {
+      console.error('Mint Failed:', err);
+      toast({ title: 'MINT_FAILED', description: err.message, status: 'error', duration: 4000 });
+    } finally {
+      setIsMinting(false);
+    }
+  };
+
   useEffect(() => {
     const fetchOwnedAssets = async () => {
       if (!user?.id) {
@@ -300,6 +340,8 @@ const Closet = () => {
           .select(`
             id,
             product_id,
+            mint_address,
+            mint_status,
             products (*)
           `)
           .eq('user_id', user.id);
@@ -372,6 +414,9 @@ const Closet = () => {
               season: p.season || undefined,
               collection: p.collection || undefined,
               edition: p.edition || undefined,
+              assetId: asset.id,
+              mintAddress: asset.mint_address || undefined,
+              mintStatus: asset.mint_status || undefined,
               borderColor: (activeTheme === p.id || activeAvatar === p.id) ? brandAccent : border,
               dossier: {
                 collection: p.collection || p.category || 'GENERAL_RELEASE',
@@ -869,6 +914,44 @@ const Closet = () => {
                             _hover={{ bg: text, color: bg }}
                           >
                             EQUIP
+                          </Button>
+                        )
+                      )}
+
+                      {/* On-chain minting (avatars only) */}
+                      {selectedItem.type === 'digital' && (
+                        selectedItem.mintAddress ? (
+                          <VStack spacing={0.5} w="full" pt={1}>
+                            <Text fontSize="8px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">◆ ON-CHAIN</Text>
+                            <Link
+                              href={`https://explorer.solana.com/address/${selectedItem.mintAddress}?cluster=devnet`}
+                              isExternal
+                              onClick={(e) => e.stopPropagation()}
+                              fontSize="8px"
+                              color={mutedText}
+                              fontFamily="monospace"
+                              textDecoration="underline"
+                            >
+                              {selectedItem.mintAddress.slice(0, 4)}...{selectedItem.mintAddress.slice(-4)}
+                            </Link>
+                          </VStack>
+                        ) : (
+                          <Button
+                            w="full"
+                            h="40px"
+                            variant="outline"
+                            borderColor="var(--monarch-accent)"
+                            color="var(--monarch-accent)"
+                            borderRadius="0"
+                            fontSize="10px"
+                            fontWeight="900"
+                            isLoading={isMinting}
+                            loadingText="MINTING..."
+                            isDisabled={!solanaAddress}
+                            onClick={(e) => { e.stopPropagation(); handleMint(); }}
+                            _hover={{ bg: 'var(--monarch-accent)', color: 'black' }}
+                          >
+                            {solanaAddress ? 'MINT TO CHAIN' : 'NO_SOLANA_WALLET'}
                           </Button>
                         )
                       )}
