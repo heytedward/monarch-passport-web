@@ -67,10 +67,11 @@ function AppContent() {
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
           });
+          fetchUserProfile(user.id, token);
         } catch (e) {
           console.error('ensure_profile failed', e);
+          fetchUserProfile(user.id);
         }
-        fetchUserProfile(user.id);
       })();
     }
   }, [ready, authenticated, user?.id, fetchUserProfile, getAccessToken]);

@@ -276,7 +276,7 @@ const Closet = () => {
       else setActiveAvatar(selectedItem.id);
 
       // Sync full profile (and derived avatar colors) from server
-      await fetchUserProfile(user.id);
+      await fetchUserProfile(user.id, accessToken);
 
       // Additional effects
       if (isTheme) {

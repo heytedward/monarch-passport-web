@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 export interface CartItem {
   id: string
@@ -29,7 +33,7 @@ interface UserState {
   setUser: (user: { id: string } | null) => void
   setWngsBalance: (balance: number) => void
   setIsLoading: (loading: boolean) => void
-  fetchUserProfile: (userId: string) => Promise<void>
+  fetchUserProfile: (userId: string, accessToken?: string | null) => Promise<void>
   addPoints: (amount: number) => void
   collectStamp: (stampId: number) => void
   setIdentityType: (type: 'AGENT' | 'HUMAN' | null) => void
@@ -73,10 +77,17 @@ const useStore = create<UserState>()(
       setUser: (user) => set({ user }),
       setWngsBalance: (balance) => set({ wngsBalance: balance }),
       setIsLoading: (loading) => set({ isLoading: loading }),
-      fetchUserProfile: async (userId) => {
+      fetchUserProfile: async (userId, accessToken) => {
         set({ isLoading: true });
+        // profiles RLS blocks the bare anon client, so build an authed client
+        // when we have the caller's Privy token (mirrors the server userClient).
+        const client = accessToken
+          ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+              global: { headers: { Authorization: `Bearer ${accessToken}` } },
+            })
+          : supabase;
         try {
-          const { data, error } = await supabase
+          const { data, error } = await client
             .from('profiles')
             .select('wngs_balance, active_theme, active_avatar, total_taps')
             .eq('id', userId)
