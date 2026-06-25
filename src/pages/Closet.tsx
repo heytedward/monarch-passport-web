@@ -16,7 +16,6 @@ import {
   ModalBody,
   useDisclosure,
   IconButton,
-  useColorMode,
   useColorModeValue,
   Spinner,
   useToast,
@@ -211,7 +210,6 @@ const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, 
 
 const Closet = () => {
   const [mode, setMode] = useState<'physical' | 'digital'>('physical');
-  const { setColorMode } = useColorMode();
   const { setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent, activeTheme, activeAvatar, activeThemeAccent } = useStore();
   const toast = useToast();
   
@@ -276,9 +274,9 @@ const Closet = () => {
       // Immediate local sync
       if (isTheme) {
         setActiveTheme(selectedItem.id);
-        // Drive --monarch-accent + light/dark from the theme's own data.
+        // Themes only drive the accent (--monarch-accent). Dark/light is a
+        // separate global preference, not bundled into theme equip.
         setActiveThemeAccent(selectedItem.themeAccent || null);
-        if (selectedItem.themeMode) setColorMode(selectedItem.themeMode);
       } else {
         setActiveAvatar(selectedItem.id);
         setActiveAvatarColors(selectedItem.palette || null); // reflect immediately
