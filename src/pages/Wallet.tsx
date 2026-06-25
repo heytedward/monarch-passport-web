@@ -16,7 +16,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MdOutlineElectricBolt, MdHistory, MdCreditCard, MdTrendingUp } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
-import { supabase } from '../lib/supabase'
+import { authedClient } from '../lib/supabase'
 import useStore from '../store/useStore'
 
 const truncateAddress = (addr?: string) => {
@@ -26,7 +26,7 @@ const truncateAddress = (addr?: string) => {
 
 const Wallet = () => {
   const navigate = useNavigate()
-  const { user } = usePrivy()
+  const { user, getAccessToken } = usePrivy()
   const { wngsBalance, isLoading } = useStore()
   const [transactions, setTransactions] = useState<any[]>([])
   const [isTransLoading, setIsTransLoading] = useState(true)
@@ -42,7 +42,8 @@ const Wallet = () => {
       if (!user?.id) return;
       setIsTransLoading(true);
       try {
-        const { data, error } = await supabase
+        const token = await getAccessToken();
+        const { data, error } = await authedClient(token)
           .from('transactions')
           .select('*')
           .eq('user_id', user.id)

@@ -30,7 +30,7 @@ import { PiShoppingBagFill, PiCreditCardFill, PiCubeFill } from 'react-icons/pi'
 import { Logo } from '../components/Logo'
 import { MdFilterList, MdRefresh, MdClose } from 'react-icons/md'
 import { motion } from 'framer-motion'
-import { supabase } from '../lib/supabase'
+import { supabase, authedClient } from '../lib/supabase'
 import useStore from '../store/useStore'
 import { usePrivy } from '@privy-io/react-auth'
 
@@ -349,7 +349,8 @@ const Shop = () => {
         setOwnedProductIds(new Set());
         return;
       }
-      const { data, error } = await supabase
+      const token = await getAccessToken();
+      const { data, error } = await authedClient(token)
         .from('user_assets')
         .select('product_id')
         .eq('user_id', user.id);

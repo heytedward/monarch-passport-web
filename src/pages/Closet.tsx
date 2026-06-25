@@ -34,7 +34,7 @@ import { MdRefresh, MdClose, MdSearch } from 'react-icons/md'
 import { PiShoppingBagFill, PiSunFill, PiMoonFill } from 'react-icons/pi'
 import { motion } from 'framer-motion'
 import { usePrivy } from '@privy-io/react-auth'
-import { supabase } from '../lib/supabase'
+import { supabase, authedClient } from '../lib/supabase'
 import useStore from '../store/useStore'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 
@@ -334,8 +334,9 @@ const Closet = () => {
       
       try {
         setIsLoading(true);
-        // Fetch from user_assets joined with products
-        const { data, error } = await supabase
+        // Fetch from user_assets joined with products (RLS needs the token).
+        const token = await getAccessToken();
+        const { data, error } = await authedClient(token)
           .from('user_assets')
           .select(`
             id,
