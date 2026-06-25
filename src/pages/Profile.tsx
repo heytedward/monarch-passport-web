@@ -30,9 +30,12 @@ const Profile = () => {
   const solanaAddress = (solanaWallet as any)?.address;
 
   const { wngsBalance, totalTaps, isLoading } = useStore()
-  const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'LOG'>('STATS');
+  const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'ASCENSION'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [season, setSeason] = useState<any>(null);
+  const [progress, setProgress] = useState<any>(null);
+  const [ascLoading, setAscLoading] = useState(true);
 
   const handleCopyLink = () => {
     // Generate the unique link using the user's Privy ID or wallet
@@ -56,11 +59,28 @@ const Profile = () => {
     fetchQuests();
   }, []);
 
+  useEffect(() => {
+    const loadAscension = async () => {
+      setAscLoading(true);
+      const { data: s } = await supabase
+        .from('seasons').select('*').eq('is_active', true)
+        .order('start_date', { ascending: false }).limit(1).maybeSingle();
+      setSeason(s);
+      if (s && user?.id) {
+        const { data: p } = await supabase
+          .from('user_season_progress').select('*')
+          .eq('user_id', user.id).eq('season_id', s.id).maybeSingle();
+        setProgress(p);
+      }
+      setAscLoading(false);
+    };
+    loadAscension();
+  }, [user?.id]);
+
   const bg = useColorModeValue("white", "black");
   const cardBg = useColorModeValue("gray.50", "gray.900");
   const text = useColorModeValue("black", "white");
   const mutedText = useColorModeValue("gray.600", "whiteAlpha.600");
-  const border = useColorModeValue("gray.300", "whiteAlpha.300");
 
   const stats = [
     { label: 'WNGS_BALANCE', value: isLoading ? "..." : wngsBalance.toString() },
@@ -115,20 +135,68 @@ const Profile = () => {
             )}
           </VStack>
         );
-      case 'LOG':
+      case 'ASCENSION': {
+        if (ascLoading) {
+          return (
+            <Center p={10} bg={bg} borderBottom={`4px solid ${text}`}>
+              <Spinner color="var(--monarch-accent)" />
+            </Center>
+          );
+        }
+        if (!season) {
+          return (
+            <Center p={10} bg={bg} borderBottom={`4px solid ${text}`}>
+              <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace">[ NO_ACTIVE_SEASON ]</Text>
+            </Center>
+          );
+        }
+        const level = progress?.level || 0;
+        const xp = progress?.xp || 0;
+        const isPremium = !!progress?.is_premium;
+        const maxed = level >= season.level_count;
+        const intoLevel = maxed ? season.xp_per_level : xp - level * season.xp_per_level;
+        const pct = Math.min(100, Math.round((intoLevel / season.xp_per_level) * 100));
+        const daysLeft = Math.max(0, Math.ceil((new Date(season.end_date).getTime() - Date.now()) / 86400000));
         return (
-          <VStack p={6} spacing={0} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
-            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace" mb={4}>SYSTEM_LOG</Text>
-            {[1, 2, 4].map(i => (
-              <Box key={i} py={4} borderBottom={`2px solid ${border}`}>
-                <HStack justify="space-between">
-                  <Text fontSize="9px" fontWeight="900" color={text}>SESSION_INITIALIZED</Text>
-                  <Text fontSize="8px" color={mutedText}>MAY 16, 2026</Text>
-                </HStack>
-              </Box>
-            ))}
+          <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
+            <Flex justify="space-between" align="center">
+              <Text fontSize="9px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace" letterSpacing="0.1em">
+                SEASON {season.code || ''} // {daysLeft} DAYS LEFT
+              </Text>
+              {isPremium && (
+                <Box bg="var(--monarch-accent)" px={2} py={0.5}>
+                  <Text fontSize="8px" fontWeight="900" color="black" fontFamily="monospace">PREMIUM</Text>
+                </Box>
+              )}
+            </Flex>
+
+            <Flex justify="space-between" align="end">
+              <Heading fontSize="2xl" fontWeight="900" color={text} fontFamily="'Archivo Black', sans-serif">LVL {level}</Heading>
+              <Text fontSize="9px" fontWeight="900" color={mutedText} fontFamily="monospace">
+                {maxed ? 'MAX' : `${intoLevel} / ${season.xp_per_level} XP`}
+              </Text>
+            </Flex>
+
+            <Box w="100%" h="10px" border={`1px solid ${text}`} p="1px">
+              <Box h="100%" bg="var(--monarch-accent)" w={`${pct}%`} transition="width 0.3s" />
+            </Box>
+
+            <Button
+              onClick={() => navigate('/ascension')}
+              bg={text}
+              color={bg}
+              height="44px"
+              borderRadius="0"
+              fontWeight="900"
+              fontSize="xs"
+              fontFamily="monospace"
+              _hover={{ bg: 'var(--monarch-accent)', color: 'black' }}
+            >
+              VIEW FULL TRACK →
+            </Button>
           </VStack>
         );
+      }
     }
   };
 
@@ -189,7 +257,7 @@ const Profile = () => {
       {/* Tabs */}
       <Box bg={bg} borderY={`4px solid ${text}`}>
         <Flex>
-          {['STATS', 'QUESTS', 'LOG'].map((tab) => (
+          {['STATS', 'QUESTS', 'ASCENSION'].map((tab) => (
             <Box 
               key={tab}
               flex={1} 
