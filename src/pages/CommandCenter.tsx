@@ -174,13 +174,14 @@ const CommandCenter: React.FC = () => {
     try {
       const token = await getAccessToken();
 
-      const response = await fetch('/api/v2/admin/create-claim-link', {
+      const response = await fetch('/api/v2/admin/mint', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          kind: 'claim_link',
           shortCode: safeShortCode,
           wngsAward: parseInt(wngsValue),
           itemName: claimId, // Original unformatted input

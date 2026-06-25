@@ -199,6 +199,44 @@ async function seasonOp(body, supabase, res) {
   return res.status(400).json({ error: `Unknown season op: ${kind}` });
 }
 
+// Claim-link creation (admin only). Folded here from its own serverless
+// function to stay under Vercel's function cap -- shares the same admin auth.
+// Dispatched by kind: 'claim_link'.
+async function createClaimLink(body, supabase, res) {
+  const { shortCode, wngsAward, itemName, itemType } = body;
+
+  if (
+    !shortCode ||
+    typeof shortCode !== 'string' ||
+    !itemName ||
+    !itemType ||
+    !Number.isInteger(wngsAward) ||
+    wngsAward <= 0
+  ) {
+    return res.status(400).json({ error: 'Missing or invalid parameters' });
+  }
+
+  const safeShortCode = shortCode.trim().toLowerCase();
+
+  const { error } = await supabase
+    .from('claim_links')
+    .insert({
+      short_code: safeShortCode,
+      wngs_award: wngsAward,
+      item_name: itemName,
+      item_type: itemType,
+    });
+
+  if (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'CLAIM_LINK_ALREADY_EXISTS' });
+    }
+    throw error;
+  }
+
+  return res.status(200).json({ success: true });
+}
+
 export default async function handler(req, res) {
   // 1. Guard against wrong methods
   if (req.method !== 'POST') {
@@ -229,6 +267,9 @@ export default async function handler(req, res) {
     }
     if (typeof body.kind === 'string' && body.kind.startsWith('season_')) {
       return await seasonOp(body, supabase, res);
+    }
+    if (body.kind === 'claim_link') {
+      return await createClaimLink(body, supabase, res);
     }
 
     // ---- Artifact batch mint ----
