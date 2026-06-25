@@ -47,18 +47,19 @@ const Navbar = () => {
       as="nav"
       position="fixed"
       bottom={0}
-      left={0}
+      left="50%"
+      transform="translateX(-50%)"
       w="100%"
+      maxW="430px"
       bg={bgColor}
       borderTop={`4px solid ${borderColor}`}
       zIndex={1000}
       pb="env(safe-area-inset-bottom)"
     >
-      <Flex 
-        justify="space-between" 
-        align="center" 
-        maxW="container.md" 
-        mx="auto" 
+      <Flex
+        justify="space-between"
+        align="center"
+        w="100%"
         h="70px"
         px={4}
       >

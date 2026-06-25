@@ -244,7 +244,18 @@ export default async function handler(req, res) {
         .select('wngs_balance, active_theme, active_avatar, total_taps, current_stamina, max_stamina, last_stamina_regen')
         .eq('id', userId)
         .maybeSingle();
-      return res.status(200).json({ success: true, profile });
+      // Resolve the equipped avatar's palette so the client can render it.
+      let avatarColors = null;
+      let themeAccent = null;
+      if (profile?.active_avatar) {
+        const { data: av } = await admin.from('products').select('palette').eq('id', profile.active_avatar).maybeSingle();
+        avatarColors = av?.palette || null;
+      }
+      if (profile?.active_theme) {
+        const { data: th } = await admin.from('products').select('accent_color').eq('id', profile.active_theme).maybeSingle();
+        themeAccent = th?.accent_color || null;
+      }
+      return res.status(200).json({ success: true, profile, avatarColors, themeAccent });
     }
 
     if (action === 'get_owned') {

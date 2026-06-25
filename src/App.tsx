@@ -49,7 +49,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   const { user, ready, authenticated, getAccessToken } = usePrivy();
-  const { fetchUserProfile, activeTheme, activeThemeAccent, setWngsBalance, setActiveTheme, setActiveAvatar } = useStore();
+  const { activeTheme, activeThemeAccent, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent } = useStore();
 
   const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
   const bgColor = useColorModeValue("gray.50", "black");
@@ -67,26 +67,26 @@ function AppContent() {
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
           });
-          // Populate from the server response (service-role), since the client's
-          // own RLS read is currently blocked (Privy token not validated by Supabase).
+          // Populate from the server response (service-role); the client's own
+          // RLS read is blocked (Privy token not validated by Supabase).
           const data = await res.json().catch(() => null);
           if (data?.profile) {
             setWngsBalance(data.profile.wngs_balance || 0);
             if (data.profile.active_theme) setActiveTheme(data.profile.active_theme);
-            if (data.profile.active_avatar) setActiveAvatar(data.profile.active_avatar);
+            setActiveAvatar(data.profile.active_avatar || null);
+            setActiveAvatarColors(data.avatarColors || null);
+            if (data.themeAccent) setActiveThemeAccent(data.themeAccent);
           }
-          fetchUserProfile(user.id, token);
         } catch (e) {
           console.error('ensure_profile failed', e);
-          fetchUserProfile(user.id);
         }
       })();
     }
-  }, [ready, authenticated, user?.id, fetchUserProfile, getAccessToken]);
+  }, [ready, authenticated, user?.id, getAccessToken, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent]);
 
   return (
     <Router>
-      <Box minH="100vh" bg={bgColor} pb="70px">
+      <Box minH="100vh" bg={bgColor}>
         <style>{`
           :root {
             --monarch-accent: ${brandAccent};
@@ -94,8 +94,9 @@ function AppContent() {
           .de-stijl-heading { font-family: 'Archivo Black', sans-serif !important; }
           .de-stijl-body { font-family: 'Space Mono', monospace !important; }
         `}</style>
-        <Navbar />
-        <Box as="main" pt="0" px={0} pb={0}>
+        {/* Phone-tight frame: the whole app is a centered ~430px column. */}
+        <Box as="main" maxW="430px" mx="auto" minH="100vh" position="relative" pt="0" px={0} pb="80px">
+          <Navbar />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />

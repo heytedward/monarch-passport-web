@@ -210,7 +210,7 @@ const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, 
 const Closet = () => {
   const [mode, setMode] = useState<'physical' | 'digital'>('physical');
   const { setColorMode } = useColorMode();
-  const { setActiveTheme, setActiveAvatar, activeTheme, activeAvatar, activeThemeAccent, fetchUserProfile } = useStore();
+  const { setActiveTheme, setActiveAvatar, setActiveAvatarColors, activeTheme, activeAvatar, activeThemeAccent, fetchUserProfile } = useStore();
   const toast = useToast();
   
   const bg = useColorModeValue("white", "black");
@@ -272,8 +272,12 @@ const Closet = () => {
       }
 
       // Immediate local sync
-      if (isTheme) setActiveTheme(selectedItem.id);
-      else setActiveAvatar(selectedItem.id);
+      if (isTheme) {
+        setActiveTheme(selectedItem.id);
+      } else {
+        setActiveAvatar(selectedItem.id);
+        setActiveAvatarColors(selectedItem.palette || null); // reflect immediately
+      }
 
       // Sync full profile (and derived avatar colors) from server
       await fetchUserProfile(user.id, accessToken);
