@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePrivy } from '@privy-io/react-auth';
 import { 
@@ -14,8 +14,16 @@ import {
 import { Logo } from '../components/Logo';
 
 function Landing() {
-  const { login } = usePrivy();
+  const { login, authenticated, ready } = usePrivy();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
+
+  // Once Privy authenticates, leave the locked screen and enter the app.
+  useEffect(() => {
+    if (ready && authenticated) {
+      navigate('/home', { replace: true });
+    }
+  }, [ready, authenticated, navigate]);
 
   return (
     <Box bg="black" minH="100vh" color="white" display="flex" alignItems="center" justifyContent="center">

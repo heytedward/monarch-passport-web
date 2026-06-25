@@ -29,6 +29,14 @@ const Profile = () => {
   ) || user?.wallets?.find((w: any) => w.chainType === 'solana');
   const solanaAddress = (solanaWallet as any)?.address;
 
+  // Derive a handle from the real account (email > wallet > fallback).
+  const email = (user as any)?.email?.address as string | undefined;
+  const handle = email
+    ? '@' + email.split('@')[0].toUpperCase()
+    : solanaAddress
+      ? '@' + solanaAddress.slice(0, 6).toUpperCase()
+      : '@OPERATOR';
+
   const { wngsBalance, totalTaps, isLoading } = useStore()
   const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'ASCENSION'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
@@ -208,7 +216,7 @@ const Profile = () => {
           PROFILE
         </Heading>
         <Text fontSize="9px" fontWeight="900" color={mutedText} fontFamily="monospace" letterSpacing="0.1em">
-          SYSTEM IDENTITY // @BUTTERFLYBOY
+          SYSTEM IDENTITY // {handle}
         </Text>
       </Box>
 
@@ -232,7 +240,7 @@ const Profile = () => {
 
           <VStack spacing={2} align="center">
             <Heading fontSize="3xl" fontWeight="900" color={bg} fontStyle="italic" fontFamily="'Archivo Black', sans-serif" letterSpacing="-0.02em">
-              @BUTTERFLYBOY
+              {handle}
             </Heading>
             
             {solanaAddress ? (
