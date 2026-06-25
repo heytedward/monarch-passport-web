@@ -48,7 +48,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const { user, ready, authenticated } = usePrivy();
+  const { user, ready, authenticated, getAccessToken } = usePrivy();
   const { fetchUserProfile, activeTheme, activeThemeAccent } = useStore();
 
   const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
@@ -56,9 +56,24 @@ function AppContent() {
 
   React.useEffect(() => {
     if (ready && authenticated && user?.id) {
-      fetchUserProfile(user.id);
+      (async () => {
+        // Make sure a profile row exists before anything reads/writes it.
+        // Server endpoints (purchase/claim/tap/equip) verify identity by
+        // looking up this row, so a fresh login needs it created first.
+        try {
+          const token = await getAccessToken();
+          await fetch('/api/v2/purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
+          });
+        } catch (e) {
+          console.error('ensure_profile failed', e);
+        }
+        fetchUserProfile(user.id);
+      })();
     }
-  }, [ready, authenticated, user?.id, fetchUserProfile]);
+  }, [ready, authenticated, user?.id, fetchUserProfile, getAccessToken]);
 
   return (
     <Router>
