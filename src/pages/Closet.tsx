@@ -31,12 +31,13 @@ import {
 } from '@chakra-ui/react'
 import { useState, useEffect, useMemo } from 'react'
 import { MdRefresh, MdClose, MdSearch } from 'react-icons/md'
-import { PiShoppingBagFill, PiSunFill, PiMoonFill } from 'react-icons/pi'
+import { PiShoppingBagFill } from 'react-icons/pi'
 import { motion } from 'framer-motion'
 import { usePrivy } from '@privy-io/react-auth'
 import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
 import DeStijlAvatar from '../components/DeStijlAvatar'
+import ThemeSwatch from '../components/ThemeSwatch'
 
 const MotionBox = motion.create(Box)
 
@@ -139,6 +140,7 @@ interface ClosetItemData {
   locked?: boolean;
   palette?: string[];
   themeMode?: 'light' | 'dark';
+  themeAccent?: string;
   rarity?: string;
   season?: string;
   collection?: string;
@@ -179,7 +181,7 @@ const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, 
              </Box>
           ) : (
             item.type === 'theme' ? (
-               <Icon as={item.themeMode === 'light' ? PiSunFill : PiMoonFill} color={text} boxSize="35px" />
+               <ThemeSwatch accent={item.themeAccent} mode={item.themeMode} size={60} />
             ) : item.type === 'physical' ? (
               <TShirtIcon color={text} />
             ) : (
@@ -356,6 +358,7 @@ const Closet = () => {
             type: 'theme',
             name: 'SYSTEM_LIGHT',
             themeMode: 'light',
+            themeAccent: '#FFB000',
             borderColor: activeTheme === 'SYSTEM_LIGHT' ? brandAccent : border,
             dossier: {
               collection: 'SYSTEM_PROTOCOLS',
@@ -371,6 +374,7 @@ const Closet = () => {
             type: 'theme',
             name: 'SYSTEM_DARK',
             themeMode: 'dark',
+            themeAccent: '#FFB000',
             borderColor: (activeTheme === 'SYSTEM_DARK' || !activeTheme) ? brandAccent : border,
             dossier: {
               collection: 'SYSTEM_PROTOCOLS',
@@ -386,6 +390,7 @@ const Closet = () => {
             type: 'theme',
             name: 'CRIMSON_OVERRIDE',
             themeMode: 'dark',
+            themeAccent: '#DC143C',
             borderColor: activeTheme === 'CRIMSON_OVERRIDE' ? brandAccent : border,
             dossier: {
               collection: 'SYSTEM_PROTOCOLS',
@@ -411,6 +416,7 @@ const Closet = () => {
               name: p.name.toUpperCase(),
               palette: p.palette || undefined,
               themeMode: p.theme_mode || undefined,
+              themeAccent: p.accent_color || undefined,
               rarity: p.rarity || undefined,
               season: p.season || undefined,
               collection: p.collection || undefined,
@@ -805,7 +811,7 @@ const Closet = () => {
                     <VStack spacing={8}>
                       <Box border={`2px solid ${text}`} p={10}>
                         {selectedItem.type === 'theme' ? (
-                          <Icon as={selectedItem.themeMode === 'light' ? PiSunFill : PiMoonFill} color={text} boxSize="100px" />
+                          <ThemeSwatch accent={selectedItem.themeAccent} mode={selectedItem.themeMode} size={120} />
                         ) : selectedItem.type === 'physical' ? (
                           <TShirtIcon color={text} boxSize="100px" />
                         ) : (

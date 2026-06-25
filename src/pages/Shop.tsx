@@ -36,6 +36,7 @@ import { usePrivy } from '@privy-io/react-auth'
 
 import { WngsCoin } from '../components/WngsCoin'
 import DeStijlAvatar from '../components/DeStijlAvatar'
+import ThemeSwatch from '../components/ThemeSwatch'
 
 const MotionBox = motion.create(Box)
 
@@ -75,6 +76,8 @@ interface ShopItemData {
   featuredUntil?: string | null;
   collection?: string;
   edition?: string;
+  themeAccent?: string;
+  themeMode?: 'light' | 'dark';
 }
 
 const isItemFeatured = (item: ShopItemData) =>
@@ -125,6 +128,8 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg, cardBg }: { in
             <Box w="60px" h="60px">
               <WngsCoin isStatic={true} />
             </Box>
+          ) : (item as any).category === 'THEME' ? (
+            <ThemeSwatch accent={item.themeAccent} mode={item.themeMode} size={60} />
           ) : (
             <DeStijlAvatar seed={item.id} colors={item.palette} size={60} />
           )}
@@ -324,6 +329,8 @@ const Shop = () => {
               external_buy_url: p.external_buy_url,
               collection: p.collection || undefined,
               edition: p.edition || undefined,
+              themeAccent: p.accent_color || undefined,
+              themeMode: p.theme_mode || undefined,
               wngsAmount,
             };
           });
@@ -691,6 +698,8 @@ const Shop = () => {
                           <Box w="120px" h="120px">
                              <WngsCoin />
                           </Box>
+                        ) : (selectedItem as any).category === 'THEME' ? (
+                          <ThemeSwatch accent={selectedItem.themeAccent} mode={selectedItem.themeMode} size={120} />
                         ) : (
                           <DeStijlAvatar seed={selectedItem.id} colors={selectedItem.palette} size={120} />
                         )}
