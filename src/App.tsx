@@ -1,5 +1,6 @@
 import React from 'react'
 import { ChakraProvider, Box, Center, Spinner, useColorModeValue } from '@chakra-ui/react'
+import theme from './theme'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { PrivyProvider, usePrivy } from '@privy-io/react-auth'
 import Navbar from './components/Navbar'
@@ -164,7 +165,7 @@ function App() {
         }]
       }}
     >
-      <ChakraProvider>
+      <ChakraProvider theme={theme}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Mono:wght@400;700&display=swap');
           .de-stijl-heading { font-family: 'Archivo Black', sans-serif !important; }
