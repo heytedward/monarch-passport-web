@@ -212,7 +212,7 @@ const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, 
 const Closet = () => {
   const [mode, setMode] = useState<'physical' | 'digital'>('physical');
   const { setColorMode } = useColorMode();
-  const { setActiveTheme, setActiveAvatar, setActiveAvatarColors, activeTheme, activeAvatar, activeThemeAccent, fetchUserProfile } = useStore();
+  const { setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent, activeTheme, activeAvatar, activeThemeAccent } = useStore();
   const toast = useToast();
   
   const bg = useColorModeValue("white", "black");
@@ -276,18 +276,12 @@ const Closet = () => {
       // Immediate local sync
       if (isTheme) {
         setActiveTheme(selectedItem.id);
+        // Drive --monarch-accent + light/dark from the theme's own data.
+        setActiveThemeAccent(selectedItem.themeAccent || null);
+        if (selectedItem.themeMode) setColorMode(selectedItem.themeMode);
       } else {
         setActiveAvatar(selectedItem.id);
         setActiveAvatarColors(selectedItem.palette || null); // reflect immediately
-      }
-
-      // Sync full profile (and derived avatar colors) from server
-      await fetchUserProfile(user.id, accessToken);
-
-      // Additional effects
-      if (isTheme) {
-        if (selectedItem.name.includes('LIGHT')) setColorMode('light');
-        if (selectedItem.name.includes('DARK') || selectedItem.id === 'CRIMSON_OVERRIDE') setColorMode('dark');
       }
 
       toast({
