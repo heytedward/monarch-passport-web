@@ -34,7 +34,7 @@ import { MdRefresh, MdClose, MdSearch } from 'react-icons/md'
 import { PiShoppingBagFill, PiSunFill, PiMoonFill } from 'react-icons/pi'
 import { motion } from 'framer-motion'
 import { usePrivy } from '@privy-io/react-auth'
-import { supabase, authedClient } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 
@@ -334,20 +334,16 @@ const Closet = () => {
       
       try {
         setIsLoading(true);
-        // Fetch from user_assets joined with products (RLS needs the token).
+        // Owned cosmetics come from a service-role endpoint (Supabase can't
+        // validate the Privy token for a direct RLS read).
         const token = await getAccessToken();
-        const { data, error } = await authedClient(token)
-          .from('user_assets')
-          .select(`
-            id,
-            product_id,
-            mint_address,
-            mint_status,
-            products (*)
-          `)
-          .eq('user_id', user.id);
-
-        if (error) throw error;
+        const res = await fetch('/api/v2/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ userId: user.id, action: 'get_owned' }),
+        });
+        const payload = await res.json().catch(() => null);
+        const data = payload?.assets || [];
 
         // Default assets (Light/Dark/Crimson themes)
         const defaults: ClosetItemData[] = [

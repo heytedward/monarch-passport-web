@@ -49,7 +49,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   const { user, ready, authenticated, getAccessToken } = usePrivy();
-  const { fetchUserProfile, activeTheme, activeThemeAccent } = useStore();
+  const { fetchUserProfile, activeTheme, activeThemeAccent, setWngsBalance, setActiveTheme, setActiveAvatar } = useStore();
 
   const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
   const bgColor = useColorModeValue("gray.50", "black");
@@ -62,11 +62,19 @@ function AppContent() {
         // looking up this row, so a fresh login needs it created first.
         try {
           const token = await getAccessToken();
-          await fetch('/api/v2/purchase', {
+          const res = await fetch('/api/v2/purchase', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
           });
+          // Populate from the server response (service-role), since the client's
+          // own RLS read is currently blocked (Privy token not validated by Supabase).
+          const data = await res.json().catch(() => null);
+          if (data?.profile) {
+            setWngsBalance(data.profile.wngs_balance || 0);
+            if (data.profile.active_theme) setActiveTheme(data.profile.active_theme);
+            if (data.profile.active_avatar) setActiveAvatar(data.profile.active_avatar);
+          }
           fetchUserProfile(user.id, token);
         } catch (e) {
           console.error('ensure_profile failed', e);

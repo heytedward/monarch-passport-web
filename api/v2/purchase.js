@@ -5,6 +5,7 @@ if (process.env.NODE_ENV !== 'production') {
 import { createClient } from '@supabase/supabase-js';
 import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST } from './_ascension.js';
 import { avatarSvg } from './_avatarSvg.js';
+import { verifyPrivyToken } from './_auth.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -225,33 +226,42 @@ export default async function handler(req, res) {
   try {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Ensure a profile row exists (called on login). This MUST run before the
-    // identity check below, which requires the row to already exist -- without
-    // it, a freshly logged-in user could never do anything. Creating an empty
-    // profile for the claimed id is harmless (0 balance, no assets); the real
-    // identity verification still gates every value-transfer action below.
-    if (action === 'ensure_profile') {
-      const { error } = await admin
-        .from('profiles')
-        .upsert({ id: userId, wngs_balance: 0 }, { onConflict: 'id', ignoreDuplicates: true });
-      if (error) throw error;
-      return res.status(200).json({ success: true, ensured: true });
+    // Verify the Privy token server-side and confirm it matches the claimed
+    // user. Supabase can't validate Privy tokens, so this is the real identity
+    // check; everything below uses the service role.
+    const verifiedUserId = await verifyPrivyToken(accessToken);
+    if (!verifiedUserId || verifiedUserId !== userId) {
+      return res.status(401).json({ error: 'ACCESS_DENIED // IDENTITY_VERIFICATION_FAILED' });
     }
 
-    // Verify the caller really is userId via their own session token (RLS
-    // scopes this read to the caller, so it fails for a forged userId).
-    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    });
+    // --- reads (return the user's own data; the client's RLS reads are blocked) ---
+    if (action === 'ensure_profile') {
+      await admin.from('profiles').upsert(
+        { id: userId, wngs_balance: 0 }, { onConflict: 'id', ignoreDuplicates: true }
+      );
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('wngs_balance, active_theme, active_avatar, total_taps, current_stamina, max_stamina, last_stamina_regen')
+        .eq('id', userId)
+        .maybeSingle();
+      return res.status(200).json({ success: true, profile });
+    }
 
-    const { data: ownProfile, error: identityError } = await userClient
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .single();
+    if (action === 'get_owned') {
+      const { data } = await admin
+        .from('user_assets')
+        .select('id, product_id, mint_address, mint_status, products(*)')
+        .eq('user_id', userId);
+      return res.status(200).json({ success: true, assets: data || [] });
+    }
 
-    if (identityError || !ownProfile) {
-      return res.status(401).json({ error: 'ACCESS_DENIED // IDENTITY_VERIFICATION_FAILED' });
+    if (action === 'get_transactions') {
+      const { data } = await admin
+        .from('transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      return res.status(200).json({ success: true, transactions: data || [] });
     }
 
     // Dispatch ASCENSION actions (identity already verified above).

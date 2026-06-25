@@ -3,6 +3,7 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
+import { verifyPrivyToken } from './_auth.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -30,17 +31,8 @@ export default async function handler(req, res) {
     // 1. Verify the caller really owns this identity by reading their own
     // profile through their own session token (RLS enforces auth.uid() = id,
     // so this fails for a forged userId regardless of what's passed in).
-    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    });
-
-    const { data: ownProfile, error: identityError } = await userClient
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .single();
-
-    if (identityError || !ownProfile) {
+    const verifiedUserId = await verifyPrivyToken(accessToken);
+    if (!verifiedUserId || verifiedUserId !== userId) {
       return res.status(401).json({ error: 'ACCESS_DENIED // IDENTITY_VERIFICATION_FAILED' });
     }
 

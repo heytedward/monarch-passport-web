@@ -4,6 +4,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 import { createClient } from '@supabase/supabase-js';
 import { addSeasonXp, getActiveSeason, setSeasonPremium, XP_ACTIVATION } from './_ascension.js';
+import { verifyPrivyToken } from './_auth.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -30,19 +31,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Verify the caller really is ownerId via their own session token (RLS
-    // enforces auth.uid() = id, so this fails for a forged ownerId).
-    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    });
-
-    const { data: ownProfile, error: identityError } = await userClient
-      .from('profiles')
-      .select('id')
-      .eq('id', ownerId)
-      .single();
-
-    if (identityError || !ownProfile) {
+    // Verify the Privy token server-side and confirm it matches the claimed
+    // owner (Supabase can't validate Privy tokens).
+    const verifiedUserId = await verifyPrivyToken(accessToken);
+    if (!verifiedUserId || verifiedUserId !== ownerId) {
       return res.status(401).json({ error: 'ACCESS_DENIED // IDENTITY_VERIFICATION_FAILED' });
     }
 

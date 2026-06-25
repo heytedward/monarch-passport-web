@@ -30,7 +30,7 @@ import { PiShoppingBagFill, PiCreditCardFill, PiCubeFill } from 'react-icons/pi'
 import { Logo } from '../components/Logo'
 import { MdFilterList, MdRefresh, MdClose } from 'react-icons/md'
 import { motion } from 'framer-motion'
-import { supabase, authedClient } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
 import { usePrivy } from '@privy-io/react-auth'
 
@@ -350,13 +350,14 @@ const Shop = () => {
         return;
       }
       const token = await getAccessToken();
-      const { data, error } = await authedClient(token)
-        .from('user_assets')
-        .select('product_id')
-        .eq('user_id', user.id);
-
-      if (!error && data) {
-        setOwnedProductIds(new Set(data.map((a: any) => a.product_id)));
+      const res = await fetch('/api/v2/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId: user.id, action: 'get_owned' }),
+      });
+      const data = await res.json().catch(() => null);
+      if (data?.assets) {
+        setOwnedProductIds(new Set(data.assets.map((a: any) => a.product_id)));
       }
     };
     fetchOwnedAssets();

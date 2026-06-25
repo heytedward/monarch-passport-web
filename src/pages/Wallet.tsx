@@ -16,7 +16,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MdOutlineElectricBolt, MdHistory, MdCreditCard, MdTrendingUp } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
-import { authedClient } from '../lib/supabase'
 import useStore from '../store/useStore'
 
 const truncateAddress = (addr?: string) => {
@@ -43,14 +42,14 @@ const Wallet = () => {
       setIsTransLoading(true);
       try {
         const token = await getAccessToken();
-        const { data, error } = await authedClient(token)
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (!error && data) {
-          setTransactions(data);
+        const res = await fetch('/api/v2/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ userId: user.id, action: 'get_transactions' }),
+        });
+        const data = await res.json().catch(() => null);
+        if (data?.transactions) {
+          setTransactions(data.transactions);
         }
       } catch (err) {
         console.error('Error fetching transactions:', err);

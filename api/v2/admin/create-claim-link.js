@@ -4,6 +4,7 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
+import { verifyPrivyToken } from '../_auth.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -29,23 +30,15 @@ async function isAuthorizedAdmin(req, claimedAdminId) {
 
   const authHeader = req.headers.authorization;
   const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!accessToken || !claimedAdminId || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  if (!accessToken || !claimedAdminId) {
     return false;
   }
   if (!ADMIN_PRIVY_IDS.includes(String(claimedAdminId).toLowerCase())) {
     return false;
   }
 
-  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
-  const { data: ownProfile, error } = await userClient
-    .from('profiles')
-    .select('id')
-    .eq('id', claimedAdminId)
-    .single();
-
-  return !error && !!ownProfile;
+  const verifiedUserId = await verifyPrivyToken(accessToken);
+  return !!verifiedUserId && verifiedUserId === claimedAdminId;
 }
 
 export default async function handler(req, res) {

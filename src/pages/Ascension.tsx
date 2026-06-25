@@ -5,7 +5,7 @@ import {
 import { useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { MdBolt, MdRefresh } from 'react-icons/md'
-import { supabase, authedClient } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
 import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST } from '../lib/ascension'
 
@@ -51,10 +51,17 @@ const Ascension = () => {
       setSeason(seasonRow as Season)
 
       const token = await getAccessToken()
-      const [{ data: prog }, { data: rw }, { data: prof }, { data: prods }] = await Promise.all([
+      // Profile/stamina via service-role endpoint (RLS read is blocked).
+      const profRes = await fetch('/api/v2/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
+      })
+      const prof = (await profRes.json().catch(() => null))?.profile || null
+
+      const [{ data: prog }, { data: rw }, { data: prods }] = await Promise.all([
         supabase.from('user_season_progress').select('*').eq('user_id', user.id).eq('season_id', seasonRow.id).maybeSingle(),
         supabase.from('season_rewards').select('*').eq('season_id', seasonRow.id).order('level', { ascending: true }),
-        authedClient(token).from('profiles').select('current_stamina, max_stamina, last_stamina_regen, wngs_balance').eq('id', user.id).maybeSingle(),
         supabase.from('products').select('id, name'),
       ])
 
