@@ -19,10 +19,11 @@ import { usePrivy } from '@privy-io/react-auth'
 import { supabase } from '../lib/supabase'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import useStore from '../store/useStore'
+import { effectiveStamina, DEFAULT_MAX_STAMINA } from '../lib/ascension'
 
 const Profile = () => {
   const navigate = useNavigate()
-  const { user } = usePrivy()
+  const { user, getAccessToken } = usePrivy()
   
   const solanaWallet = user?.linkedAccounts?.find(
     (account: any) => account.type === 'wallet' && account.walletClientType === 'privy' && account.connectorType === 'embedded'
@@ -44,6 +45,8 @@ const Profile = () => {
   const [season, setSeason] = useState<any>(null);
   const [progress, setProgress] = useState<any>(null);
   const [ascLoading, setAscLoading] = useState(true);
+  const [stamina, setStamina] = useState(0);
+  const [maxStamina, setMaxStamina] = useState(DEFAULT_MAX_STAMINA);
 
   const handleCopyLink = () => {
     // Generate the unique link using the user's Privy ID or wallet
@@ -80,6 +83,23 @@ const Profile = () => {
           .eq('user_id', user.id).eq('season_id', s.id).maybeSingle();
         setProgress(p);
       }
+      // Stamina (for the social-miner footer) comes from a service-role read.
+      if (user?.id) {
+        try {
+          const token = await getAccessToken();
+          const res = await fetch('/api/v2/purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
+          });
+          const data = await res.json().catch(() => null);
+          if (data?.profile) {
+            const max = data.profile.max_stamina || DEFAULT_MAX_STAMINA;
+            setMaxStamina(max);
+            setStamina(effectiveStamina(data.profile.current_stamina, data.profile.last_stamina_regen, max));
+          }
+        } catch { /* ignore */ }
+      }
       setAscLoading(false);
     };
     loadAscension();
@@ -92,9 +112,9 @@ const Profile = () => {
 
   const stats = [
     { label: 'WNGS_BALANCE', value: isLoading ? "..." : wngsBalance.toString() },
-    { label: 'QUESTS_CLEARED', value: '1/4' },
+    { label: 'QUESTS_CLEARED', value: `0/${activeQuests.length}` },
     { label: 'TOTAL_TAPS', value: isLoading ? "..." : totalTaps.toString() },
-    { label: 'ARTIFACT_LEVEL', value: '01' },
+    { label: 'ARTIFACT_LEVEL', value: String(progress?.level ?? 0).padStart(2, '0') },
   ];
 
   const renderTabContent = () => {
@@ -294,7 +314,7 @@ const Profile = () => {
         
         <VStack align="stretch" spacing={4}>
           <Text fontSize="10px" color={mutedText} fontFamily="monospace">
-            SHARE YOUR DIGITAL ARTIFACT LINK TO MINE WNGS. LIMIT: 3 SUCCESSFUL MINES PER DAY.
+            SHARE YOUR SOCIAL LINK TO MINE XP &amp; WNGS. EACH MINE COSTS 1 STAMINA; RECHARGE WITH WNGS.
           </Text>
           
           <Button
@@ -315,8 +335,8 @@ const Profile = () => {
 
           <HStack spacing={4} pt={2}>
             <VStack align="start" spacing={0} flex={1} borderLeft="2px solid" borderColor="var(--monarch-accent)" pl={3}>
-              <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">SOCIAL_MINES</Text>
-              <Text fontSize="12px" fontWeight="900" color={text} fontFamily="monospace">3/3</Text>
+              <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">STAMINA</Text>
+              <Text fontSize="12px" fontWeight="900" color={text} fontFamily="monospace">{stamina}/{maxStamina}</Text>
             </VStack>
             <VStack align="start" spacing={0} flex={1} borderLeft="2px solid" borderColor="gray.600" pl={3}>
               <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">AGENT_BANDWIDTH</Text>
