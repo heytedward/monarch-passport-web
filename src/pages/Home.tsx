@@ -104,7 +104,7 @@ const PostCard = ({ post, text, mutedText, border, accent }: {
              <HStack spacing={2}>
                 <Icon as={MdPerson} color={accent} boxSize="12px" />
                 <Text fontSize="9px" fontWeight="900" color="white" fontFamily="monospace">
-                  // TRANSMITTED_BY: {post.author.toUpperCase()}
+                  // TRANSMITTED_BY: {post.author?.toUpperCase() || 'SYSTEM'}
                 </Text>
              </HStack>
           </Box>

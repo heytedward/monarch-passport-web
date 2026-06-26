@@ -1,9 +1,10 @@
 import React from 'react'
 import { ChakraProvider, Box, Center, Spinner, useColorModeValue } from '@chakra-ui/react'
 import theme from './theme'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { PrivyProvider, usePrivy } from '@privy-io/react-auth'
 import Navbar from './components/Navbar'
+import ErrorBoundary from './components/ErrorBoundary'
 import Home from './pages/Home'
 import Passport from './pages/Passport'
 import Rewards from './pages/Rewards'
@@ -46,6 +47,35 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+// Routes wrapped in an ErrorBoundary keyed by pathname: if a page throws during
+// render, the boundary shows a fault screen instead of a blank page, and keying
+// on the path remounts (clears) it when the user navigates elsewhere.
+function AppRoutes() {
+  const location = useLocation();
+  return (
+    <ErrorBoundary key={location.pathname}>
+      <Routes location={location}>
+        <Route path="/" element={<Landing />} />
+        <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+        <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
+        <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
+        <Route path="/passport" element={<ProtectedRoute><Passport /></ProtectedRoute>} />
+        <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
+        <Route path="/scan" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
+        <Route path="/closet" element={<ProtectedRoute><Closet /></ProtectedRoute>} />
+        <Route path="/ascension" element={<ProtectedRoute><Ascension /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/v/:id" element={<Verify />} />
+        <Route path="/recruit" element={<Recruit />} />
+        <Route path="/claim/:id" element={<Claim />} />
+        <Route path="/social/:userId" element={<Social />} />
+        <Route path="/command-center" element={<CommandCenter />} />
+      </Routes>
+    </ErrorBoundary>
+  );
 }
 
 function AppContent() {
@@ -98,24 +128,7 @@ function AppContent() {
         {/* Phone-tight frame: the whole app is a centered ~430px column. */}
         <Box as="main" maxW="430px" mx="auto" minH="100vh" position="relative" pt="0" px={0} pb="80px">
           <Navbar />
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
-            <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
-            <Route path="/passport" element={<ProtectedRoute><Passport /></ProtectedRoute>} />
-            <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
-            <Route path="/scan" element={<ProtectedRoute><Scanner /></ProtectedRoute>} />
-            <Route path="/closet" element={<ProtectedRoute><Closet /></ProtectedRoute>} />
-            <Route path="/ascension" element={<ProtectedRoute><Ascension /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-            <Route path="/v/:id" element={<Verify />} />
-            <Route path="/recruit" element={<Recruit />} />
-            <Route path="/claim/:id" element={<Claim />} />
-            <Route path="/social/:userId" element={<Social />} />
-            <Route path="/command-center" element={<CommandCenter />} />
-          </Routes>
+          <AppRoutes />
         </Box>
       </Box>
     </Router>
@@ -171,7 +184,9 @@ function App() {
           .de-stijl-heading { font-family: 'Archivo Black', sans-serif !important; }
           .de-stijl-body { font-family: 'Space Mono', monospace !important; }
         `}</style>
-        <AppContent />
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
       </ChakraProvider>
     </PrivyProvider>
   )
