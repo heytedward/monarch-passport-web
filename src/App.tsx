@@ -42,8 +42,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!devBypass && (!authenticated || !identityType)) {
+  // Not logged in -> back to Landing.
+  if (!devBypass && !authenticated) {
     return <Navigate to="/" replace />;
+  }
+
+  // Logged in but identityType not set yet (e.g. session restore, where Privy's
+  // onSuccess never fires, or after storage was cleared). The auth effect in
+  // AppContent sets it momentarily; show a spinner meanwhile instead of
+  // redirecting to "/", which would bounce off Landing's own
+  // "authenticated -> /home" redirect into a history.replaceState loop.
+  if (!devBypass && !identityType) {
+    return (
+      <Center h="100vh" bg={bgColor}>
+        <Spinner color="#FFB000" size="xl" />
+      </Center>
+    );
   }
 
   return <>{children}</>;
@@ -80,13 +94,19 @@ function AppRoutes() {
 
 function AppContent() {
   const { user, ready, authenticated, getAccessToken } = usePrivy();
-  const { activeTheme, activeThemeAccent, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent } = useStore();
+  const { activeTheme, activeThemeAccent, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent } = useStore();
 
   const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
   const bgColor = useColorModeValue("gray.50", "black");
 
   React.useEffect(() => {
     if (ready && authenticated && user?.id) {
+      // Guarantee an identityType for any authenticated session. Privy's
+      // onSuccess only fires on interactive login, not on session restore or
+      // after storage was cleared -- without this, an authenticated user with
+      // identityType=null bounces between Landing and ProtectedRoute in a
+      // history.replaceState loop (browser throttles it -> render crash).
+      if (!identityType) setIdentityType('HUMAN');
       (async () => {
         // Make sure a profile row exists before anything reads/writes it.
         // Server endpoints (purchase/claim/tap/equip) verify identity by
@@ -113,7 +133,7 @@ function AppContent() {
         }
       })();
     }
-  }, [ready, authenticated, user?.id, getAccessToken, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent]);
+  }, [ready, authenticated, user?.id, getAccessToken, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent]);
 
   return (
     <Router>
