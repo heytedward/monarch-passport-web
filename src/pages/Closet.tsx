@@ -230,6 +230,7 @@ const Closet = () => {
   const [digitalGarments, setDigitalGarments] = useState<any[]>([]);
   const [isGarmentsLoading, setIsGarmentsLoading] = useState(false);
   const [isMinting, setIsMinting] = useState(false);
+  const [seasonCollection, setSeasonCollection] = useState<{ season: any; total: number; owned: number; items: any[] } | null>(null);
 
   // The user's embedded Solana wallet (mint recipient).
   const solanaWallet =
@@ -440,6 +441,25 @@ const Closet = () => {
 
     fetchOwnedAssets();
   }, [user, activeTheme, activeAvatar, brandAccent]);
+
+  useEffect(() => {
+    const fetchSeasonCollection = async () => {
+      if (!user?.id) return;
+      try {
+        const token = await getAccessToken();
+        const res = await fetch('/api/v2/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ userId: user.id, action: 'get_season_artifacts' }),
+        });
+        const data = await res.json().catch(() => null);
+        if (data?.success) {
+          setSeasonCollection({ season: data.season, total: data.total, owned: data.owned, items: data.items || [] });
+        }
+      } catch { /* non-critical */ }
+    };
+    fetchSeasonCollection();
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchDigitalGarments = async () => {
@@ -696,6 +716,82 @@ const Closet = () => {
             <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">VAULT_SYNC: {isCurrentLoading ? 'PENDING' : 'ONLINE'}</Text>
           </Flex>
         </Box>
+
+        {/* Season Collection Tracker (VAULT mode only) */}
+        {mode === 'physical' && seasonCollection && seasonCollection.total > 0 && (
+          <Box px={6} pb={4}>
+            <Box border="1px solid" borderColor={text} bg={bg}>
+              {/* Header + progress bar */}
+              <Box p={4} borderBottom="1px solid" borderColor={border}>
+                <Flex justify="space-between" align="center" mb={2}>
+                  <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">
+                    SEASON_{seasonCollection.season?.code || '01'}_COLLECTION
+                  </Text>
+                  <Text
+                    fontSize="8px"
+                    fontWeight="900"
+                    color={seasonCollection.owned >= seasonCollection.total ? 'var(--monarch-accent)' : text}
+                    fontFamily="monospace"
+                  >
+                    {seasonCollection.owned}/{seasonCollection.total}
+                  </Text>
+                </Flex>
+                <Box w="100%" h="4px" border="1px solid" borderColor={text} bg="transparent" p="1px">
+                  <Box
+                    h="100%"
+                    bg={seasonCollection.owned >= seasonCollection.total ? 'var(--monarch-accent)' : text}
+                    w={`${Math.min(100, Math.round((seasonCollection.owned / seasonCollection.total) * 100))}%`}
+                    transition="width 0.4s"
+                  />
+                </Box>
+              </Box>
+
+              {/* Per-item rows */}
+              <VStack spacing={0} align="stretch" divider={<Box h="1px" bg={border} />}>
+                {seasonCollection.items.map((item: any) => (
+                  <Flex key={item.id} px={4} py={3} justify="space-between" align="center">
+                    <HStack spacing={2}>
+                      <Box
+                        w="6px"
+                        h="6px"
+                        borderRadius="full"
+                        bg={item.owned ? 'var(--monarch-accent)' : border}
+                        flexShrink={0}
+                      />
+                      <Text
+                        fontSize="9px"
+                        fontWeight="900"
+                        fontFamily="monospace"
+                        color={item.owned ? text : mutedText}
+                      >
+                        {item.name.toUpperCase()}
+                        {item.type === 'nfc' && (
+                          <Text as="span" fontSize="7px" color={mutedText}> [NFC]</Text>
+                        )}
+                      </Text>
+                    </HStack>
+                    <Text
+                      fontSize="7px"
+                      fontWeight="900"
+                      fontFamily="monospace"
+                      color={item.owned ? 'var(--monarch-accent)' : mutedText}
+                    >
+                      {item.owned ? '✓' : '—'}
+                    </Text>
+                  </Flex>
+                ))}
+              </VStack>
+
+              {seasonCollection.owned >= seasonCollection.total && (
+                <Box borderTop="1px solid" borderColor={border} px={4} py={2}>
+                  <Text fontSize="7px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace" textAlign="center" letterSpacing="0.1em">
+                    ✓ COLLECTION_COMPLETE
+                  </Text>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        )}
 
         {/* Grid Section */}
         <Box p={6}>

@@ -9,6 +9,7 @@ import {
   XP_SOCIAL_MINE,
   WNGS_SOCIAL_MINE,
 } from './_ascension.js';
+import { recordQuestAction } from './_quests.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -91,6 +92,14 @@ export default async function handler(req, res) {
       transaction_type: 'SOCIAL_MINE',
       metadata: { stamina_remaining: newStored },
     });
+
+    // Each successful mine advances the ACHIEVE_5_SOCIAL_SCANS quest (counts
+    // SOCIAL_MINE transactions). Best-effort -- never fail the mine over it.
+    try {
+      await recordQuestAction(admin, userId, 'ACHIEVE_5_SOCIAL_SCANS');
+    } catch (qErr) {
+      console.error('SOCIAL_MINE_QUEST_WARN:', qErr);
+    }
 
     return res.status(200).json({
       success: true,

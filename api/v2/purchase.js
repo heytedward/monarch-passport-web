@@ -3,9 +3,11 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
-import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST } from './_ascension.js';
+import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST, getActiveSeason } from './_ascension.js';
 import { avatarSvg } from './_avatarSvg.js';
 import { verifyPrivyToken } from './_auth.js';
+import { recordQuestAction } from './_quests.js';
+import { checkAndAwardStamps, isFullCollectionComplete } from './_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -239,6 +241,13 @@ export default async function handler(req, res) {
       await admin.from('profiles').upsert(
         { id: userId, wngs_balance: 0 }, { onConflict: 'id', ignoreDuplicates: true }
       );
+      // Auto-grant the SYSTEM_LOGIN quest now that the profile row exists.
+      // Best-effort -- never fail profile bootstrap over quest bookkeeping.
+      try {
+        await recordQuestAction(admin, userId, 'SYSTEM_LOGIN');
+      } catch (qErr) {
+        console.error('QUEST_LOGIN_WARN:', qErr);
+      }
       const { data: profile } = await admin
         .from('profiles')
         .select('wngs_balance, active_theme, active_avatar, total_taps, current_stamina, max_stamina, last_stamina_regen')
@@ -273,6 +282,154 @@ export default async function handler(req, res) {
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       return res.status(200).json({ success: true, transactions: data || [] });
+    }
+
+    if (action === 'get_quests') {
+      // Active quests + this user's progress, both via service role so the
+      // browser's RLS-blocked per-user read of user_quests isn't an issue.
+      const [{ data: quests }, { data: userQuests }] = await Promise.all([
+        admin.from('quests').select('*').eq('is_active', true).order('created_at', { ascending: true }),
+        admin.from('user_quests').select('quest_id, status, progress, target').eq('user_id', userId),
+      ]);
+      return res.status(200).json({ success: true, quests: quests || [], userQuests: userQuests || [] });
+    }
+
+    // Stamps for the active season (+ cross-season), with this user's earned
+    // state merged. Resilient: if the stamps tables don't exist yet, returns
+    // an empty list rather than erroring (feature stays dark until seeded).
+    if (action === 'get_stamps') {
+      const season = await getActiveSeason(admin);
+      let q = admin.from('stamps').select('*').order('sort_order', { ascending: true });
+      q = season ? q.or(`season_id.eq.${season.id},season_id.is.null`) : q.is('season_id', null);
+      const { data: stamps } = await q;
+      const { data: userStamps } = await admin
+        .from('user_stamps').select('stamp_id, earned_at').eq('user_id', userId);
+      const earned = {};
+      (userStamps || []).forEach((r) => { earned[r.stamp_id] = r.earned_at; });
+      const result = (stamps || [])
+        .map((s) => ({ ...s, earned: !!earned[s.id], earned_at: earned[s.id] || null }))
+        .filter((s) => !s.is_hidden || s.earned); // hidden stamps only show once earned
+      return res.status(200).json({ success: true, stamps: result, season: season || null });
+    }
+
+    // The active season's physical set (NFC season artifacts + collection_items)
+    // with how many this user owns -- powers the Closet collection tracker.
+    if (action === 'get_season_artifacts') {
+      const season = await getActiveSeason(admin);
+      if (!season) return res.status(200).json({ success: true, season: null, total: 0, owned: 0, items: [] });
+      const seasonCode = season.code || season.title;
+      const [{ data: nfc }, { data: items }] = await Promise.all([
+        admin.from('artifacts').select('tag_id, name, owner_id').eq('is_season_artifact', true).eq('season', seasonCode),
+        admin.from('collection_items').select('id, name, image_url, sort_order').eq('season_id', season.id).order('sort_order', { ascending: true }),
+      ]);
+      const itemIds = (items || []).map((i) => i.id);
+      let ownedItemIds = new Set();
+      if (itemIds.length) {
+        const { data: uci } = await admin
+          .from('user_collection_items').select('item_id').eq('user_id', userId).in('item_id', itemIds);
+        ownedItemIds = new Set((uci || []).map((r) => r.item_id));
+      }
+      const all = [
+        ...(nfc || []).map((a) => ({ type: 'NFC', name: a.name || a.tag_id, image_url: null, owned: a.owner_id === userId })),
+        ...(items || []).map((i) => ({ type: 'ITEM', name: i.name, image_url: i.image_url, owned: ownedItemIds.has(i.id) })),
+      ];
+      return res.status(200).json({
+        success: true, season, total: all.length, owned: all.filter((x) => x.owned).length, items: all,
+      });
+    }
+
+    // Register a physical collection item from its QR code. Idempotent via the
+    // (user_id,item_id) unique constraint; awards the full-collection stamp.
+    if (action === 'collect') {
+      const { code } = req.body || {};
+      if (!code) return res.status(400).json({ error: 'MISSING_PAYLOAD_DATA' });
+      const { data: item } = await admin
+        .from('collection_items')
+        .select('id, name, description, season_id, image_url')
+        .eq('item_code', String(code).trim().toUpperCase())
+        .maybeSingle();
+      if (!item) return res.status(404).json({ error: 'INVALID_ITEM_CODE' });
+      await admin
+        .from('user_collection_items')
+        .upsert({ user_id: userId, item_id: item.id }, { onConflict: 'user_id,item_id', ignoreDuplicates: true });
+      try {
+        if (await isFullCollectionComplete(admin, userId, item.season_id)) {
+          await checkAndAwardStamps(admin, userId, 'FULL_SEASON_COLLECTION');
+        }
+      } catch (e) { console.error('COLLECT_STAMP_WARN:', e); }
+      return res.status(200).json({ success: true, item: { name: item.name, description: item.description, image_url: item.image_url } });
+    }
+
+    if (action === 'get_season_artifacts') {
+      // Returns the active season's full collection: the single NFC artifact +
+      // all collection_items, each with claimed/owned status for this user.
+      const { data: season } = await admin
+        .from('seasons')
+        .select('*')
+        .eq('is_active', true)
+        .order('start_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!season) {
+        return res.status(200).json({ success: true, season: null, items: [], total: 0, owned: 0 });
+      }
+
+      const seasonCode = season.code || season.name;
+
+      // NFC artifact(s) for the season.
+      const { data: nfcArtifacts } = await admin
+        .from('artifacts')
+        .select('tag_id, owner_id')
+        .eq('is_season_artifact', true)
+        .eq('season', seasonCode);
+
+      // Regular collection items + which ones the user has claimed.
+      const { data: collectionItems } = await admin
+        .from('collection_items')
+        .select('id, name, description, image_url, sort_order')
+        .eq('season_id', season.id)
+        .order('sort_order', { ascending: true });
+
+      const itemIds = (collectionItems || []).map((i) => i.id);
+      let claimedSet = new Set();
+      if (itemIds.length > 0) {
+        const { data: claimed } = await admin
+          .from('user_collection_items')
+          .select('item_id')
+          .eq('user_id', userId)
+          .in('item_id', itemIds);
+        claimedSet = new Set((claimed || []).map((r) => r.item_id));
+      }
+
+      // Build unified item list for the Closet tracker.
+      const nfcItems = (nfcArtifacts || []).map((a) => ({
+        id: a.tag_id,
+        name: 'SEASON ARTIFACT',
+        type: 'nfc',
+        owned: a.owner_id === userId,
+      }));
+
+      const regularItems = (collectionItems || []).map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        image_url: item.image_url,
+        type: 'collection',
+        owned: claimedSet.has(item.id),
+      }));
+
+      const items = [...nfcItems, ...regularItems];
+      const total = items.length;
+      const owned = items.filter((i) => i.owned).length;
+
+      return res.status(200).json({
+        success: true,
+        season: { code: seasonCode, name: season.name, id: season.id },
+        items,
+        total,
+        owned,
+      });
     }
 
     // Dispatch ASCENSION actions (identity already verified above).

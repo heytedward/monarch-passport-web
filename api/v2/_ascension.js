@@ -1,6 +1,7 @@
 // Shared ASCENSION (battlepass) helpers. Underscore prefix => Vercel does NOT
 // treat this as a serverless function, so it doesn't count toward the cap.
 // Imported by tap-reward.js, claim.js, log-social-scan.js, purchase.js.
+import { checkAndAwardStamps } from './_stamps.js';
 //
 // Client mirrors the user-facing constants in src/lib/ascension.ts -- keep in sync.
 
@@ -74,6 +75,7 @@ export async function addSeasonXp(supabase, userId, amount) {
   const newXp = Math.min(maxXp, (existing?.xp || 0) + amount);
   const newLevel = Math.min(season.level_count, Math.floor(newXp / season.xp_per_level));
 
+  let result;
   if (existing) {
     const { data } = await supabase
       .from('user_season_progress')
@@ -81,14 +83,27 @@ export async function addSeasonXp(supabase, userId, amount) {
       .eq('id', existing.id)
       .select()
       .single();
-    return data;
+    result = data;
+  } else {
+    const { data } = await supabase
+      .from('user_season_progress')
+      .insert({ user_id: userId, season_id: season.id, xp: newXp, level: newLevel })
+      .select()
+      .single();
+    result = data;
   }
-  const { data } = await supabase
-    .from('user_season_progress')
-    .insert({ user_id: userId, season_id: season.id, xp: newXp, level: newLevel })
-    .select()
-    .single();
-  return data;
+
+  // STAMPS: check if user hit an ASCENSION_LEVEL stamp threshold. Best-effort.
+  const prevLevel = existing?.level || 0;
+  if (newLevel > prevLevel) {
+    try {
+      await checkAndAwardStamps(supabase, userId, 'ASCENSION_LEVEL', newLevel);
+    } catch (stampErr) {
+      console.error('ASCENSION_STAMP_WARN:', stampErr);
+    }
+  }
+
+  return result;
 }
 
 // Flag a user as premium for a season (creating the progress row if needed).

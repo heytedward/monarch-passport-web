@@ -5,6 +5,8 @@ if (process.env.NODE_ENV !== 'production') {
 import { createClient } from '@supabase/supabase-js';
 import { addSeasonXp, getActiveSeason, setSeasonPremium, XP_ACTIVATION } from './_ascension.js';
 import { verifyPrivyToken } from './_auth.js';
+import { recordQuestAction } from './_quests.js';
+import { checkAndAwardStamps, isFullCollectionComplete } from './_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -116,6 +118,37 @@ export default async function handler(req, res) {
       }
     } catch (xpErr) {
       console.error('CLAIM_XP_WARN:', xpErr);
+    }
+
+    // Activating an artifact is a physical-to-digital NFC scan -> advances
+    // ACHIEVE_1_NFC_SCAN. Best-effort.
+    try {
+      await recordQuestAction(admin, ownerId, 'ACHIEVE_1_NFC_SCAN');
+    } catch (qErr) {
+      console.error('CLAIM_QUEST_WARN:', qErr);
+    }
+
+    // STAMPS: first-ever artifact claim awards the FIRST_TAP stamp. Best-effort.
+    if ((profile.total_taps || 0) === 0) {
+      try {
+        await checkAndAwardStamps(admin, ownerId, 'FIRST_TAP');
+      } catch (stampErr) {
+        console.error('CLAIM_STAMP_WARN:', stampErr);
+      }
+    }
+
+    // STAMPS: check if user now owns the full season collection (NFC artifact
+    // + all collection_items). Best-effort.
+    try {
+      const season = await getActiveSeason(admin);
+      if (season) {
+        const complete = await isFullCollectionComplete(admin, ownerId, season.id);
+        if (complete) {
+          await checkAndAwardStamps(admin, ownerId, 'FULL_SEASON_COLLECTION');
+        }
+      }
+    } catch (stampErr) {
+      console.error('CLAIM_COLLECTION_STAMP_WARN:', stampErr);
     }
 
     return res.status(200).json({ success: true, artifact: updated, awarded: bonus, premiumUnlocked: isPremiumUnlocked });

@@ -5,6 +5,8 @@ if (process.env.NODE_ENV !== 'production') {
 import { createClient } from '@supabase/supabase-js';
 import { addSeasonXp, XP_TAP } from './_ascension.js';
 import { verifyPrivyToken } from './_auth.js';
+import { recordQuestAction } from './_quests.js';
+import { checkAndAwardStamps } from './_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -117,6 +119,21 @@ export default async function handler(req, res) {
       xpProgress = await addSeasonXp(admin, userId, XP_TAP);
     } catch (xpErr) {
       console.error('TAP_REWARD_XP_WARN:', xpErr);
+    }
+
+    // A tap is a physical-to-digital NFC scan -> advances ACHIEVE_1_NFC_SCAN.
+    try {
+      await recordQuestAction(admin, userId, 'ACHIEVE_1_NFC_SCAN');
+    } catch (qErr) {
+      console.error('TAP_REWARD_QUEST_WARN:', qErr);
+    }
+
+    // STAMPS: check if user crossed a WNGS milestone. Best-effort.
+    try {
+      const newBalance = (profile.wngs_balance || 0) + reward;
+      await checkAndAwardStamps(admin, userId, 'WNGS_MILESTONE', newBalance);
+    } catch (stampErr) {
+      console.error('TAP_REWARD_STAMP_WARN:', stampErr);
     }
 
     return res.status(200).json({

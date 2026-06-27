@@ -22,6 +22,7 @@ import CommandCenter from './pages/CommandCenter'
 import Verify from './pages/Verify'
 import Social from './pages/Social'
 import Ascension from './pages/Ascension'
+import Collect from './pages/Collect'
 import useStore from './store/useStore'
 
 import { PRIVY_APP_ID } from './config'
@@ -82,6 +83,7 @@ function AppRoutes() {
         <Route path="/ascension" element={<ProtectedRoute><Ascension /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/collect/:code" element={<Collect />} />
         <Route path="/v/:id" element={<Verify />} />
         <Route path="/recruit" element={<Recruit />} />
         <Route path="/claim/:id" element={<Claim />} />

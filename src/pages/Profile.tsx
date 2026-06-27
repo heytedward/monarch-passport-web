@@ -39,14 +39,17 @@ const Profile = () => {
       : '@OPERATOR';
 
   const { wngsBalance, totalTaps, isLoading } = useStore()
-  const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'ASCENSION'>('STATS');
+  const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'ASCENSION' | 'STAMPS'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
+  const [userQuests, setUserQuests] = useState<Record<string, { status: string; progress: number; target: number }>>({});
   const [linkCopied, setLinkCopied] = useState(false);
   const [season, setSeason] = useState<any>(null);
   const [progress, setProgress] = useState<any>(null);
   const [ascLoading, setAscLoading] = useState(true);
   const [stamina, setStamina] = useState(0);
   const [maxStamina, setMaxStamina] = useState(DEFAULT_MAX_STAMINA);
+  const [stamps, setStamps] = useState<any[]>([]);
+  const [stampsLoading, setStampsLoading] = useState(false);
 
   const handleCopyLink = () => {
     // Generate the unique link using the user's Privy ID or wallet
@@ -58,17 +61,29 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchQuests = async () => {
-      const { data, error } = await supabase
-        .from('quests')
-        .select('*')
-        .eq('is_active', true);
-      
-      if (!error && data) {
-        setActiveQuests(data);
-      }
+      if (!user?.id) return;
+      // Service-role read: returns active quests + this user's progress, so the
+      // RLS-blocked per-user read of user_quests isn't an issue.
+      try {
+        const token = await getAccessToken();
+        const res = await fetch('/api/v2/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ userId: user.id, action: 'get_quests' }),
+        });
+        const data = await res.json().catch(() => null);
+        if (data?.success) {
+          setActiveQuests(data.quests || []);
+          const map: Record<string, { status: string; progress: number; target: number }> = {};
+          (data.userQuests || []).forEach((uq: any) => {
+            map[uq.quest_id] = { status: uq.status, progress: uq.progress, target: uq.target };
+          });
+          setUserQuests(map);
+        }
+      } catch { /* leave quests empty on failure */ }
     };
     fetchQuests();
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     const loadAscension = async () => {
@@ -105,14 +120,35 @@ const Profile = () => {
     loadAscension();
   }, [user?.id]);
 
+  useEffect(() => {
+    const fetchStamps = async () => {
+      if (!user?.id) return;
+      setStampsLoading(true);
+      try {
+        const token = await getAccessToken();
+        const res = await fetch('/api/v2/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ userId: user.id, action: 'get_stamps' }),
+        });
+        const data = await res.json().catch(() => null);
+        if (data?.success) setStamps(data.stamps || []);
+      } catch { /* leave stamps empty on failure */ }
+      setStampsLoading(false);
+    };
+    fetchStamps();
+  }, [user?.id]);
+
   const bg = useColorModeValue("white", "black");
   const cardBg = useColorModeValue("gray.50", "gray.900");
   const text = useColorModeValue("black", "white");
   const mutedText = useColorModeValue("gray.600", "whiteAlpha.600");
 
+  const questsCleared = activeQuests.filter((q) => userQuests[q.id]?.status === 'COMPLETED').length;
+
   const stats = [
     { label: 'WNGS_BALANCE', value: isLoading ? "..." : wngsBalance.toString() },
-    { label: 'QUESTS_CLEARED', value: `0/${activeQuests.length}` },
+    { label: 'QUESTS_CLEARED', value: `${questsCleared}/${activeQuests.length}` },
     { label: 'TOTAL_TAPS', value: isLoading ? "..." : totalTaps.toString() },
     { label: 'ARTIFACT_LEVEL', value: String(progress?.level ?? 0).padStart(2, '0') },
   ];
@@ -143,17 +179,32 @@ const Profile = () => {
           <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
             <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">ACTIVE_QUESTS</Text>
             {activeQuests.length > 0 ? (
-              activeQuests.map((quest) => (
-                <HStack key={quest.id} p={4} border={`4px solid ${text}`} justify="space-between" bg={bg}>
-                  <VStack align="start" spacing={0}>
-                    <Text fontSize="xs" fontWeight="900" color={text}>// {quest.title.toUpperCase()}</Text>
-                    <Text fontSize="9px" color={mutedText}>{quest.description}</Text>
-                  </VStack>
-                  <Text fontSize="xs" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
-                    +{quest.reward_wngs} WNGS
-                  </Text>
-                </HStack>
-              ))
+              activeQuests.map((quest) => {
+                const uq = userQuests[quest.id];
+                const cleared = uq?.status === 'COMPLETED';
+                const target = uq?.target ?? 1;
+                const prog = uq?.progress ?? 0;
+                return (
+                  <HStack key={quest.id} p={4} border={`4px solid ${cleared ? 'var(--monarch-accent)' : text}`} justify="space-between" bg={bg} opacity={cleared ? 0.7 : 1}>
+                    <VStack align="start" spacing={0}>
+                      <Text fontSize="xs" fontWeight="900" color={text}>// {quest.title.toUpperCase()}</Text>
+                      <Text fontSize="9px" color={mutedText}>{quest.description}</Text>
+                      {!cleared && target > 1 && (
+                        <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mt={1}>
+                          PROGRESS // {Math.min(prog, target)}/{target}
+                        </Text>
+                      )}
+                    </VStack>
+                    {cleared ? (
+                      <Text fontSize="xs" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">CLEARED</Text>
+                    ) : (
+                      <Text fontSize="xs" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
+                        +{quest.reward_wngs} WNGS
+                      </Text>
+                    )}
+                  </HStack>
+                );
+              })
             ) : (
               <Center p={8}>
                 <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace">
@@ -163,6 +214,64 @@ const Profile = () => {
             )}
           </VStack>
         );
+      case 'STAMPS':
+        return (
+          <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
+            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">SEASONAL_STAMPS</Text>
+            {stampsLoading ? (
+              <Center p={8}><Spinner color="var(--monarch-accent)" /></Center>
+            ) : stamps.length > 0 ? (
+              <SimpleGrid columns={2} spacing={4}>
+                {stamps.map((stamp) => (
+                  <Box
+                    key={stamp.id}
+                    p={4}
+                    border={`4px solid ${stamp.earned ? 'var(--monarch-accent)' : text}`}
+                    bg={bg}
+                    opacity={stamp.earned ? 1 : 0.35}
+                    position="relative"
+                  >
+                    {!stamp.earned && (
+                      <Icon as={MdLock} position="absolute" top={2} right={2} color={mutedText} w={3} h={3} />
+                    )}
+                    <VStack align="start" spacing={1}>
+                      <Text
+                        fontSize="8px"
+                        fontWeight="900"
+                        color={stamp.earned ? 'var(--monarch-accent)' : mutedText}
+                        fontFamily="monospace"
+                      >
+                        {stamp.earned ? '✓ EARNED' : '[ LOCKED ]'}
+                      </Text>
+                      <Text fontSize="xs" fontWeight="900" color={text} fontFamily="monospace" lineHeight="1.2">
+                        {stamp.name.toUpperCase()}
+                      </Text>
+                      {stamp.description && (
+                        <Text fontSize="8px" color={mutedText} fontFamily="monospace" lineHeight="1.4">
+                          {stamp.description}
+                        </Text>
+                      )}
+                      {stamp.earned && stamp.earned_at && (
+                        <Text fontSize="7px" color={mutedText} fontFamily="monospace" mt={1}>
+                          {new Date(stamp.earned_at)
+                            .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                            .toUpperCase()}
+                        </Text>
+                      )}
+                    </VStack>
+                  </Box>
+                ))}
+              </SimpleGrid>
+            ) : (
+              <Center p={8}>
+                <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace">
+                  [ NO_STAMPS_FOUND ]
+                </Text>
+              </Center>
+            )}
+          </VStack>
+        );
+
       case 'ASCENSION': {
         if (ascLoading) {
           return (
@@ -285,7 +394,7 @@ const Profile = () => {
       {/* Tabs */}
       <Box bg={bg} borderY={`4px solid ${text}`}>
         <Flex>
-          {['STATS', 'QUESTS', 'ASCENSION'].map((tab) => (
+          {['STATS', 'QUESTS', 'ASCENSION', 'STAMPS'].map((tab) => (
             <Box 
               key={tab}
               flex={1} 
