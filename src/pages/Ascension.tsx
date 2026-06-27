@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { MdBolt, MdRefresh, MdLock, MdCheck, MdMilitaryTech } from 'react-icons/md'
 import { supabase } from '../lib/supabase'
+import DeStijlAvatar from '../components/DeStijlAvatar'
+import ThemeSwatch from '../components/ThemeSwatch'
 import useStore from '../store/useStore'
 import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST } from '../lib/ascension'
 
@@ -32,7 +34,7 @@ const Ascension = () => {
   const [season, setSeason] = useState<Season | null>(null)
   const [progress, setProgress] = useState<Progress | null>(null)
   const [rewards, setRewards] = useState<Reward[]>([])
-  const [productNames, setProductNames] = useState<Record<string, string>>({})
+  const [productMap, setProductMap] = useState<Record<string, any>>({})
   const [stamina, setStamina] = useState(0)
   const [staminaRaw, setStaminaRaw] = useState<{ s: number; at: string; max: number } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -53,10 +55,10 @@ const Ascension = () => {
 
       const [{ data: rw }, { data: prods }] = await Promise.all([
         supabase.from('season_rewards').select('*').eq('season_id', seasonRow.id).order('level', { ascending: true }),
-        supabase.from('products').select('id, name'),
+        supabase.from('products').select('id, name, category, palette, accent_color, theme_mode'),
       ])
       setRewards((rw || []) as Reward[])
-      if (prods) setProductNames(Object.fromEntries(prods.map((p: any) => [p.id, p.name])))
+      if (prods) setProductMap(Object.fromEntries(prods.map((p: any) => [p.id, p])))
 
       // Per-user progress + stamina only when authenticated.
       if (!user?.id) { setProgress(null); setLoading(false); return }
@@ -136,7 +138,7 @@ const Ascension = () => {
   const rewardLabel = (r: Reward) => {
     if (r.label) return r.label
     if (r.reward_type === 'wngs') return `${r.wngs_amount || 0} WNGS`
-    if (r.product_id && productNames[r.product_id]) return productNames[r.product_id]
+    if (r.product_id && productMap[r.product_id]) return productMap[r.product_id].name
     return r.reward_type.toUpperCase()
   }
 
@@ -178,23 +180,32 @@ const Ascension = () => {
     const locked = r.track === 'premium' && !isPremium
     const isClaimed = claimed.has(r.id)
     const canClaim = reached && !locked && !isClaimed
+    const prod = r.product_id ? productMap[r.product_id] : null
+    const preview = prod && r.reward_type === 'avatar'
+      ? <DeStijlAvatar seed={prod.id} size={26} colors={Array.isArray(prod.palette) ? prod.palette : undefined} />
+      : prod && r.reward_type === 'theme'
+        ? <ThemeSwatch accent={prod.accent_color} mode={prod.theme_mode} size={26} />
+        : null
     return (
       <Flex
-        align="center" justify="space-between" gap={2} minH="34px" px={2} py={1}
+        align="center" justify="space-between" gap={2} minH="38px" px={2} py={1}
         border="1px solid"
         borderColor={canClaim ? accent : isClaimed ? 'whiteAlpha.400' : 'whiteAlpha.200'}
         bg={isClaimed ? 'whiteAlpha.50' : 'transparent'}
         opacity={reached || !locked ? 1 : 0.55}
       >
-        <Box minW={0}>
-          <Text fontSize="6px" fontWeight="900" fontFamily="monospace" letterSpacing="0.12em"
-            color={r.track === 'premium' ? accent : 'whiteAlpha.500'}>
-            {r.track.toUpperCase()}
-          </Text>
-          <Text fontSize="9px" fontWeight="900" color="white" fontFamily="monospace" noOfLines={1}>
-            {rewardLabel(r)}
-          </Text>
-        </Box>
+        <HStack spacing={2} minW={0}>
+          {preview && <Box flexShrink={0} lineHeight={0}>{preview}</Box>}
+          <Box minW={0}>
+            <Text fontSize="6px" fontWeight="900" fontFamily="monospace" letterSpacing="0.12em"
+              color={r.track === 'premium' ? accent : 'whiteAlpha.500'}>
+              {r.track.toUpperCase()}
+            </Text>
+            <Text fontSize="9px" fontWeight="900" color="white" fontFamily="monospace" noOfLines={1}>
+              {rewardLabel(r)}
+            </Text>
+          </Box>
+        </HStack>
         {isClaimed ? (
           <Icon as={MdCheck} color={accent} boxSize="15px" flexShrink={0} />
         ) : canClaim ? (
