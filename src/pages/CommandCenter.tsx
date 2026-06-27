@@ -126,6 +126,20 @@ const CommandCenter: React.FC = () => {
   const monarchYellow = '#FFB000';
   const destructiveRed = '#E53E3E';
 
+  // Load admin data once authorized. MUST run before the early returns below so
+  // the hook count is identical on every render (Rules of Hooks) -- otherwise
+  // the effect is skipped while Privy is resolving and added once it authorizes,
+  // which destabilizes hook order. fetchSeasons is defined later but only called
+  // inside the async callback (post-commit), so it's resolved by then.
+  useEffect(() => {
+    if (!isAuthorized) return;
+    fetchSeasons();
+    supabase.from('products').select('id, name, category')
+      .in('category', ['AVATAR', 'THEME'])
+      .then(({ data }) => setAdminProducts(data || []));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthorized]);
+
   if (!ready) {
     return (
       <Center h="100vh" bg="black">
@@ -403,18 +417,10 @@ const CommandCenter: React.FC = () => {
 
   // --- ASCENSION season control ---
   const fetchSeasons = async () => {
-    const { data } = await supabase.from('seasons').select('*').order('starts_at', { ascending: false });
+    const { data } = await supabase.from('seasons').select('*').order('start_date', { ascending: false });
     setSeasons(data || []);
   };
 
-  useEffect(() => {
-    if (!isAuthorized) return;
-    fetchSeasons();
-    supabase.from('products').select('id, name, category')
-      .in('category', ['AVATAR', 'THEME'])
-      .then(({ data }) => setAdminProducts(data || []));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthorized]);
 
   const seasonForge = async (payload: Record<string, any>) => {
     const token = await getAccessToken();
