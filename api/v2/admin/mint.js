@@ -23,7 +23,11 @@ const RARITY_PRICES = {
 // Admins allowed to call this from the browser (e.g. CommandCenter) via a
 // Privy session token, so the static ADMIN_PASSPHRASE never has to be
 // shipped to client code. Same source CommandCenter's own allowlist reads.
-const ADMIN_PRIVY_IDS = (process.env.VITE_ADMIN_PRIVY_ID || '')
+// Fallback mirrors CommandCenter's client-side default so the server and client
+// agree on who's an admin even when VITE_ADMIN_PRIVY_ID isn't present at
+// function runtime. This is an allowlist, not a secret (security comes from the
+// verified Privy token below). Set VITE_ADMIN_PRIVY_ID in Vercel to override.
+const ADMIN_PRIVY_IDS = (process.env.VITE_ADMIN_PRIVY_ID || 'did:privy:cmjufzcf403jjl70dpyp1mood')
   .split(',')
   .map((id) => id.trim().toLowerCase())
   .filter(Boolean);
