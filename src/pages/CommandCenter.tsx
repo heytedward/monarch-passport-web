@@ -13,6 +13,7 @@ import {
   FormControl,
   FormLabel,
   Select,
+  Textarea,
   useColorModeValue,
   Center,
   useToast,
@@ -42,6 +43,13 @@ const CommandCenter: React.FC = () => {
   const [itemType, setItemType] = useState('CLOTHING');
   const [generatedLink, setGeneratedLink] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // --- MONARCH_TIMES feed broadcast ---
+  const [feedTitle, setFeedTitle] = useState('');
+  const [feedContent, setFeedContent] = useState('');
+  const [feedImageUrl, setFeedImageUrl] = useState('');
+  const [feedAuthor, setFeedAuthor] = useState('PAPILLON');
+  const [isPosting, setIsPosting] = useState(false);
 
   const [mintPrefix, setMintPrefix] = useState('');
   const [mintStartNum, setMintStartNum] = useState('');
@@ -420,6 +428,30 @@ const CommandCenter: React.FC = () => {
     return data;
   };
 
+  const postToFeed = async () => {
+    if (!feedTitle.trim() || !feedContent.trim()) {
+      toast({ title: 'MISSING_DATA', description: 'TITLE + CONTENT REQUIRED', status: 'error' });
+      return;
+    }
+    setIsPosting(true);
+    addLog(`BROADCASTING // ${feedTitle}`);
+    try {
+      // Reuses the admin mint endpoint (kind:'feed_post') -> writes monarch_times.
+      await seasonForge({
+        kind: 'feed_post',
+        title: feedTitle.trim(),
+        content: feedContent.trim(),
+        imageUrl: feedImageUrl.trim() || undefined,
+        author: feedAuthor.trim() || undefined,
+      });
+      toast({ title: 'BROADCAST_LIVE', description: 'Posted to MONARCH_TIMES', status: 'success' });
+      setFeedTitle(''); setFeedContent(''); setFeedImageUrl('');
+    } catch (err: any) {
+      addLog(`BROADCAST_FAILED // ${err.message}`);
+      toast({ title: 'ERROR', description: err.message, status: 'error' });
+    } finally { setIsPosting(false); }
+  };
+
   const createSeason = async () => {
     if (!seasonName) { toast({ title: 'MISSING_DATA', description: 'SEASON_NAME REQUIRED', status: 'error' }); return; }
     setIsSeasonBusy(true);
@@ -481,6 +513,45 @@ const CommandCenter: React.FC = () => {
               [SYSTEM_STATUS: ACTIVE]
             </Text>
           </HStack>
+        </VStack>
+
+        <Divider borderColor={borderColor} />
+
+        {/* MONARCH_TIMES Broadcast Section */}
+        <VStack align="stretch" spacing={6}>
+          <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
+            // MONARCH_TIMES Broadcast
+          </Heading>
+          <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
+            <CardHeader pb={0}>
+              <Heading size="sm" color={monarchYellow}>POST TO FEED</Heading>
+            </CardHeader>
+            <CardBody>
+              <VStack spacing={3} align="stretch">
+                <HStack spacing={2}>
+                  <FormControl isRequired>
+                    <FormLabel fontSize="xs">TITLE</FormLabel>
+                    <Input borderRadius="0" placeholder="SEASON_01 // DROP_LIVE" fontSize="sm" value={feedTitle} onChange={(e) => setFeedTitle(e.target.value)} />
+                  </FormControl>
+                  <FormControl maxW="160px">
+                    <FormLabel fontSize="xs">AUTHOR</FormLabel>
+                    <Input borderRadius="0" placeholder="PAPILLON" fontSize="sm" value={feedAuthor} onChange={(e) => setFeedAuthor(e.target.value)} />
+                  </FormControl>
+                </HStack>
+                <FormControl isRequired>
+                  <FormLabel fontSize="xs">CONTENT</FormLabel>
+                  <Textarea borderRadius="0" placeholder="Transmission body..." fontSize="sm" rows={4} value={feedContent} onChange={(e) => setFeedContent(e.target.value)} />
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs">IMAGE_URL (optional)</FormLabel>
+                  <Input borderRadius="0" placeholder="https://..." fontSize="sm" value={feedImageUrl} onChange={(e) => setFeedImageUrl(e.target.value)} />
+                </FormControl>
+                <Button w="full" bg={monarchYellow} color="black" borderRadius="0" fontWeight="bold" _hover={{ opacity: 0.8 }} onClick={postToFeed} isLoading={isPosting} loadingText="BROADCASTING...">
+                  BROADCAST
+                </Button>
+              </VStack>
+            </CardBody>
+          </Card>
         </VStack>
 
         <Divider borderColor={borderColor} />

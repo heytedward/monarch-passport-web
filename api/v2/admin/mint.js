@@ -237,6 +237,28 @@ async function createClaimLink(body, supabase, res) {
   return res.status(200).json({ success: true });
 }
 
+// Publish a post to the MONARCH_TIMES feed (admin only). Folded here to stay
+// under the function cap. Dispatched by kind: 'feed_post'.
+async function createFeedPost(body, supabase, res) {
+  const { title, content, imageUrl, author } = body;
+  if (!title || !content) {
+    return res.status(400).json({ error: 'title and content are required' });
+  }
+  const { data, error } = await supabase
+    .from('monarch_times')
+    .insert({
+      title,
+      content,
+      image_url: imageUrl || null,
+      author: author || 'PAPILLON',
+      status: 'PUBLISHED',
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return res.status(200).json({ success: true, post: data });
+}
+
 export default async function handler(req, res) {
   // 1. Guard against wrong methods
   if (req.method !== 'POST') {
@@ -270,6 +292,9 @@ export default async function handler(req, res) {
     }
     if (body.kind === 'claim_link') {
       return await createClaimLink(body, supabase, res);
+    }
+    if (body.kind === 'feed_post') {
+      return await createFeedPost(body, supabase, res);
     }
 
     // ---- Artifact batch mint ----

@@ -17,6 +17,13 @@ const NFT_BUCKET = 'nft-assets';
 const SOLANA_RPC = process.env.SOLANA_RPC || 'https://api.devnet.solana.com';
 const SOLANA_CLUSTER = process.env.SOLANA_CLUSTER || 'devnet';
 
+// MONARCH_TIMES feed economy. Boosting/commenting are WNGS sinks; a post is
+// promoted to FEATURED once it accumulates BOOST_FEATURE_THRESHOLD boosts.
+const BOOST_COST = 50;
+const BOOST_FEATURE_THRESHOLD = 20;
+const COMMENT_COST = 10;
+const COMMENT_MAX_LEN = 500;
+
 // Spend WNGS to refill social-mining stamina to full (a net WNGS sink).
 async function rechargeStamina(admin, userId, res) {
   const { data: profile, error } = await admin
@@ -358,6 +365,84 @@ export default async function handler(req, res) {
         }
       } catch (e) { console.error('COLLECT_STAMP_WARN:', e); }
       return res.status(200).json({ success: true, item: { name: item.name, description: item.description, image_url: item.image_url } });
+    }
+
+    // Read comments for a feed post (service role; feed is login-gated anyway).
+    if (action === 'get_comments') {
+      const { postId } = req.body || {};
+      if (!postId) return res.status(400).json({ error: 'MISSING_POST_ID' });
+      const { data } = await admin
+        .from('post_comments')
+        .select('id, user_id, body, created_at')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+      return res.status(200).json({ success: true, comments: data || [] });
+    }
+
+    // Boost ("hype") a feed post: spend BOOST_COST WNGS, log the boost, bump the
+    // post's counter, and flip it to FEATURED once the threshold is crossed.
+    if (action === 'boost_post') {
+      const { postId } = req.body || {};
+      if (!postId) return res.status(400).json({ error: 'MISSING_POST_ID' });
+
+      const { data: post } = await admin
+        .from('monarch_times').select('id, boost_count, is_featured').eq('id', postId).maybeSingle();
+      if (!post) return res.status(404).json({ error: 'POST_NOT_FOUND' });
+
+      const { data: prof } = await admin.from('profiles').select('wngs_balance').eq('id', userId).maybeSingle();
+      if (!prof) return res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
+      const bal = prof.wngs_balance || 0;
+      if (bal < BOOST_COST) return res.status(402).json({ error: 'INSUFFICIENT_WNGS' });
+
+      // Balance-guarded debit (only succeeds if the balance is unchanged).
+      const { data: debited } = await admin
+        .from('profiles').update({ wngs_balance: bal - BOOST_COST })
+        .eq('id', userId).eq('wngs_balance', bal).select('wngs_balance').maybeSingle();
+      if (!debited) return res.status(409).json({ error: 'BALANCE_CHANGED // RETRY' });
+
+      await admin.from('post_boosts').insert({ post_id: postId, user_id: userId, amount: BOOST_COST });
+      const newCount = (post.boost_count || 0) + 1;
+      const isFeatured = post.is_featured || newCount >= BOOST_FEATURE_THRESHOLD;
+      await admin.from('monarch_times').update({ boost_count: newCount, is_featured: isFeatured }).eq('id', postId);
+      await admin.from('transactions').insert({
+        user_id: userId, amount: -BOOST_COST, transaction_type: 'POST_BOOST', metadata: { post_id: postId },
+      });
+      return res.status(200).json({ success: true, newBalance: debited.wngs_balance, boostCount: newCount, isFeatured });
+    }
+
+    // Comment on a feed post: spend COMMENT_COST WNGS, then insert the comment.
+    if (action === 'add_comment') {
+      const { postId, body: commentBody } = req.body || {};
+      const textBody = typeof commentBody === 'string' ? commentBody.trim() : '';
+      if (!postId || !textBody) return res.status(400).json({ error: 'MISSING_COMMENT' });
+
+      const { data: post } = await admin.from('monarch_times').select('id').eq('id', postId).maybeSingle();
+      if (!post) return res.status(404).json({ error: 'POST_NOT_FOUND' });
+
+      const { data: prof } = await admin.from('profiles').select('wngs_balance').eq('id', userId).maybeSingle();
+      if (!prof) return res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
+      const bal = prof.wngs_balance || 0;
+      if (bal < COMMENT_COST) return res.status(402).json({ error: 'INSUFFICIENT_WNGS' });
+
+      const { data: debited } = await admin
+        .from('profiles').update({ wngs_balance: bal - COMMENT_COST })
+        .eq('id', userId).eq('wngs_balance', bal).select('wngs_balance').maybeSingle();
+      if (!debited) return res.status(409).json({ error: 'BALANCE_CHANGED // RETRY' });
+
+      const { data: comment, error: cErr } = await admin
+        .from('post_comments')
+        .insert({ post_id: postId, user_id: userId, body: textBody.slice(0, COMMENT_MAX_LEN) })
+        .select('id, user_id, body, created_at')
+        .single();
+      if (cErr) {
+        // Refund the debit since the comment was never stored.
+        await admin.from('profiles').update({ wngs_balance: debited.wngs_balance + COMMENT_COST }).eq('id', userId);
+        throw cErr;
+      }
+      await admin.from('transactions').insert({
+        user_id: userId, amount: -COMMENT_COST, transaction_type: 'POST_COMMENT', metadata: { post_id: postId },
+      });
+      return res.status(200).json({ success: true, newBalance: debited.wngs_balance, comment });
     }
 
     if (action === 'get_season_artifacts') {
