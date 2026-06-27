@@ -154,6 +154,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, artifact: updated, awarded: bonus, premiumUnlocked: isPremiumUnlocked });
   } catch (err) {
     console.error('CLAIM_ERROR:', err);
-    return res.status(500).json({ error: err.message || 'INTERNAL_SERVER_ERROR' });
+    return res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' });
   }
 }

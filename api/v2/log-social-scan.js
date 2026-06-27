@@ -151,6 +151,6 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('LOG_SOCIAL_SCAN_ERROR:', err);
-    return res.status(500).json({ error: err.message || 'INTERNAL_SERVER_ERROR' });
+    return res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' });
   }
 }

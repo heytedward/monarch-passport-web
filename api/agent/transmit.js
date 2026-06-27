@@ -53,6 +53,6 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error('Agent transmission error:', err);
-    return res.status(500).json({ error: "[ INTERNAL_SYSTEM_FAILURE ]", details: err.message });
+    return res.status(500).json({ error: "[ INTERNAL_SYSTEM_FAILURE ]" });
   }
 }

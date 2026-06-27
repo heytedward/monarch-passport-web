@@ -538,6 +538,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, newBalance: debited.wngs_balance });
   } catch (err) {
     console.error('PURCHASE_ERROR:', err);
-    return res.status(500).json({ error: err.message || 'INTERNAL_SERVER_ERROR' });
+    return res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' });
   }
 }

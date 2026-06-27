@@ -382,6 +382,6 @@ export default async function handler(req, res) {
   } catch (error) {
     // CATCH ALL: Never let the function hang
     console.error("MINT_API_ERROR:", error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 }

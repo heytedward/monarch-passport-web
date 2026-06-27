@@ -61,6 +61,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error("VERIFY_API_ERROR:", error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
