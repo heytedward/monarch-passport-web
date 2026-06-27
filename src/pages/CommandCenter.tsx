@@ -127,13 +127,15 @@ const CommandCenter: React.FC = () => {
   const destructiveRed = '#E53E3E';
 
   // Load admin data once authorized. MUST run before the early returns below so
-  // the hook count is identical on every render (Rules of Hooks) -- otherwise
-  // the effect is skipped while Privy is resolving and added once it authorizes,
-  // which destabilizes hook order. fetchSeasons is defined later but only called
-  // inside the async callback (post-commit), so it's resolved by then.
+  // the hook count is identical on every render (Rules of Hooks). The seasons
+  // query is inlined (rather than calling fetchSeasons()) because this effect
+  // sits above that const's declaration -- referencing it here would be a
+  // forward reference / TDZ ("cannot access before initialization"). The
+  // fetchSeasons const remains defined below for the refresh callers.
   useEffect(() => {
     if (!isAuthorized) return;
-    fetchSeasons();
+    supabase.from('seasons').select('*').order('start_date', { ascending: false })
+      .then(({ data }) => setSeasons(data || []));
     supabase.from('products').select('id, name, category')
       .in('category', ['AVATAR', 'THEME'])
       .then(({ data }) => setAdminProducts(data || []));
