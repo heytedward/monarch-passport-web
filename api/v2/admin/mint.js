@@ -243,17 +243,41 @@ async function createClaimLink(body, supabase, res) {
 
 // Publish a post to the MONARCH_TIMES feed (admin only). Folded here to stay
 // under the function cap. Dispatched by kind: 'feed_post'.
+//
+// Image can be provided two ways: `imageUrl` (an already-hosted URL) or
+// `imageData` (a base64 data URL from the admin's file picker), which we upload
+// to the public feed-images bucket and turn into a URL. The picker downscales
+// client-side, so payloads stay small.
 async function createFeedPost(body, supabase, res) {
-  const { title, content, imageUrl, author } = body;
+  const { title, content, imageUrl, imageData, author } = body;
   if (!title || !content) {
     return res.status(400).json({ error: 'title and content are required' });
   }
+
+  let finalImageUrl = imageUrl || null;
+  if (typeof imageData === 'string' && imageData.startsWith('data:')) {
+    const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(imageData);
+    if (!match) return res.status(400).json({ error: 'Invalid imageData' });
+    const contentType = match[1];
+    const ext = contentType.split('/')[1].replace('jpeg', 'jpg');
+    const buffer = Buffer.from(match[2], 'base64');
+    if (buffer.length > 8 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Image too large (max 8MB)' });
+    }
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from('feed-images')
+      .upload(path, buffer, { contentType, upsert: false });
+    if (upErr) throw upErr;
+    finalImageUrl = supabase.storage.from('feed-images').getPublicUrl(path).data.publicUrl;
+  }
+
   const { data, error } = await supabase
     .from('monarch_times')
     .insert({
       title,
       content,
-      image_url: imageUrl || null,
+      image_url: finalImageUrl,
       author: author || 'PAPILLON',
       status: 'PUBLISHED',
     })

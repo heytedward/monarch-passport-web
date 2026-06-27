@@ -4,6 +4,7 @@ import {
   VStack,
   Heading,
   Text,
+  Image,
   Input,
   Button,
   SimpleGrid,
@@ -48,6 +49,7 @@ const CommandCenter: React.FC = () => {
   const [feedTitle, setFeedTitle] = useState('');
   const [feedContent, setFeedContent] = useState('');
   const [feedImageUrl, setFeedImageUrl] = useState('');
+  const [feedImageData, setFeedImageData] = useState<string | null>(null);
   const [feedAuthor, setFeedAuthor] = useState('PAPILLON');
   const [isPosting, setIsPosting] = useState(false);
 
@@ -436,6 +438,32 @@ const CommandCenter: React.FC = () => {
     return data;
   };
 
+  // Read a picked image file, downscale it (max 1280px, JPEG q0.85) so the
+  // upload payload stays small, and stash it as a base64 data URL for broadcast.
+  const handleImagePick = (file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1280;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+        setFeedImageData(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const postToFeed = async () => {
     if (!feedTitle.trim() || !feedContent.trim()) {
       toast({ title: 'MISSING_DATA', description: 'TITLE + CONTENT REQUIRED', status: 'error' });
@@ -445,15 +473,17 @@ const CommandCenter: React.FC = () => {
     addLog(`BROADCASTING // ${feedTitle}`);
     try {
       // Reuses the admin mint endpoint (kind:'feed_post') -> writes monarch_times.
+      // imageData (uploaded photo) wins over imageUrl (pasted link) if both set.
       await seasonForge({
         kind: 'feed_post',
         title: feedTitle.trim(),
         content: feedContent.trim(),
         imageUrl: feedImageUrl.trim() || undefined,
+        imageData: feedImageData || undefined,
         author: feedAuthor.trim() || undefined,
       });
       toast({ title: 'BROADCAST_LIVE', description: 'Posted to MONARCH_TIMES', status: 'success' });
-      setFeedTitle(''); setFeedContent(''); setFeedImageUrl('');
+      setFeedTitle(''); setFeedContent(''); setFeedImageUrl(''); setFeedImageData(null);
     } catch (err: any) {
       addLog(`BROADCAST_FAILED // ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
@@ -551,8 +581,30 @@ const CommandCenter: React.FC = () => {
                   <Textarea borderRadius="0" placeholder="Transmission body..." fontSize="sm" rows={4} value={feedContent} onChange={(e) => setFeedContent(e.target.value)} />
                 </FormControl>
                 <FormControl>
-                  <FormLabel fontSize="xs">IMAGE_URL (optional)</FormLabel>
-                  <Input borderRadius="0" placeholder="https://..." fontSize="sm" value={feedImageUrl} onChange={(e) => setFeedImageUrl(e.target.value)} />
+                  <FormLabel fontSize="xs">PHOTO (optional)</FormLabel>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    borderRadius="0"
+                    fontSize="sm"
+                    p={1}
+                    onChange={(e) => handleImagePick(e.target.files?.[0])}
+                  />
+                  {feedImageData && (
+                    <Box mt={2}>
+                      <Image src={feedImageData} alt="preview" maxH="140px" border="1px solid" borderColor={borderColor} />
+                      <Button size="xs" mt={1} variant="outline" borderRadius="0" colorScheme="red" onClick={() => setFeedImageData(null)}>
+                        REMOVE PHOTO
+                      </Button>
+                    </Box>
+                  )}
+                  <Text fontSize="9px" color="gray.500" mt={1}>
+                    Pick a photo from your device — or paste an image link below instead.
+                  </Text>
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="xs">IMAGE_URL (alternative to photo)</FormLabel>
+                  <Input borderRadius="0" placeholder="https://..." fontSize="sm" value={feedImageUrl} onChange={(e) => setFeedImageUrl(e.target.value)} isDisabled={!!feedImageData} />
                 </FormControl>
                 <Button w="full" bg={monarchYellow} color="black" borderRadius="0" fontWeight="bold" _hover={{ opacity: 0.8 }} onClick={postToFeed} isLoading={isPosting} loadingText="BROADCASTING...">
                   BROADCAST
