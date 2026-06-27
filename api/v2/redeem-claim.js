@@ -51,10 +51,11 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: 'CLAIM_FAILED // ALREADY_SCANNED' });
     }
 
-    // 3. Look up the reward
+    // 3. Look up the reward. select('*') so an optional max_redemptions column
+    // is read when present without erroring on installs that don't have it yet.
     const { data: claimLink, error: claimError } = await admin
       .from('claim_links')
-      .select('wngs_award')
+      .select('*')
       .eq('short_code', shortCode)
       .maybeSingle();
 
@@ -66,6 +67,23 @@ export default async function handler(req, res) {
     const amount = claimLink.wngs_award;
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'CLAIM_FAILED // INVALID_ARTIFACT' });
+    }
+
+    // 3b. Global usage cap: if this link has a max_redemptions, reject once the
+    // total number of redemptions (across all users) reaches it. Counted from
+    // the NFC_TAP transactions tagged with this claim_id. Best-effort under
+    // concurrency (count-then-write isn't atomic), which is fine for a promo cap.
+    const cap = claimLink.max_redemptions;
+    if (cap != null && Number(cap) > 0) {
+      const { count, error: countError } = await admin
+        .from('transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('transaction_type', 'NFC_TAP')
+        .eq('metadata->>claim_id', shortCode);
+      if (countError) throw countError;
+      if ((count || 0) >= Number(cap)) {
+        return res.status(409).json({ error: 'CLAIM_FAILED // REDEMPTION_LIMIT_REACHED' });
+      }
     }
 
     // 4. Credit the balance. There is no `increment_wngs` RPC in this

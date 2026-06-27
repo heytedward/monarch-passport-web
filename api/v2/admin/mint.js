@@ -207,7 +207,7 @@ async function seasonOp(body, supabase, res) {
 // function to stay under Vercel's function cap -- shares the same admin auth.
 // Dispatched by kind: 'claim_link'.
 async function createClaimLink(body, supabase, res) {
-  const { shortCode, wngsAward, itemName, itemType } = body;
+  const { shortCode, wngsAward, itemName, itemType, maxRedemptions } = body;
 
   if (
     !shortCode ||
@@ -220,16 +220,30 @@ async function createClaimLink(body, supabase, res) {
     return res.status(400).json({ error: 'Missing or invalid parameters' });
   }
 
+  // Optional global usage cap. Omitted/blank => unlimited (existing behaviour).
+  let cap = null;
+  if (maxRedemptions !== undefined && maxRedemptions !== null && maxRedemptions !== '') {
+    cap = Number(maxRedemptions);
+    if (!Number.isInteger(cap) || cap <= 0) {
+      return res.status(400).json({ error: 'maxRedemptions must be a positive integer' });
+    }
+  }
+
   const safeShortCode = shortCode.trim().toLowerCase();
+
+  // Only set max_redemptions when provided, so this insert still works on
+  // databases where that column hasn't been added yet.
+  const row = {
+    short_code: safeShortCode,
+    wngs_award: wngsAward,
+    item_name: itemName,
+    item_type: itemType,
+  };
+  if (cap != null) row.max_redemptions = cap;
 
   const { error } = await supabase
     .from('claim_links')
-    .insert({
-      short_code: safeShortCode,
-      wngs_award: wngsAward,
-      item_name: itemName,
-      item_type: itemType,
-    });
+    .insert(row);
 
   if (error) {
     if (error.code === '23505') {

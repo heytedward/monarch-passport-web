@@ -42,6 +42,7 @@ const CommandCenter: React.FC = () => {
   const [claimId, setClaimId] = useState('');
   const [wngsValue, setWngsValue] = useState('');
   const [itemType, setItemType] = useState('CLOTHING');
+  const [maxRedemptions, setMaxRedemptions] = useState('');
   const [generatedLink, setGeneratedLink] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -212,6 +213,7 @@ const CommandCenter: React.FC = () => {
           wngsAward: parseInt(wngsValue),
           itemName: claimId, // Original unformatted input
           itemType: itemType,
+          maxRedemptions: maxRedemptions ? parseInt(maxRedemptions) : undefined,
           adminId: user?.id,
         }),
       });
@@ -257,6 +259,7 @@ const CommandCenter: React.FC = () => {
     setClaimId('');
     setWngsValue('');
     setItemType('CLOTHING');
+    setMaxRedemptions('');
     setGeneratedLink('');
     addLog("GENERATOR_STATE_RESET");
   };
@@ -839,8 +842,15 @@ const CommandCenter: React.FC = () => {
                         />
                       </FormControl>
                       <FormControl>
-                        <FormLabel fontSize="xs">MAX TAPS (UNSUPPORTED)</FormLabel>
-                        <Input borderRadius="0" type="number" placeholder="100" fontSize="sm" isDisabled />
+                        <FormLabel fontSize="xs">MAX REDEMPTIONS (BLANK = UNLIMITED)</FormLabel>
+                        <Input
+                          borderRadius="0"
+                          type="number"
+                          placeholder="e.g. 100"
+                          fontSize="sm"
+                          value={maxRedemptions}
+                          onChange={(e) => setMaxRedemptions(e.target.value)}
+                        />
                       </FormControl>
                     </VStack>
                   </SimpleGrid>
