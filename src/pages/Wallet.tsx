@@ -18,10 +18,6 @@ import { MdOutlineElectricBolt, MdHistory, MdCreditCard, MdTrendingUp } from 're
 import { usePrivy } from '@privy-io/react-auth'
 import useStore from '../store/useStore'
 
-const truncateAddress = (addr?: string) => {
-  if (!addr) return "";
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-};
 
 const Wallet = () => {
   const navigate = useNavigate()

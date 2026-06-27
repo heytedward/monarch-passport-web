@@ -25,7 +25,7 @@ interface Artifact {
   name: string;
   tier: string;
   isActivated: boolean;
-  ownerId: string | null;
+  isOwner: boolean;
   collection: string | null;
   season: string | null;
   isSeasonArtifact: boolean;
@@ -58,7 +58,15 @@ const Verify: React.FC = () => {
   useEffect(() => {
     const fetchArtifact = async () => {
       try {
-        const response = await fetch(`/api/v2/verify?id=${id}`);
+        // Send the Privy token when logged in so the server can tell us whether
+        // we own this tag (it no longer returns the owner's DID to anyone).
+        let token: string | null = null;
+        if (authenticated) {
+          try { token = await getAccessToken(); } catch { /* anon fetch */ }
+        }
+        const response = await fetch(`/api/v2/verify?id=${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         const data = await response.json();
 
         if (!response.ok) {
@@ -73,10 +81,13 @@ const Verify: React.FC = () => {
       }
     };
 
-    if (id) {
+    // Wait for Privy to resolve, then (re)fetch — re-running on auth changes so
+    // isOwner is recomputed once the user logs in.
+    if (id && ready) {
       fetchArtifact();
     }
-  }, [id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, ready, authenticated, user?.id]);
 
   // Already-owned artifact: attempt the recurring loyalty-tap reward
   // automatically once, instead of making the owner press another button.
@@ -88,7 +99,7 @@ const Verify: React.FC = () => {
       authenticated &&
       user?.id &&
       artifact?.isActivated &&
-      artifact.ownerId === user.id &&
+      artifact.isOwner &&
       !justClaimed &&
       tapState === 'idle'
     ) {
@@ -171,7 +182,7 @@ const Verify: React.FC = () => {
 
       setClaimAwarded(result.awarded);
       setJustClaimed(true);
-      setArtifact({ ...artifact, isActivated: true, ownerId: user.id });
+      setArtifact({ ...artifact, isActivated: true, isOwner: true });
       fetchUserProfile(user.id);
     } catch (err) {
       setClaimState('error');
@@ -222,7 +233,7 @@ const Verify: React.FC = () => {
   }
 
   if (artifact) {
-    const isMine = !!(authenticated && user?.id && artifact.ownerId === user.id);
+    const isMine = !!(authenticated && user?.id && artifact.isOwner);
 
     return (
       <Center h="100vh" bg="black" p={6}>

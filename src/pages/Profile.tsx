@@ -140,7 +140,6 @@ const Profile = () => {
   }, [user?.id]);
 
   const bg = useColorModeValue("white", "black");
-  const cardBg = useColorModeValue("gray.50", "gray.900");
   const text = useColorModeValue("black", "white");
   const mutedText = useColorModeValue("gray.600", "whiteAlpha.600");
 

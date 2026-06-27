@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Box, Heading, Text, VStack, Center, Spinner, Button, Icon, useColorModeValue } from '@chakra-ui/react'
+import { Box, Heading, Text, VStack, Center, Spinner, Button, Icon } from '@chakra-ui/react'
 import { MdCheckCircleOutline, MdErrorOutline, MdInventory2 } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
 

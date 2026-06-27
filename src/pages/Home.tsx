@@ -213,7 +213,6 @@ const Home = () => {
   const bg = "black";
   const text = "white";
   const mutedText = "gray.500";
-  const border = "whiteAlpha.300";
   const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
 
   useEffect(() => {

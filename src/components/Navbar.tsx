@@ -1,4 +1,4 @@
-import { Box, Flex, IconButton, Text, VStack, Center, useColorModeValue } from '@chakra-ui/react'
+import { Box, Flex, Text, VStack, Center, useColorModeValue } from '@chakra-ui/react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { PiHouseFill, PiWalletFill, PiCoatHangerFill, PiUserFill } from 'react-icons/pi'
 import { Logo } from './Logo'

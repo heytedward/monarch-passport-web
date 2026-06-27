@@ -3,6 +3,7 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
+import { verifyPrivyToken } from './_auth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -34,12 +35,25 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Artifact not found" });
     }
 
+    // Never expose the owner's Privy DID to anonymous callers (tag IDs are
+    // enumerable). Instead, only tell the caller whether *they* own this tag,
+    // verified against an optional Bearer token, and return a boolean.
+    let isOwner = false;
+    if (artifact.owner_id) {
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      if (token) {
+        const verifiedUserId = await verifyPrivyToken(token);
+        isOwner = !!verifiedUserId && verifiedUserId === artifact.owner_id;
+      }
+    }
+
     return res.status(200).json({
       id: artifact.tag_id,
       name: artifact.name,
       tier: artifact.tier,
       isActivated: artifact.is_activated,
-      ownerId: artifact.owner_id,
+      isOwner,
       collection: artifact.collection,
       season: artifact.season,
       isSeasonArtifact: artifact.is_season_artifact

@@ -91,7 +91,7 @@ const CATEGORY_FILTER_MATCHERS: Record<string, (category?: string) => boolean> =
   WNGS: isWngsCategory,
 };
 
-const ShopSlot = ({ index, item, owned, onOpen, text, border, bg, cardBg }: { index: string, item?: ShopItemData, owned?: boolean, onOpen: (item: ShopItemData) => void, text: string, border: string, bg: string, cardBg: string }) => {
+const ShopSlot = ({ index, item, owned, onOpen, text, border, bg }: { index: string, item?: ShopItemData, owned?: boolean, onOpen: (item: ShopItemData) => void, text: string, border: string, bg: string }) => {
   if (item) {
     return (
       <Box
@@ -264,15 +264,17 @@ const Shop = () => {
 
     setIsProcessing(true);
     try {
+      const accessToken = await getAccessToken();
       const response = await fetch('/api/checkout/wngs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
         },
+        // Only the bundle id is sent; the server reads the price and WNGS payout
+        // from the DB so neither can be tampered with from the client.
         body: JSON.stringify({
-          bundleName: item.name,
-          priceInCents: item.price * 100,
-          wngsAmount: item.wngsAmount,
+          bundleId: item.id,
           userId: user.id,
         }),
       });
@@ -637,16 +639,16 @@ const Shop = () => {
               <SimpleGrid columns={3} spacing={3}>
                 {loading ? (
                   Array.from({ length: 6 }).map((_, idx) => (
-                    <ShopSlot key={`loading-${idx}`} index={(idx + 1).toString().padStart(2, '0')} onOpen={() => {}} text={text} border={border} bg={bg} cardBg={cardBg} />
+                    <ShopSlot key={`loading-${idx}`} index={(idx + 1).toString().padStart(2, '0')} onOpen={() => {}} text={text} border={border} bg={bg} />
                   ))
                 ) : (
                   <>
                     {filteredItems.map((item, idx) => (
-                      <ShopSlot key={item.id} index={(idx + 1).toString().padStart(2, '0')} item={item} owned={ownedProductIds.has(item.id)} onOpen={handleItemOpen} text={text} border={border} bg={bg} cardBg={cardBg} />
+                      <ShopSlot key={item.id} index={(idx + 1).toString().padStart(2, '0')} item={item} owned={ownedProductIds.has(item.id)} onOpen={handleItemOpen} text={text} border={border} bg={bg} />
                     ))}
                     
                     {Array.from({ length: Math.max(0, 9 - filteredItems.length) }).map((_, idx) => (
-                      <ShopSlot key={`empty-${idx}`} index={(filteredItems.length + idx + 1).toString().padStart(2, '0')} onOpen={handleItemOpen} text={text} border={border} bg={bg} cardBg={cardBg} />
+                      <ShopSlot key={`empty-${idx}`} index={(filteredItems.length + idx + 1).toString().padStart(2, '0')} onOpen={handleItemOpen} text={text} border={border} bg={bg} />
                     ))}
                   </>
                 )}

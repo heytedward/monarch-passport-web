@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Heading, Text, VStack, Center, Spinner, Button, Icon, useColorModeValue } from '@chakra-ui/react'
-import { MdOutlineElectricBolt, MdErrorOutline, MdCheckCircleOutline } from 'react-icons/md'
+import { MdErrorOutline, MdCheckCircleOutline } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
 import useStore from '../store/useStore'
 

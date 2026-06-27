@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, VStack, Heading, Text, Button, Center } from '@chakra-ui/react';
 import { motion } from 'framer-motion';

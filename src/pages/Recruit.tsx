@@ -1,6 +1,5 @@
-import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Box, Heading, Text, VStack, Button, Center, Icon } from '@chakra-ui/react';
+import { Box, Heading, Text, VStack, Button, Icon } from '@chakra-ui/react';
 import { MdPersonAdd, MdChevronRight } from 'react-icons/md';
 
 export default function Recruit() {

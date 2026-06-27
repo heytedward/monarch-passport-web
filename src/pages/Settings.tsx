@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Box,
   VStack,
@@ -6,8 +5,6 @@ import {
   Text,
   Button,
   useColorModeValue,
-  Center,
-  Divider,
   HStack,
   Icon,
 } from '@chakra-ui/react';
