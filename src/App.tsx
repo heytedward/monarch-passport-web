@@ -89,6 +89,9 @@ function AppRoutes() {
         <Route path="/claim/:id" element={<Claim />} />
         <Route path="/social/:userId" element={<Social />} />
         <Route path="/command-center" element={<CommandCenter />} />
+        <Route path="/admin" element={<CommandCenter />} />
+        {/* Unknown paths redirect home instead of rendering an empty page. */}
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </ErrorBoundary>
   );
