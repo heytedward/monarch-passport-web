@@ -39,13 +39,11 @@ const Profile = () => {
       : '@OPERATOR';
 
   const { wngsBalance, totalTaps, isLoading } = useStore()
-  const [activeTab, setActiveTab] = useState<'STATS' | 'WALLET' | 'QUESTS' | 'ASCENSION' | 'STAMPS'>('STATS');
+  const [activeTab, setActiveTab] = useState<'STATS' | 'WALLET' | 'QUESTS' | 'STAMPS'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
   const [userQuests, setUserQuests] = useState<Record<string, { status: string; progress: number; target: number }>>({});
   const [linkCopied, setLinkCopied] = useState(false);
-  const [season, setSeason] = useState<any>(null);
   const [progress, setProgress] = useState<any>(null);
-  const [ascLoading, setAscLoading] = useState(true);
   const [stamina, setStamina] = useState(0);
   const [maxStamina, setMaxStamina] = useState(DEFAULT_MAX_STAMINA);
   const [stamps, setStamps] = useState<any[]>([]);
@@ -88,38 +86,36 @@ const Profile = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    const loadAscension = async () => {
-      setAscLoading(true);
+    // Season progress feeds the ARTIFACT_LEVEL stat; stamina feeds the social-
+    // miner footer. The full Ascension ladder now lives on its own /ascension
+    // page (ASCEND in the nav), so there's no season card here anymore.
+    const loadProgress = async () => {
+      if (!user?.id) return;
       const { data: s } = await supabase
-        .from('seasons').select('*').eq('is_active', true)
+        .from('seasons').select('id').eq('is_active', true)
         .order('start_date', { ascending: false }).limit(1).maybeSingle();
-      setSeason(s);
-      if (s && user?.id) {
+      if (s) {
         const { data: p } = await supabase
           .from('user_season_progress').select('*')
           .eq('user_id', user.id).eq('season_id', s.id).maybeSingle();
         setProgress(p);
       }
-      // Stamina (for the social-miner footer) comes from a service-role read.
-      if (user?.id) {
-        try {
-          const token = await getAccessToken();
-          const res = await fetch('/api/v2/purchase', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
-          });
-          const data = await res.json().catch(() => null);
-          if (data?.profile) {
-            const max = data.profile.max_stamina || DEFAULT_MAX_STAMINA;
-            setMaxStamina(max);
-            setStamina(effectiveStamina(data.profile.current_stamina, data.profile.last_stamina_regen, max));
-          }
-        } catch { /* ignore */ }
-      }
-      setAscLoading(false);
+      try {
+        const token = await getAccessToken();
+        const res = await fetch('/api/v2/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
+        });
+        const data = await res.json().catch(() => null);
+        if (data?.profile) {
+          const max = data.profile.max_stamina || DEFAULT_MAX_STAMINA;
+          setMaxStamina(max);
+          setStamina(effectiveStamina(data.profile.current_stamina, data.profile.last_stamina_regen, max));
+        }
+      } catch { /* ignore */ }
     };
-    loadAscension();
+    loadProgress();
   }, [user?.id]);
 
   useEffect(() => {
@@ -351,68 +347,6 @@ const Profile = () => {
           </VStack>
         );
 
-      case 'ASCENSION': {
-        if (ascLoading) {
-          return (
-            <Center p={10} bg={bg} borderBottom={`4px solid ${text}`}>
-              <Spinner color="var(--monarch-accent)" />
-            </Center>
-          );
-        }
-        if (!season) {
-          return (
-            <Center p={10} bg={bg} borderBottom={`4px solid ${text}`}>
-              <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace">[ NO_ACTIVE_SEASON ]</Text>
-            </Center>
-          );
-        }
-        const level = progress?.level || 0;
-        const xp = progress?.xp || 0;
-        const isPremium = !!progress?.is_premium;
-        const maxed = level >= season.level_count;
-        const intoLevel = maxed ? season.xp_per_level : xp - level * season.xp_per_level;
-        const pct = Math.min(100, Math.round((intoLevel / season.xp_per_level) * 100));
-        const daysLeft = Math.max(0, Math.ceil((new Date(season.end_date).getTime() - Date.now()) / 86400000));
-        return (
-          <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
-            <Flex justify="space-between" align="center">
-              <Text fontSize="9px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace" letterSpacing="0.1em">
-                SEASON {season.code || ''} // {daysLeft} DAYS LEFT
-              </Text>
-              {isPremium && (
-                <Box bg="var(--monarch-accent)" px={2} py={0.5}>
-                  <Text fontSize="8px" fontWeight="900" color="black" fontFamily="monospace">PREMIUM</Text>
-                </Box>
-              )}
-            </Flex>
-
-            <Flex justify="space-between" align="end">
-              <Heading fontSize="2xl" fontWeight="900" color={text} fontFamily="'Archivo Black', sans-serif">LVL {level}</Heading>
-              <Text fontSize="9px" fontWeight="900" color={mutedText} fontFamily="monospace">
-                {maxed ? 'MAX' : `${intoLevel} / ${season.xp_per_level} XP`}
-              </Text>
-            </Flex>
-
-            <Box w="100%" h="10px" border={`1px solid ${text}`} p="1px">
-              <Box h="100%" bg="var(--monarch-accent)" w={`${pct}%`} transition="width 0.3s" />
-            </Box>
-
-            <Button
-              onClick={() => navigate('/ascension')}
-              bg={text}
-              color={bg}
-              height="44px"
-              borderRadius="0"
-              fontWeight="900"
-              fontSize="xs"
-              fontFamily="monospace"
-              _hover={{ bg: 'var(--monarch-accent)', color: 'black' }}
-            >
-              VIEW FULL TRACK →
-            </Button>
-          </VStack>
-        );
-      }
     }
   };
 
@@ -473,7 +407,7 @@ const Profile = () => {
       {/* Tabs */}
       <Box bg={bg} borderY={`4px solid ${text}`}>
         <Flex>
-          {['STATS', 'WALLET', 'QUESTS', 'ASCENSION', 'STAMPS'].map((tab) => (
+          {['STATS', 'WALLET', 'QUESTS', 'STAMPS'].map((tab) => (
             <Box 
               key={tab}
               flex={1} 
@@ -483,7 +417,7 @@ const Profile = () => {
               cursor="pointer"
               onClick={() => setActiveTab(tab as any)}
             >
-              <Text fontSize="10px" fontWeight="900" color={activeTab === tab ? text : mutedText} fontFamily="monospace" letterSpacing="-0.02em">
+              <Text fontSize="12px" fontWeight="900" color={activeTab === tab ? text : mutedText} fontFamily="monospace">
                 {tab}
               </Text>
             </Box>
