@@ -129,9 +129,9 @@ const Claim = () => {
                 px={10}
                 fontWeight="900"
                 _hover={{ bg: yellow, color: "black" }}
-                onClick={() => navigate('/wallet')}
+                onClick={() => navigate('/profile')}
               >
-                RETURN TO WALLET
+                RETURN TO PROFILE
               </Button>
             </>
           )}
@@ -159,9 +159,9 @@ const Claim = () => {
                 px={10}
                 fontWeight="900"
                 _hover={{ bg: yellow, color: "black" }}
-                onClick={() => navigate('/wallet')}
+                onClick={() => navigate('/profile')}
               >
-                RETURN TO WALLET
+                RETURN TO PROFILE
               </Button>
             </>
           )}

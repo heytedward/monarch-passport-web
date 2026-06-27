@@ -14,7 +14,7 @@ import {
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MdSettings, MdLock } from 'react-icons/md'
+import { MdSettings, MdLock, MdBolt, MdCreditCard, MdHistory } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
 import { supabase } from '../lib/supabase'
 import DeStijlAvatar from '../components/DeStijlAvatar'
@@ -39,7 +39,7 @@ const Profile = () => {
       : '@OPERATOR';
 
   const { wngsBalance, totalTaps, isLoading } = useStore()
-  const [activeTab, setActiveTab] = useState<'STATS' | 'QUESTS' | 'ASCENSION' | 'STAMPS'>('STATS');
+  const [activeTab, setActiveTab] = useState<'STATS' | 'WALLET' | 'QUESTS' | 'ASCENSION' | 'STAMPS'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
   const [userQuests, setUserQuests] = useState<Record<string, { status: string; progress: number; target: number }>>({});
   const [linkCopied, setLinkCopied] = useState(false);
@@ -50,6 +50,8 @@ const Profile = () => {
   const [maxStamina, setMaxStamina] = useState(DEFAULT_MAX_STAMINA);
   const [stamps, setStamps] = useState<any[]>([]);
   const [stampsLoading, setStampsLoading] = useState(false);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transLoading, setTransLoading] = useState(true);
 
   const handleCopyLink = () => {
     // Generate the unique link using the user's Privy ID or wallet
@@ -139,9 +141,39 @@ const Profile = () => {
     fetchStamps();
   }, [user?.id]);
 
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      if (!user?.id) return;
+      setTransLoading(true);
+      try {
+        const token = await getAccessToken();
+        const res = await fetch('/api/v2/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ userId: user.id, action: 'get_transactions' }),
+        });
+        const data = await res.json().catch(() => null);
+        if (data?.transactions) setTransactions(data.transactions);
+      } catch { /* leave transactions empty on failure */ } finally {
+        setTransLoading(false);
+      }
+    };
+    fetchTransactions();
+  }, [user?.id]);
+
+  // After a successful WNGS purchase, Stripe returns to /profile?checkout=success
+  // -> open the WALLET tab so the new balance + transaction are front and centre.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('checkout') === 'success') {
+      setActiveTab('WALLET');
+    }
+  }, []);
+
   const bg = useColorModeValue("white", "black");
   const text = useColorModeValue("black", "white");
   const mutedText = useColorModeValue("gray.600", "whiteAlpha.600");
+  const cardBg = useColorModeValue("gray.100", "whiteAlpha.100");
+  const histBorder = useColorModeValue("gray.200", "whiteAlpha.200");
 
   const questsCleared = activeQuests.filter((q) => userQuests[q.id]?.status === 'COMPLETED').length;
 
@@ -172,6 +204,54 @@ const Profile = () => {
               </Box>
             ))}
           </SimpleGrid>
+        );
+      case 'WALLET':
+        return (
+          <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
+            <Flex justify="space-between" align="center">
+              <VStack align="start" spacing={0}>
+                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">AVAILABLE_WNGS</Text>
+                <Heading fontSize="4xl" fontWeight="900" fontStyle="italic" color={text} fontFamily="'Archivo Black', sans-serif" lineHeight="1">
+                  {isLoading ? 'SYNCING...' : wngsBalance}
+                </Heading>
+              </VStack>
+              <Icon as={MdBolt} color="var(--monarch-accent)" boxSize="28px" />
+            </Flex>
+            <Button
+              onClick={() => navigate('/shop?filter=WNGS')}
+              bg="var(--monarch-accent)" color="black" height="44px" borderRadius="0"
+              fontWeight="900" fontSize="xs" fontFamily="monospace" leftIcon={<MdCreditCard />}
+              _hover={{ bg: '#e69e00' }}
+            >
+              BUY_WNGS
+            </Button>
+
+            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace" pt={2}>TRANSACTION_HISTORY</Text>
+            {transLoading ? (
+              <Center py={8}><Spinner color="var(--monarch-accent)" /></Center>
+            ) : transactions.length > 0 ? (
+              <VStack align="stretch" spacing={0}>
+                {transactions.map((item, idx) => (
+                  <Flex key={item.id || idx} align="center" justify="space-between" py={4} borderBottom="1px solid" borderColor={histBorder}>
+                    <HStack spacing={3}>
+                      <Center bg={cardBg} w="34px" h="34px"><Icon as={MdHistory} color={mutedText} boxSize="16px" /></Center>
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="900" fontSize="xs" color={text} textTransform="uppercase">{item.transaction_type || item.type || 'TRANSACTION'}</Text>
+                        <Text fontSize="8px" color={mutedText} fontFamily="monospace">{item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}</Text>
+                      </VStack>
+                    </HStack>
+                    <Text fontWeight="900" fontSize="md" color={item.amount > 0 ? 'var(--monarch-accent)' : text} fontFamily="monospace">
+                      {item.amount > 0 ? `+${item.amount}` : item.amount}
+                    </Text>
+                  </Flex>
+                ))}
+              </VStack>
+            ) : (
+              <Center py={8} border="1px dashed" borderColor={mutedText}>
+                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">[ NO_TRANSACTIONS_LOGGED ]</Text>
+              </Center>
+            )}
+          </VStack>
         );
       case 'QUESTS':
         return (
@@ -393,7 +473,7 @@ const Profile = () => {
       {/* Tabs */}
       <Box bg={bg} borderY={`4px solid ${text}`}>
         <Flex>
-          {['STATS', 'QUESTS', 'ASCENSION', 'STAMPS'].map((tab) => (
+          {['STATS', 'WALLET', 'QUESTS', 'ASCENSION', 'STAMPS'].map((tab) => (
             <Box 
               key={tab}
               flex={1} 
@@ -403,7 +483,7 @@ const Profile = () => {
               cursor="pointer"
               onClick={() => setActiveTab(tab as any)}
             >
-              <Text fontSize="12px" fontWeight="900" color={activeTab === tab ? text : mutedText} fontFamily="monospace">
+              <Text fontSize="10px" fontWeight="900" color={activeTab === tab ? text : mutedText} fontFamily="monospace" letterSpacing="-0.02em">
                 {tab}
               </Text>
             </Box>

@@ -84,7 +84,7 @@ export default async function handler(req, res) {
         bundleId: bundle.id,
         wngsAmount: wngsAmount.toString(),
       },
-      success_url: `${process.env.VITE_APP_URL}/wallet?checkout=success`,
+      success_url: `${process.env.VITE_APP_URL}/profile?checkout=success`,
       cancel_url: `${process.env.VITE_APP_URL}/shop`,
     });
 

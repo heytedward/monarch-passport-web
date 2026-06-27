@@ -14,7 +14,6 @@ import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import Landing from './pages/Landing'
 import Claim from './pages/Claim'
-import Wallet from './pages/Wallet'
 import Shop from './pages/Shop'
 import Recruit from './pages/Recruit'
 import CommandCenter from './pages/CommandCenter'
@@ -73,7 +72,6 @@ function AppRoutes() {
       <Routes location={location}>
         <Route path="/" element={<Landing />} />
         <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-        <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
         <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
         <Route path="/passport" element={<ProtectedRoute><Passport /></ProtectedRoute>} />
         <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />

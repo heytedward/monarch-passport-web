@@ -1,6 +1,6 @@
 import { Box, Flex, Text, VStack, Center, useColorModeValue } from '@chakra-ui/react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
-import { PiHouseFill, PiWalletFill, PiCoatHangerFill, PiUserFill, PiRankingFill } from 'react-icons/pi'
+import { PiHouseFill, PiCoatHangerFill, PiUserFill, PiRankingFill } from 'react-icons/pi'
 import { Logo } from './Logo'
 import { usePrivy } from '@privy-io/react-auth'
 
@@ -9,11 +9,6 @@ const leftNavItems = [
     label: 'HOME',
     to: '/home',
     icon: PiHouseFill,
-  },
-  {
-    label: 'WALLET',
-    to: '/wallet',
-    icon: PiWalletFill,
   },
   {
     label: 'ASCEND',
