@@ -40,9 +40,10 @@ const Ascension = () => {
   const maxStamina = staminaRaw?.max || DEFAULT_MAX_STAMINA
 
   const loadAll = async () => {
-    if (!user?.id) { setLoading(false); return }
     setLoading(true)
     try {
+      // Season + rewards are public (anon-readable), so the ladder renders even
+      // before/without auth (e.g. the dev bypass, which has no Privy user).
       const { data: seasonRow } = await supabase
         .from('seasons').select('*').eq('is_active', true)
         .order('start_date', { ascending: false }).limit(1).maybeSingle()
@@ -50,30 +51,38 @@ const Ascension = () => {
       if (!seasonRow) { setSeason(null); setLoading(false); return }
       setSeason(seasonRow as Season)
 
-      const token = await getAccessToken()
-      // Profile/stamina via service-role endpoint (RLS read is blocked).
-      const profRes = await fetch('/api/v2/purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
-      })
-      const prof = (await profRes.json().catch(() => null))?.profile || null
-
-      const [{ data: prog }, { data: rw }, { data: prods }] = await Promise.all([
-        supabase.from('user_season_progress').select('*').eq('user_id', user.id).eq('season_id', seasonRow.id).maybeSingle(),
+      const [{ data: rw }, { data: prods }] = await Promise.all([
         supabase.from('season_rewards').select('*').eq('season_id', seasonRow.id).order('level', { ascending: true }),
         supabase.from('products').select('id, name'),
       ])
-
-      setProgress(prog as Progress | null)
       setRewards((rw || []) as Reward[])
       if (prods) setProductNames(Object.fromEntries(prods.map((p: any) => [p.id, p.name])))
-      if (prof) {
-        const max = prof.max_stamina || DEFAULT_MAX_STAMINA
-        setStaminaRaw({ s: prof.current_stamina, at: prof.last_stamina_regen, max })
-        setStamina(effectiveStamina(prof.current_stamina, prof.last_stamina_regen, max))
-        if (typeof prof.wngs_balance === 'number') setWngsBalance(prof.wngs_balance)
-      }
+
+      // Per-user progress + stamina only when authenticated.
+      if (!user?.id) { setProgress(null); setLoading(false); return }
+
+      const { data: prog } = await supabase
+        .from('user_season_progress').select('*').eq('user_id', user.id).eq('season_id', seasonRow.id).maybeSingle()
+      setProgress(prog as Progress | null)
+
+      // Profile/stamina via the service-role endpoint (RLS read is blocked).
+      // Best-effort: api/ functions don't run under `vite dev`, so never let a
+      // failure here blank out the ladder.
+      try {
+        const token = await getAccessToken()
+        const profRes = await fetch('/api/v2/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
+        })
+        const prof = (await profRes.json().catch(() => null))?.profile || null
+        if (prof) {
+          const max = prof.max_stamina || DEFAULT_MAX_STAMINA
+          setStaminaRaw({ s: prof.current_stamina, at: prof.last_stamina_regen, max })
+          setStamina(effectiveStamina(prof.current_stamina, prof.last_stamina_regen, max))
+          if (typeof prof.wngs_balance === 'number') setWngsBalance(prof.wngs_balance)
+        }
+      } catch { /* stamina unavailable (e.g. local vite dev) — ladder still shows */ }
     } finally {
       setLoading(false)
     }
@@ -144,6 +153,7 @@ const Ascension = () => {
     )
   }
 
+  const isAuthed = !!user?.id
   const level = progress?.level || 0
   const xp = progress?.xp || 0
   const isPremium = !!progress?.is_premium
@@ -253,6 +263,13 @@ const Ascension = () => {
             ASCENSION
           </Heading>
           <Text fontSize="xs" fontWeight="900" color="whiteAlpha.700" fontFamily="monospace" mt={1}>{season.title}</Text>
+          {!isAuthed && (
+            <Box mt={3} border="1px solid" borderColor="var(--monarch-accent)" px={2} py={1} display="inline-block">
+              <Text fontSize="8px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace" letterSpacing="0.12em">
+                ◇ PREVIEW // CONNECT TO TRACK YOUR PROGRESS
+              </Text>
+            </Box>
+          )}
         </Box>
 
         {/* Level + XP */}
@@ -290,7 +307,7 @@ const Ascension = () => {
               size="xs" borderRadius="0" h="28px" fontSize="8px" fontFamily="monospace"
               bg={stamina >= maxStamina ? 'whiteAlpha.200' : 'var(--monarch-accent)'}
               color={stamina >= maxStamina ? 'whiteAlpha.500' : 'black'}
-              isDisabled={stamina >= maxStamina || wngsBalance < RECHARGE_COST}
+              isDisabled={!isAuthed || stamina >= maxStamina || wngsBalance < RECHARGE_COST}
               isLoading={busy === 'recharge'}
               leftIcon={<MdRefresh />}
               onClick={handleRecharge}
