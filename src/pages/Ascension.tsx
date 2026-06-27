@@ -1,10 +1,10 @@
 import {
   Box, Container, Heading, Text, VStack, HStack, Flex, Button, Center, Spinner,
-  SimpleGrid, useToast, Icon
+  useToast, Icon
 } from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
-import { MdBolt, MdRefresh } from 'react-icons/md'
+import { MdBolt, MdRefresh, MdLock, MdCheck, MdMilitaryTech } from 'react-icons/md'
 import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
 import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST } from '../lib/ascension'
@@ -153,33 +153,90 @@ const Ascension = () => {
   const daysLeft = Math.max(0, Math.ceil((new Date(season.end_date).getTime() - Date.now()) / 86400000))
   const claimed = new Set(progress?.claimed_levels || [])
 
-  // Group rewards by level for the track.
-  const levels = Array.from({ length: season.level_count }, (_, i) => i + 1)
+  // Group rewards by level for the ladder.
   const byLevel: Record<number, { free?: Reward; premium?: Reward }> = {}
   rewards.forEach((r) => {
     byLevel[r.level] = byLevel[r.level] || {}
     byLevel[r.level][r.track] = r
   })
 
-  const RewardCell = ({ r, lvl }: { r?: Reward; lvl: number }) => {
-    if (!r) {
-      return <Box flex={1} border="1px dashed" borderColor="whiteAlpha.200" h="48px" />
-    }
-    const reached = level >= lvl
+  const accent = 'var(--monarch-accent)'
+
+  // A single reward on a rung (free or premium), with its claim/lock/claimed state.
+  const RewardChip = ({ r }: { r: Reward }) => {
+    const reached = level >= r.level
     const locked = r.track === 'premium' && !isPremium
     const isClaimed = claimed.has(r.id)
     const canClaim = reached && !locked && !isClaimed
     return (
-      <Box flex={1} border="1px solid" borderColor={canClaim ? 'var(--monarch-accent)' : 'whiteAlpha.300'} h="48px" px={2} position="relative" opacity={reached ? 1 : 0.45}>
-        <Text fontSize="7px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace" mt={1}>{r.track.toUpperCase()}</Text>
-        <Text fontSize="9px" fontWeight="900" color="white" fontFamily="monospace" noOfLines={1}>{rewardLabel(r)}</Text>
+      <Flex
+        align="center" justify="space-between" gap={2} minH="34px" px={2} py={1}
+        border="1px solid"
+        borderColor={canClaim ? accent : isClaimed ? 'whiteAlpha.400' : 'whiteAlpha.200'}
+        bg={isClaimed ? 'whiteAlpha.50' : 'transparent'}
+        opacity={reached || !locked ? 1 : 0.55}
+      >
+        <Box minW={0}>
+          <Text fontSize="6px" fontWeight="900" fontFamily="monospace" letterSpacing="0.12em"
+            color={r.track === 'premium' ? accent : 'whiteAlpha.500'}>
+            {r.track.toUpperCase()}
+          </Text>
+          <Text fontSize="9px" fontWeight="900" color="white" fontFamily="monospace" noOfLines={1}>
+            {rewardLabel(r)}
+          </Text>
+        </Box>
         {isClaimed ? (
-          <Text position="absolute" top={1} right={1} fontSize="6px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">CLAIMED</Text>
-        ) : locked ? (
-          <Text position="absolute" top={1} right={1} fontSize="6px" fontWeight="900" color="whiteAlpha.500" fontFamily="monospace">PREMIUM</Text>
+          <Icon as={MdCheck} color={accent} boxSize="15px" flexShrink={0} />
         ) : canClaim ? (
-          <Button position="absolute" top="6px" right="6px" size="xs" h="18px" fontSize="7px" borderRadius="0" bg="var(--monarch-accent)" color="black" isLoading={busy === r.id} onClick={() => handleClaim(r)} _hover={{ bg: 'white' }}>CLAIM</Button>
-        ) : null}
+          <Button size="xs" h="20px" px={2} fontSize="7px" borderRadius="0" bg={accent} color="black"
+            flexShrink={0} isLoading={busy === r.id} onClick={() => handleClaim(r)} _hover={{ bg: 'white' }}>
+            CLAIM
+          </Button>
+        ) : locked ? (
+          <Icon as={MdLock} color="whiteAlpha.500" boxSize="13px" flexShrink={0} />
+        ) : (
+          <Text fontSize="6px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" flexShrink={0}>LVL {r.level}</Text>
+        )}
+      </Flex>
+    )
+  }
+
+  // One rung of the ladder: numbered node on the spine + that tier's rewards.
+  // The current level shows a "YOU" frontier marker above its node.
+  const Rung = ({ lvl }: { lvl: number }) => {
+    const reached = level >= lvl
+    const isCurrent = lvl === level
+    const cell = byLevel[lvl] || {}
+    const hasReward = !!(cell.free || cell.premium)
+    return (
+      <Box position="relative">
+        {isCurrent && (
+          <Flex align="center" gap={2} ml="40px" mb={1}>
+            <Box flex={1} h="2px" bg={accent} />
+            <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="monospace" letterSpacing="0.15em">
+              ◀ YOU // LVL {lvl}
+            </Text>
+          </Flex>
+        )}
+        <HStack spacing={3} align="stretch" minH={hasReward ? '44px' : '30px'}>
+          {/* spine + node */}
+          <Box position="relative" w="32px" flexShrink={0}>
+            <Box position="absolute" left="50%" top={0} bottom={0} w="2px" transform="translateX(-50%)"
+              bg={reached ? accent : 'whiteAlpha.200'} />
+            <Center position="absolute" left="50%" top="50%" transform="translate(-50%,-50%)" w="30px" h="22px"
+              zIndex={1} border="2px solid" borderColor={isCurrent ? 'white' : reached ? accent : 'whiteAlpha.300'}
+              bg={reached ? accent : 'black'}>
+              <Text fontSize="10px" fontWeight="900" fontFamily="monospace" color={reached ? 'black' : 'whiteAlpha.500'}>
+                {lvl}
+              </Text>
+            </Center>
+          </Box>
+          {/* rewards */}
+          <VStack spacing={1} align="stretch" flex={1} justify="center" py={hasReward ? 1 : 0}>
+            {cell.free && <RewardChip r={cell.free} />}
+            {cell.premium && <RewardChip r={cell.premium} />}
+          </VStack>
+        </HStack>
       </Box>
     )
   }
@@ -247,31 +304,56 @@ const Ascension = () => {
           </Text>
         </Box>
 
-        {/* Reward track */}
+        {/* Tier ladder */}
         <Box p={8}>
-          <Heading fontSize="xs" fontWeight="900" color="white" fontFamily="'Archivo Black', sans-serif" mb={3}>
-            REWARD_TRACK
-          </Heading>
-          <VStack spacing={2} align="stretch">
-            {levels.map((lvl) => {
-              const cell = byLevel[lvl] || {}
-              if (!cell.free && !cell.premium) return null
-              return (
-                <HStack key={lvl} spacing={2} align="center">
-                  <Center w="34px" h="48px" border="1px solid" borderColor={level >= lvl ? 'var(--monarch-accent)' : 'whiteAlpha.300'} flexShrink={0}>
-                    <Text fontSize="11px" fontWeight="900" color={level >= lvl ? 'var(--monarch-accent)' : 'whiteAlpha.500'} fontFamily="monospace">{lvl}</Text>
-                  </Center>
-                  <SimpleGrid columns={2} spacing={2} flex={1}>
-                    <RewardCell r={cell.free} lvl={lvl} />
-                    <RewardCell r={cell.premium} lvl={lvl} />
-                  </SimpleGrid>
-                </HStack>
-              )
-            })}
-            {rewards.length === 0 && (
-              <Text fontSize="9px" fontWeight="900" color="whiteAlpha.500" fontFamily="monospace">[ NO_REWARDS_CONFIGURED_YET ]</Text>
-            )}
+          <Flex justify="space-between" align="center" mb={4}>
+            <Heading fontSize="xs" fontWeight="900" color="white" fontFamily="'Archivo Black', sans-serif">
+              TIER_LADDER
+            </Heading>
+            <Text fontSize="8px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace" letterSpacing="0.1em">
+              TIER {level} / {season.level_count}
+            </Text>
+          </Flex>
+
+          {/* Summit cap */}
+          <HStack spacing={3} mb={1}>
+            <Center w="32px" flexShrink={0}>
+              <Icon as={MdMilitaryTech} color={maxed ? accent : 'whiteAlpha.400'} boxSize="20px" />
+            </Center>
+            <Text fontSize="8px" fontWeight="900" fontFamily="monospace" letterSpacing="0.15em"
+              color={maxed ? accent : 'whiteAlpha.500'}>
+              SUMMIT // TIER {season.level_count}{maxed ? ' // REACHED' : ''}
+            </Text>
+          </HStack>
+
+          {/* Rungs, summit (highest) down to base */}
+          <VStack spacing={0} align="stretch">
+            {Array.from({ length: season.level_count }, (_, i) => season.level_count - i).map((lvl) => (
+              <Rung key={lvl} lvl={lvl} />
+            ))}
           </VStack>
+
+          {/* Base — also where a brand-new (level 0) climber starts */}
+          {level === 0 && (
+            <Flex align="center" gap={2} ml="40px" mt={1}>
+              <Box flex={1} h="2px" bg={accent} />
+              <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="monospace" letterSpacing="0.15em">
+                ◀ YOU // START
+              </Text>
+            </Flex>
+          )}
+          <HStack spacing={3} mt={1}>
+            <Center w="32px" flexShrink={0}><Box w="10px" h="2px" bg="whiteAlpha.400" /></Center>
+            <Text fontSize="7px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" letterSpacing="0.15em">
+              BASE // TIER 01
+            </Text>
+          </HStack>
+
+          {rewards.length === 0 && (
+            <Text fontSize="9px" fontWeight="900" color="whiteAlpha.500" fontFamily="monospace" mt={4}>
+              [ TIERS LIVE // REWARDS BEING CONFIGURED ]
+            </Text>
+          )}
         </Box>
       </Container>
     </Box>
