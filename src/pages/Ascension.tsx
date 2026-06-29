@@ -195,7 +195,11 @@ const Ascension = () => {
         opacity={reached || !locked ? 1 : 0.55}
       >
         <HStack spacing={2} minW={0}>
-          {preview && <Box flexShrink={0} lineHeight={0}>{preview}</Box>}
+          {preview && (
+            <Box flexShrink={0} lineHeight={0} border="2px solid" borderColor="whiteAlpha.700" p="1px" bg="black">
+              {preview}
+            </Box>
+          )}
           <Box minW={0}>
             <Text fontSize="6px" fontWeight="900" fontFamily="monospace" letterSpacing="0.12em"
               color={r.track === 'premium' ? accent : 'whiteAlpha.500'}>
