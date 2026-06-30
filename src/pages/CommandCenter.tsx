@@ -118,8 +118,8 @@ const CommandCenter: React.FC = () => {
   const userWallet = user?.wallet?.address?.toLowerCase();
   
   const isAuthorized = authenticated && (
-    (userId && ADMIN_WALLETS.map(w => w.toLowerCase()).includes(userId)) ||
-    (userWallet && ADMIN_WALLETS.map(w => w.toLowerCase()).includes(userWallet))
+    (userId && ADMIN_WALLETS.map((w: string) => w.toLowerCase()).includes(userId)) ||
+    (userWallet && ADMIN_WALLETS.map((w: string) => w.toLowerCase()).includes(userWallet))
   );
 
   const bgColor = useColorModeValue('gray.50', 'black');
@@ -447,7 +447,7 @@ const CommandCenter: React.FC = () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         const maxDim = 1280;
         let { width, height } = img;

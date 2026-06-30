@@ -27,7 +27,7 @@ const Profile = () => {
   
   const solanaWallet = user?.linkedAccounts?.find(
     (account: any) => account.type === 'wallet' && account.walletClientType === 'privy' && account.connectorType === 'embedded'
-  ) || user?.wallets?.find((w: any) => w.chainType === 'solana');
+  ) || (user as any)?.wallets?.find((w: any) => w.chainType === 'solana');
   const solanaAddress = (solanaWallet as any)?.address;
 
   // Derive a handle from the real account (email > wallet > fallback).

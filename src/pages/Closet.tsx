@@ -880,7 +880,7 @@ const Closet = () => {
         <ModalContent bg="transparent" boxShadow="none" border="none" maxW="340px">
           <ModalBody p={0}>
             {selectedItem && (
-              <Box perspective="1000px" w="full" h="580px">
+              <Box sx={{ perspective: '1000px' }} w="full" h="580px">
                 <MotionBox
                   w="full"
                   h="full"

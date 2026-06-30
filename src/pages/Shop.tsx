@@ -670,7 +670,7 @@ const Shop = () => {
         <ModalContent bg="transparent" boxShadow="none" border="none" maxW="340px">
           <ModalBody p={0}>
             {selectedItem && (
-              <Box perspective="1000px" w="full" h="500px">
+              <Box sx={{ perspective: '1000px' }} w="full" h="500px">
                 <MotionBox
                   w="full"
                   h="full"

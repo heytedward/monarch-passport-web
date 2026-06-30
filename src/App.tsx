@@ -172,11 +172,16 @@ const dummyEthereumChain = {
   }
 };
 
+// Privy's installed SDK types have drifted from this app's provider/config shape
+// (onSuccess, createOnLogin, solanaClusters); the runtime is correct, so type the
+// provider loosely here instead of chasing each individual prop.
+const Privy = PrivyProvider as unknown as React.ComponentType<any>;
+
 function App() {
   const { setIdentityType, identityType } = useStore();
 
   return (
-    <PrivyProvider
+    <Privy
       appId={PRIVY_APP_ID}
       onSuccess={() => {
         if (!identityType) {
@@ -210,7 +215,7 @@ function App() {
           <AppContent />
         </ErrorBoundary>
       </ChakraProvider>
-    </PrivyProvider>
+    </Privy>
   )
 }
 
