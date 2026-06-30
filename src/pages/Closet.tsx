@@ -40,6 +40,12 @@ import ThemeSwatch from '../components/ThemeSwatch'
 
 const MotionBox = motion.create(Box)
 
+// On-chain avatar minting is PARKED — cosmetics stay Web2 (a user_assets row +
+// equip.js). The mint flow, funded devnet keypair, and tracking columns remain
+// in the codebase; flip this to true to re-expose the Closet mint surface when
+// the official Web3 drop ships. See project_phase3_onchain_avatars memory.
+const SHOW_ONCHAIN_MINT = false
+
 const DigitalGarmentCard = ({ garment, border, cardBg, text, mutedText }: { garment: any, border: string, cardBg: string, text: string, mutedText: string }) => {
   const percentage = Math.min(100, Math.max(0, (garment.quests_completed / garment.total_quests_required) * 100));
   
@@ -602,7 +608,7 @@ const Closet = () => {
               leftIcon={<Box as="span" h="8px" w="8px" border="1px solid" borderColor={mode === 'digital' ? inverseText : text} borderRadius="full" bg={mode === 'digital' ? inverseText : "transparent"} />}
               _hover={{}}
             >
-              ON-CHAIN
+              DIGITAL
             </Button>
           </Flex>
 
@@ -835,10 +841,10 @@ const Closet = () => {
                 <Center h="200px" flexDirection="column" border="1px dashed" borderColor={border} p={6}>
                   <TShirtIcon color={mutedText} boxSize="40px" />
                   <Text fontSize="xs" fontWeight="900" color={mutedText} mt={4} fontFamily="monospace" textAlign="center">
-                    [ NO_ON_CHAIN_GARMENTS_DETECTED ]
+                    [ NO_DIGITAL_GARMENTS_DETECTED ]
                   </Text>
                   <Text fontSize="9px" color={mutedText} opacity={0.6} mt={2} fontFamily="monospace" textAlign="center">
-                    ACQUIRE PHYGYTAL GEAR OR MINT VALIDATED ITEMS TO SYNC
+                    ACQUIRE PHYGYTAL GEAR OR DIGITAL COSMETICS TO SYNC
                   </Text>
                 </Center>
               )
@@ -1013,8 +1019,8 @@ const Closet = () => {
                         )
                       )}
 
-                      {/* On-chain minting (avatars only) */}
-                      {selectedItem.type === 'digital' && (
+                      {/* On-chain minting (avatars only) — PARKED behind SHOW_ONCHAIN_MINT */}
+                      {SHOW_ONCHAIN_MINT && selectedItem.type === 'digital' && (
                         selectedItem.mintAddress ? (
                           <VStack spacing={0.5} w="full" pt={1}>
                             <Text fontSize="8px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">◆ ON-CHAIN</Text>
