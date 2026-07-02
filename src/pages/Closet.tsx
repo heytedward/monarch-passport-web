@@ -434,7 +434,37 @@ const Closet = () => {
               }
             };
           });
-          setOwnedAssets([...defaults, ...mapped]);
+          // Claimed physical artifacts (NFC tap -> claim) live in the `artifacts`
+          // table (owner_id), separate from user_assets cosmetics. Surface them
+          // in the VAULT so tapped gear actually appears in the closet.
+          let artifactItems: ClosetItemData[] = [];
+          try {
+            const aRes = await fetch('/api/v2/purchase', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ userId: user.id, action: 'get_artifacts' }),
+            });
+            const aData = await aRes.json().catch(() => null);
+            artifactItems = (aData?.artifacts || []).map((a: any): ClosetItemData => ({
+              id: `artifact:${a.tag_id}`,
+              type: 'physical',
+              name: (a.name || a.tag_id).toUpperCase(),
+              season: a.season || undefined,
+              collection: a.collection || undefined,
+              borderColor: border,
+              dossier: {
+                collection: a.collection || 'PHYGITAL_ARTIFACT',
+                releaseDate: a.is_season_artifact ? `SEASON_${a.season || '—'}` : 'PHYGITAL',
+                serialId: a.tag_id,
+                xpPerTap: '40',
+                composition: a.is_season_artifact ? 'SEASON_ARTIFACT' : 'PHYGITAL_ARTIFACT',
+                activeMissions: a.is_season_artifact
+                  ? ['Tap to earn // unlocks PREMIUM track']
+                  : ['Tap to earn WNGS'],
+              },
+            }));
+          } catch { /* artifacts are non-critical to the closet */ }
+          setOwnedAssets([...defaults, ...mapped, ...artifactItems]);
         } else {
           setOwnedAssets(defaults);
         }

@@ -282,6 +282,18 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, assets: data || [] });
     }
 
+    // Physical artifacts this user has claimed via NFC tap. These live in the
+    // `artifacts` table (owner_id), separate from cosmetics in user_assets, and
+    // power the Closet VAULT so tapped gear actually shows in the closet.
+    if (action === 'get_artifacts') {
+      const { data } = await admin
+        .from('artifacts')
+        .select('tag_id, name, tier, collection, season, is_season_artifact')
+        .eq('owner_id', userId)
+        .order('name', { ascending: true });
+      return res.status(200).json({ success: true, artifacts: data || [] });
+    }
+
     if (action === 'get_transactions') {
       const { data } = await admin
         .from('transactions')
