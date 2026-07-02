@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { addSeasonXp, getActiveSeason, setSeasonPremium, XP_ACTIVATION } from './_ascension.js';
 import { verifyPrivyToken } from './_auth.js';
 import { recordQuestAction } from './_quests.js';
-import { checkAndAwardStamps, isFullCollectionComplete } from './_stamps.js';
+import { checkAndAwardStamps, isFullCollectionComplete, normalizeSeasonCode } from './_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -110,7 +110,9 @@ export default async function handler(req, res) {
       if (updated.is_season_artifact) {
         const season = await getActiveSeason(admin);
         const matchesSeason =
-          season && (!updated.season || updated.season === season.code || updated.season === season.name);
+          season && (!updated.season ||
+            normalizeSeasonCode(updated.season) === normalizeSeasonCode(season.code) ||
+            normalizeSeasonCode(updated.season) === normalizeSeasonCode(season.title));
         if (matchesSeason) {
           await setSeasonPremium(admin, ownerId, season.id);
           isPremiumUnlocked = true;

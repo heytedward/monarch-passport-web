@@ -7,7 +7,7 @@ import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST, getActiveSeason }
 import { avatarSvg } from './_avatarSvg.js';
 import { verifyPrivyToken } from './_auth.js';
 import { recordQuestAction } from './_quests.js';
-import { checkAndAwardStamps, isFullCollectionComplete } from './_stamps.js';
+import { checkAndAwardStamps, isFullCollectionComplete, seasonMatchValues } from './_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -338,7 +338,7 @@ export default async function handler(req, res) {
       if (!season) return res.status(200).json({ success: true, season: null, total: 0, owned: 0, items: [] });
       const seasonCode = season.code || season.title;
       const [{ data: nfc }, { data: items }] = await Promise.all([
-        admin.from('artifacts').select('tag_id, name, owner_id').eq('is_season_artifact', true).eq('season', seasonCode),
+        admin.from('artifacts').select('tag_id, name, owner_id').eq('is_season_artifact', true).in('season', seasonMatchValues(seasonCode)),
         admin.from('collection_items').select('id, name, image_url, sort_order').eq('season_id', season.id).order('sort_order', { ascending: true }),
       ]);
       const itemIds = (items || []).map((i) => i.id);

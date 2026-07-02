@@ -32,6 +32,23 @@
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Season codes drift in the data ("1" vs "01", case/whitespace). Match leniently:
+// normalizeSeasonCode canonicalises a code (numeric codes drop leading zeros);
+// seasonMatchValues expands a code into the stored variants to query with `.in`.
+export function normalizeSeasonCode(code) {
+  if (code == null) return '';
+  const c = String(code).trim().toUpperCase();
+  return /^\d+$/.test(c) ? String(parseInt(c, 10)) : c;
+}
+
+export function seasonMatchValues(code) {
+  const c = String(code ?? '').trim();
+  const norm = normalizeSeasonCode(c);
+  const set = new Set([c, c.toUpperCase(), c.toLowerCase(), norm]);
+  if (/^\d+$/.test(norm)) set.add(norm.padStart(2, '0'));
+  return [...set].filter(Boolean);
+}
+
 /**
  * Check whether the user owns the complete season collection:
  * the single NFC artifact + all collection_items for the season.
@@ -56,11 +73,12 @@ export async function isFullCollectionComplete(admin, userId, seasonId) {
   const seasonCode = season.code || season.title;
 
   // NFC artifact check.
+  const seasonVals = seasonMatchValues(seasonCode);
   const [{ count: totalNfc }, { count: ownedNfc }] = await Promise.all([
     admin.from('artifacts').select('*', { count: 'exact', head: true })
-      .eq('is_season_artifact', true).eq('season', seasonCode),
+      .eq('is_season_artifact', true).in('season', seasonVals),
     admin.from('artifacts').select('*', { count: 'exact', head: true })
-      .eq('is_season_artifact', true).eq('season', seasonCode).eq('owner_id', userId),
+      .eq('is_season_artifact', true).in('season', seasonVals).eq('owner_id', userId),
   ]);
 
   // Collection items check.
