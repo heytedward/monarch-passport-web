@@ -11,10 +11,9 @@ Monarch Passport is the Web2 (with Web3-adjacent) loyalty hub for Papillon Brand
 ## Commands
 
 - `npm run dev` — start Vite dev server (port 5173, or `$PORT`)
-- `npm run build` — TypeScript-checked production build (`tsc` via `vite build`)
+- `npm run typecheck` — `tsc --noEmit` (no lint/test scripts exist; this is the only static check)
+- `npm run build` — `tsc --noEmit && vite build` (typecheck now gates the build/deploy; keep `tsc` clean)
 - `npm run preview` — preview the production build
-
-There is no lint or test script configured in this repo currently.
 
 ## Architecture
 
