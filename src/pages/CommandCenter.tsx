@@ -894,6 +894,7 @@ const CommandCenter: React.FC = () => {
                           onChange={(e) => setItemType(e.target.value)}
                         >
                           <option value="CLOTHING">CLOTHING</option>
+                          <option value="ARTIFACT">ARTIFACT</option>
                           <option value="THEME">THEME</option>
                           <option value="AVATAR">AVATAR</option>
                           <option value="EVENT_LINK">EVENT_LINK</option>
