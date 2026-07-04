@@ -25,11 +25,14 @@ If a page shows `ACCESS DENIED // LEVEL 5 CLEARANCE REQUIRED`, you are not logge
 4. The item is **live in the Shop immediately** — no deploy, no database work. Users buy it with WNGS and equip it in their Closet.
 5. Forging a second item with a name that already exists is blocked (`DUPLICATE_NAME` error) — rename it or retire the old one first.
 
-### C. Pull an item from the store (or bring it back)
+### C. Store inventory — retire, re-release, and drop planning
 
-Command Center → **Digital Store Forge** → **FORGED_PRODUCTS** list at the bottom:
+Command Center → **Digital Store Forge** → **STORE_INVENTORY** at the bottom. This is the permanent catalog of **every avatar and theme ever forged**, live or retired — nothing is ever lost:
+
+- Filter tabs: **ALL / LIVE / RETIRED** (with counts).
+- Each row shows rarity, price, **OWNERS** (how many users hold it — useful for judging scarcity before a re-release), season/collection/edition tags, and the forge date.
 - **RETIRE** hides the item from the Shop instantly (people who already own it keep it).
-- **RESTORE** puts it back.
+- **RESTORE** re-releases a retired item exactly as it was — same palette, price, and rarity. That's the whole re-release flow: find it under RETIRED, click RESTORE.
 
 ### D. Give out WNGS (promos, refunds, make-goods)
 
@@ -67,17 +70,17 @@ Do this on the live site in a normal browser — **no NFC tag needed** (a tag is
 | 6 | Re-open `/v/TEST001` and tap again | Cooldown message (24h gate working) |
 | 7 | Command Center → create claim link `test-topup`, 5000 WNGS, max redemptions 1 | Link generated |
 | 8 | Open `/claim/test-topup` | +5000 WNGS credited |
-| 9 | Digital Store Forge → forge avatar `TEST_AVATAR_01` (COMMON) | "AVATAR_DEPLOYED" + it appears in **FORGED_PRODUCTS** |
+| 9 | Digital Store Forge → forge avatar `TEST_AVATAR_01` (COMMON) | "AVATAR_DEPLOYED" + it appears in **STORE_INVENTORY** (OWNERS:0) |
 | 10 | Forge avatar named `TEST_AVATAR_01` again | Blocked with `DUPLICATE_NAME` error |
 | 11 | Open **Shop** | `TEST_AVATAR_01` is listed at 500 WNGS |
-| 12 | Buy it | Balance drops 500; item shows as owned |
+| 12 | Buy it | Balance drops 500; item shows as owned (STORE_INVENTORY now shows OWNERS:1 after a refresh) |
 | 13 | **Closet** → equip it | Your avatar everywhere (navbar, profile) renders with the forged palette |
 | 14 | Forge theme `TEST_THEME_01`, buy, equip | App accent color changes app-wide |
-| 15 | FORGED_PRODUCTS → **RETIRE** `TEST_AVATAR_01` | It disappears from the Shop |
+| 15 | STORE_INVENTORY → **RETIRE** `TEST_AVATAR_01` | It disappears from the Shop; shows under the RETIRED filter |
 | 16 | **RESTORE** it | It reappears in the Shop |
 | 17 | Profile → QUESTS / STAMPS tabs | First-tap quest/stamp progress recorded from step 3 |
 
-**Cleanup**: retire `TEST_AVATAR_01` and `TEST_THEME_01` via FORGED_PRODUCTS. To fully delete test rows, run this in Supabase → SQL Editor:
+**Cleanup**: retire `TEST_AVATAR_01` and `TEST_THEME_01` via STORE_INVENTORY. To fully delete test rows, run this in Supabase → SQL Editor:
 
 ```sql
 delete from transactions where metadata->>'tag_id' like 'TEST%';

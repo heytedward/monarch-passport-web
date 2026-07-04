@@ -84,8 +84,9 @@ const CommandCenter: React.FC = () => {
   const [avatarEdition, setAvatarEdition] = useState('');
   const [isCreatingAvatar, setIsCreatingAvatar] = useState(false);
 
-  // --- Digital Store Forge: forged-products manager (retire/restore) ---
+  // --- Digital Store Forge: store inventory (retire/restore/re-release) ---
   const [togglingProductId, setTogglingProductId] = useState<string | null>(null);
+  const [productFilter, setProductFilter] = useState<'ALL' | 'LIVE' | 'RETIRED'>('ALL');
 
   // --- ASCENSION season control ---
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -142,11 +143,22 @@ const CommandCenter: React.FC = () => {
     if (!isAuthorized) return;
     supabase.from('seasons').select('*').order('start_date', { ascending: false })
       .then(({ data }) => setSeasons(data || []));
-    supabase.from('products')
-      .select('id, name, category, rarity, price_wngs, is_active, palette, accent_color, created_at')
-      .in('category', ['AVATAR', 'THEME'])
-      .order('created_at', { ascending: false })
-      .then(({ data }) => setAdminProducts(data || []));
+    // Inventory (incl. owner counts from user_assets) comes from the admin
+    // endpoint -- RLS hides user_assets from the browser client. Inlined for
+    // the same TDZ reason as the seasons query; fetchAdminProducts below is
+    // the refresh caller.
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        const response = await fetch('/api/v2/admin/mint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ kind: 'product_inventory', adminId: user?.id }),
+        });
+        const data = await response.json();
+        if (response.ok && data.success) setAdminProducts(data.products || []);
+      } catch { /* panel shows empty; refresh button retries */ }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthorized]);
 
@@ -429,13 +441,23 @@ const CommandCenter: React.FC = () => {
     }
   };
 
-  // --- Digital Store Forge: forged-products manager ---
+  // --- Digital Store Forge: store inventory ---
   const fetchAdminProducts = async () => {
-    const { data } = await supabase.from('products')
-      .select('id, name, category, rarity, price_wngs, is_active, palette, accent_color, created_at')
-      .in('category', ['AVATAR', 'THEME'])
-      .order('created_at', { ascending: false });
-    setAdminProducts(data || []);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch('/api/v2/admin/mint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ kind: 'product_inventory', adminId: user?.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'INVENTORY_FETCH_FAILED');
+      }
+      setAdminProducts(data.products || []);
+    } catch (err: any) {
+      addLog(`INVENTORY_FETCH_FAILED // ${err.message}`);
+    }
   };
 
   const toggleProductStatus = async (product: any) => {
@@ -1213,12 +1235,37 @@ const CommandCenter: React.FC = () => {
             </Card>
           </SimpleGrid>
 
-          {/* FORGED PRODUCTS: retire/restore store listings without a DB edit */}
+          {/* STORE INVENTORY: every cosmetic ever forged, live or retired.
+              RETIRE pulls an item from the Shop; RESTORE re-releases it. */}
           <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
             <CardHeader pb={0}>
               <HStack justify="space-between">
-                <Heading size="sm" color={monarchYellow}>FORGED_PRODUCTS</Heading>
-                <IconButton aria-label="Refresh products" icon={<MdRefresh />} size="sm" variant="outline" borderRadius="0" borderColor={borderColor} onClick={fetchAdminProducts} _hover={{ bg: 'whiteAlpha.100' }} />
+                <Heading size="sm" color={monarchYellow}>STORE_INVENTORY</Heading>
+                <HStack spacing={1}>
+                  {(['ALL', 'LIVE', 'RETIRED'] as const).map((f) => {
+                    const count = f === 'ALL'
+                      ? adminProducts.length
+                      : f === 'LIVE'
+                        ? adminProducts.filter((p) => p.is_active !== false).length
+                        : adminProducts.filter((p) => p.is_active === false).length;
+                    return (
+                      <Button
+                        key={f}
+                        size="xs"
+                        borderRadius="0"
+                        variant={productFilter === f ? 'solid' : 'outline'}
+                        bg={productFilter === f ? monarchYellow : 'transparent'}
+                        color={productFilter === f ? 'black' : labelText}
+                        borderColor={borderColor}
+                        onClick={() => setProductFilter(f)}
+                        _hover={{ opacity: 0.8 }}
+                      >
+                        {f}:{count}
+                      </Button>
+                    );
+                  })}
+                  <IconButton aria-label="Refresh inventory" icon={<MdRefresh />} size="xs" variant="outline" borderRadius="0" borderColor={borderColor} onClick={fetchAdminProducts} _hover={{ bg: 'whiteAlpha.100' }} />
+                </HStack>
               </HStack>
             </CardHeader>
             <CardBody>
@@ -1226,38 +1273,47 @@ const CommandCenter: React.FC = () => {
                 {adminProducts.length === 0 && (
                   <Text fontSize="xs" color="gray.500" fontFamily="monospace">NO_FORGED_PRODUCTS_YET</Text>
                 )}
-                {adminProducts.map((p) => {
-                  const retired = p.is_active === false;
-                  return (
-                    <HStack key={p.id} justify="space-between" p={2} border="1px solid" borderColor={borderColor} opacity={retired ? 0.45 : 1}>
-                      <HStack spacing={3} minW={0}>
-                        {p.category === 'AVATAR' ? (
-                          <DeStijlAvatar seed={p.id} colors={p.palette || undefined} size={28} />
-                        ) : (
-                          <Box w="28px" h="28px" flexShrink={0} bg={p.accent_color || monarchYellow} border="2px solid" borderColor={borderColor} />
-                        )}
-                        <Box minW={0}>
-                          <Text fontSize="xs" fontWeight="900" fontFamily="monospace" isTruncated>{p.name}</Text>
-                          <Text fontSize="10px" color="gray.500" fontFamily="monospace">
-                            {p.category} // {p.rarity || 'COMMON'} // {p.price_wngs} WNGS{retired ? ' // RETIRED' : ''}
-                          </Text>
-                        </Box>
+                {adminProducts
+                  .filter((p) => productFilter === 'ALL' || (productFilter === 'RETIRED') === (p.is_active === false))
+                  .map((p) => {
+                    const retired = p.is_active === false;
+                    const lineage = [p.season, p.collection, p.edition].filter(Boolean).join(' / ');
+                    const forgedOn = p.created_at ? new Date(p.created_at).toLocaleDateString() : null;
+                    return (
+                      <HStack key={p.id} justify="space-between" p={2} border="1px solid" borderColor={borderColor} opacity={retired ? 0.45 : 1}>
+                        <HStack spacing={3} minW={0}>
+                          {p.category === 'AVATAR' ? (
+                            <DeStijlAvatar seed={p.id} colors={p.palette || undefined} size={28} />
+                          ) : (
+                            <Box w="28px" h="28px" flexShrink={0} bg={p.accent_color || monarchYellow} border="2px solid" borderColor={borderColor} />
+                          )}
+                          <Box minW={0}>
+                            <Text fontSize="xs" fontWeight="900" fontFamily="monospace" isTruncated>{p.name}</Text>
+                            <Text fontSize="10px" color="gray.500" fontFamily="monospace">
+                              {p.category} // {p.rarity || 'COMMON'} // {p.price_wngs} WNGS // OWNERS:{p.owners ?? 0}{retired ? ' // RETIRED' : ''}
+                            </Text>
+                            {(lineage || forgedOn) && (
+                              <Text fontSize="10px" color="gray.600" fontFamily="monospace" isTruncated>
+                                {[lineage, forgedOn && `FORGED ${forgedOn}`].filter(Boolean).join(' // ')}
+                              </Text>
+                            )}
+                          </Box>
+                        </HStack>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          borderRadius="0"
+                          borderColor={retired ? monarchYellow : destructiveRed}
+                          color={retired ? monarchYellow : destructiveRed}
+                          isLoading={togglingProductId === p.id}
+                          onClick={() => toggleProductStatus(p)}
+                          _hover={{ bg: 'whiteAlpha.100' }}
+                        >
+                          {retired ? 'RESTORE' : 'RETIRE'}
+                        </Button>
                       </HStack>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        borderRadius="0"
-                        borderColor={retired ? monarchYellow : destructiveRed}
-                        color={retired ? monarchYellow : destructiveRed}
-                        isLoading={togglingProductId === p.id}
-                        onClick={() => toggleProductStatus(p)}
-                        _hover={{ bg: 'whiteAlpha.100' }}
-                      >
-                        {retired ? 'RESTORE' : 'RETIRE'}
-                      </Button>
-                    </HStack>
-                  );
-                })}
+                    );
+                  })}
               </VStack>
             </CardBody>
           </Card>

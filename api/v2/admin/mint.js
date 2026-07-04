@@ -154,6 +154,37 @@ async function setProductStatus(body, supabase, res) {
   return res.status(200).json({ success: true, product: data });
 }
 
+// Store inventory (admin only): every forged cosmetic ever, live or retired,
+// with how many users own each -- the data needed to decide a re-release.
+// Folded here to stay under the function cap. Dispatched by kind:
+// 'product_inventory'.
+async function productInventory(supabase, res) {
+  const { data: products, error } = await supabase
+    .from('products')
+    .select('id, name, category, rarity, price_wngs, is_active, palette, accent_color, theme_mode, collection, season, edition, created_at')
+    .in('category', ['AVATAR', 'THEME'])
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  // Owner counts come from user_assets, which RLS hides from the browser. Two
+  // plain queries + a JS merge avoids depending on a FK/embed relationship
+  // being registered in the live schema.
+  const { data: assets, error: assetsError } = await supabase
+    .from('user_assets')
+    .select('product_id');
+  if (assetsError) throw assetsError;
+
+  const owners = {};
+  for (const a of assets || []) {
+    if (a.product_id) owners[a.product_id] = (owners[a.product_id] || 0) + 1;
+  }
+
+  return res.status(200).json({
+    success: true,
+    products: (products || []).map((p) => ({ ...p, owners: owners[p.id] || 0 })),
+  });
+}
+
 // ASCENSION season lifecycle + reward-table editing (admin only). Folded here
 // to stay under the function cap. Dispatched by kind: season_create /
 // season_activate / season_end / season_reward.
@@ -372,6 +403,9 @@ export default async function handler(req, res) {
     }
     if (body.kind === 'product_status') {
       return await setProductStatus(body, supabase, res);
+    }
+    if (body.kind === 'product_inventory') {
+      return await productInventory(supabase, res);
     }
     if (typeof body.kind === 'string' && body.kind.startsWith('season_')) {
       return await seasonOp(body, supabase, res);
