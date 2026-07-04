@@ -37,6 +37,7 @@ import { usePrivy } from '@privy-io/react-auth'
 import { WngsCoin } from '../components/WngsCoin'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import ThemeSwatch from '../components/ThemeSwatch'
+import { RARITY_COLORS } from '../lib/destijlPalette'
 
 const MotionBox = motion.create(Box)
 
@@ -47,18 +48,6 @@ const TShirtIcon = ({ color = "white", boxSize = "40px" }: { color?: string, box
     </svg>
   </Box>
 )
-
-// Rarity tiers for digital cosmetics. COMMON/RARE/EPIC/MONARCH stay within
-// the De Stijl palette (MONARCH = top in-house tier, in brand gold); MYTHIC
-// (cross-brand collabs) deliberately breaks from it with an off-brand cyan
-// so collab pieces read as distinct from pure Monarch.
-const RARITY_COLORS: Record<string, string> = {
-  COMMON: '#71717A',
-  RARE: '#D4D4D8',
-  EPIC: '#DC143C',
-  MONARCH: '#FFB000',
-  MYTHIC: '#00F0FF',
-};
 
 interface ShopItemData {
   id: string;

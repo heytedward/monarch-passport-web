@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Heading, Text, VStack, Center, Spinner, Button, Icon, useColorModeValue } from '@chakra-ui/react'
-import { MdErrorOutline, MdCheckCircleOutline } from 'react-icons/md'
+import { MdErrorOutline } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
 import useStore from '../store/useStore'
+import RewardCard from '../components/RewardCard'
 
 const Claim = () => {
   const { id } = useParams<{ id: string }>()
@@ -15,6 +16,8 @@ const Claim = () => {
   const [errorMessage, setErrorMessage] = useState('ESTABLISHING SECURE CONNECTION...')
   const [rawError, setRawError] = useState<string | null>(null)
   const [rewardAmount, setRewardAmount] = useState<number>(0)
+  const [itemName, setItemName] = useState<string | null>(null)
+  const [itemType, setItemType] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
 
   const bg = useColorModeValue("black", "black") // High contrast terminal style
@@ -67,6 +70,8 @@ const Claim = () => {
       }
 
       setRewardAmount(result.awarded)
+      setItemName(result.itemName || null)
+      setItemType(result.itemType || null)
       setStatus('SUCCESS')
       fetchUserProfile(userId) // Sync global state
     } catch (err: any) {
@@ -114,26 +119,21 @@ const Claim = () => {
           )}
 
           {status === 'SUCCESS' && (
-            <>
-              <Box p={10} border={`4px solid ${yellow}`} bg={yellow} color="black">
-                <Icon as={MdCheckCircleOutline} w={20} h={20} mb={4} />
-                <Heading size="2xl" fontWeight="900" fontStyle="italic" mb={2}>ARTIFACT SCANNED</Heading>
-                <Heading size="xl" fontWeight="900">+{rewardAmount} WNGS ACQUIRED</Heading>
-              </Box>
-              <Button 
-                variant="outline" 
-                borderColor={yellow} 
-                color={yellow} 
-                borderRadius="0" 
-                h="60px" 
-                px={10}
+            <RewardCard variant="wngs" amount={rewardAmount} itemName={itemName} itemType={itemType}>
+              <Button
+                w="full"
+                bg={yellow}
+                color="black"
+                borderRadius="0"
+                h="56px"
                 fontWeight="900"
-                _hover={{ bg: yellow, color: "black" }}
+                fontFamily="monospace"
+                _hover={{ bg: 'white' }}
                 onClick={() => navigate('/profile')}
               >
-                RETURN TO PROFILE
+                RETURN_TO_PROFILE
               </Button>
-            </>
+            </RewardCard>
           )}
 
           {status === 'ERROR' && (

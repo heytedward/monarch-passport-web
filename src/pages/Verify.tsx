@@ -13,6 +13,7 @@ import {
   HStack
 } from '@chakra-ui/react';
 import useStore from '../store/useStore';
+import RewardCard from '../components/RewardCard';
 
 const blink = keyframes`
   0% { opacity: 0.4; }
@@ -50,6 +51,7 @@ const Verify: React.FC = () => {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimAwarded, setClaimAwarded] = useState<number | null>(null);
   const [justClaimed, setJustClaimed] = useState(false);
+  const [premiumUnlocked, setPremiumUnlocked] = useState(false);
 
   const [tapState, setTapState] = useState<'idle' | 'tapping' | 'rewarded' | 'cooldown' | 'error'>('idle');
   const [tapAwarded, setTapAwarded] = useState<number | null>(null);
@@ -181,6 +183,7 @@ const Verify: React.FC = () => {
       }
 
       setClaimAwarded(result.awarded);
+      setPremiumUnlocked(!!result.premiumUnlocked);
       setJustClaimed(true);
       setArtifact({ ...artifact, isActivated: true, isOwner: true });
       fetchUserProfile(user.id);
@@ -238,7 +241,46 @@ const Verify: React.FC = () => {
     return (
       <Center h="100vh" bg="black" p={6}>
         <VStack spacing={8} maxW="600px" w="full">
-          {artifact.isActivated ? (
+          {artifact.isActivated && justClaimed ? (
+            // First-time activation: full reward card instead of the plain
+            // owner-verified box (which is what revisits/repeat taps get).
+            <RewardCard
+              variant="artifact"
+              name={artifact.name}
+              tier={artifact.tier}
+              collection={artifact.collection}
+              season={artifact.season}
+              amount={claimAwarded ?? 0}
+              premiumUnlocked={premiumUnlocked}
+            >
+              <Button
+                w="full"
+                bg="#FFB000"
+                color="black"
+                borderRadius="0"
+                h="56px"
+                fontWeight="900"
+                fontFamily="monospace"
+                _hover={{ bg: 'white' }}
+                onClick={() => navigate('/closet')}
+              >
+                GO_TO_CLOSET
+              </Button>
+              <Button
+                w="full"
+                variant="outline"
+                borderColor="whiteAlpha.400"
+                color="whiteAlpha.800"
+                borderRadius="0"
+                fontWeight="900"
+                fontFamily="monospace"
+                _hover={{ bg: 'whiteAlpha.100' }}
+                onClick={() => navigate('/home')}
+              >
+                PROCEED_TO_OS
+              </Button>
+            </RewardCard>
+          ) : artifact.isActivated ? (
             <VStack spacing={6} border="2px solid #00FF00" p={10} bg="rgba(0,255,0,0.05)" w="full">
               <Heading color="#00FF00" size="xl" fontFamily="monospace" fontWeight="900" textAlign="center">
                 AUTHENTIC MONARCH ARTIFACT // OWNER_VERIFIED
@@ -264,11 +306,6 @@ const Verify: React.FC = () => {
 
               {isMine && (
                 <Box w="full" border="1px dashed #00FF00" p={4}>
-                  {justClaimed && (
-                    <Text color="#00FF00" fontFamily="monospace" fontSize="sm" fontWeight="900">
-                      ARTIFACT_ACTIVATED // +{claimAwarded} WNGS_BONUS_AWARDED
-                    </Text>
-                  )}
                   {!justClaimed && tapState === 'tapping' && (
                     <HStack spacing={3}>
                       <Spinner size="sm" color="#00FF00" />

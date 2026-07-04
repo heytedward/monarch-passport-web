@@ -123,7 +123,14 @@ export default async function handler(req, res) {
 
     if (insertError) throw insertError;
 
-    return res.status(200).json({ success: true, awarded: amount });
+    return res.status(200).json({
+      success: true,
+      awarded: amount,
+      // Label-only metadata so the reward screen can say what this link was
+      // for (the payout itself is always WNGS).
+      itemName: claimLink.item_name || null,
+      itemType: claimLink.item_type || null,
+    });
   } catch (err) {
     console.error('REDEEM_CLAIM_ERROR:', err);
     return res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' });

@@ -15,6 +15,18 @@ export const DESTIJL_COLORS = [
 export const RARITIES = ['COMMON', 'RARE', 'EPIC', 'MONARCH', 'MYTHIC'] as const;
 export type Rarity = (typeof RARITIES)[number];
 
+// Rarity tiers for digital cosmetics. COMMON/RARE/EPIC/MONARCH stay within
+// the De Stijl palette (MONARCH = top in-house tier, in brand gold); MYTHIC
+// (cross-brand collabs) deliberately breaks from it with an off-brand cyan
+// so collab pieces read as distinct from pure Monarch.
+export const RARITY_COLORS: Record<string, string> = {
+  COMMON: '#71717A',
+  RARE: '#D4D4D8',
+  EPIC: '#DC143C',
+  MONARCH: '#FFB000',
+  MYTHIC: '#00F0FF',
+};
+
 // Auto-pricing by rarity (WNGS). Editable per-item in the generator UI.
 export const RARITY_PRICES: Record<Rarity, number> = {
   COMMON: 500,
