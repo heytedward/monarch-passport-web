@@ -5,7 +5,7 @@ if (process.env.NODE_ENV !== 'production') {
 import { createClient } from '@supabase/supabase-js';
 import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST, getActiveSeason } from './_ascension.js';
 import { avatarSvg } from './_avatarSvg.js';
-import { verifyPrivyToken } from './_auth.js';
+import { verifyPrivyToken, getPrivyUserEmails } from './_auth.js';
 import { recordQuestAction } from './_quests.js';
 import { checkAndAwardStamps, isFullCollectionComplete, seasonMatchValues } from './_stamps.js';
 
@@ -216,6 +216,59 @@ async function mintAvatar(admin, userId, body, res) {
   }
 }
 
+// Storefront -> Closet auto-grant. monarch-labs' Stripe webhook queues one
+// purchase_grants row per purchased line item (keyed by buyer email); here we
+// match the logged-in user's Privy emails and mint each unit as an already-
+// activated artifact so it shows in the Closet vault. Returns granted labels.
+async function grantPendingPurchases(admin, userId) {
+  const emails = await getPrivyUserEmails(userId);
+  if (!emails.length) return [];
+
+  const { data: grants, error } = await admin
+    .from('purchase_grants')
+    .select('id, product_handle, product_name, quantity, stripe_session_id')
+    .in('email', emails)
+    .eq('status', 'PENDING');
+  if (error) throw error;
+  if (!grants || !grants.length) return [];
+
+  const grantedNames = [];
+  for (const grant of grants) {
+    // Claim the grant first (conditional update) so a concurrent login can't
+    // double-mint; only the winner proceeds to create artifacts.
+    const { data: claimed, error: claimErr } = await admin
+      .from('purchase_grants')
+      .update({ status: 'GRANTED', granted_to: userId, granted_at: new Date().toISOString() })
+      .eq('id', grant.id)
+      .eq('status', 'PENDING')
+      .select('id')
+      .maybeSingle();
+    if (claimErr || !claimed) continue;
+
+    const name = grant.product_name || String(grant.product_handle).replace(/-/g, ' ').toUpperCase();
+    const qty = Math.max(1, Number(grant.quantity) || 1);
+    const sessionShort = String(grant.stripe_session_id).replace(/^cs_(live|test)_/, '').slice(0, 10).toUpperCase();
+    const rows = [];
+    for (let n = 1; n <= qty; n++) {
+      rows.push({
+        tag_id: `SHOP-${sessionShort}-${grant.id.slice(0, 4).toUpperCase()}${n}`,
+        name,
+        tier: 'COMMON',
+        collection: 'PAPILLON_STORE',
+        is_activated: true,
+        owner_id: userId,
+      });
+    }
+    const { error: insErr } = await admin.from('artifacts').insert(rows);
+    if (insErr) {
+      console.error('PURCHASE_GRANT_ARTIFACT_FAILED:', insErr);
+      continue;
+    }
+    grantedNames.push(qty > 1 ? `${name} x${qty}` : name);
+  }
+  return grantedNames;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
 
@@ -255,6 +308,14 @@ export default async function handler(req, res) {
       } catch (qErr) {
         console.error('QUEST_LOGIN_WARN:', qErr);
       }
+      // Storefront purchases waiting on this email -> Closet. Same best-effort
+      // rule: a grant failure must never block login.
+      let granted = [];
+      try {
+        granted = await grantPendingPurchases(admin, userId);
+      } catch (gErr) {
+        console.error('PURCHASE_GRANT_WARN:', gErr);
+      }
       const { data: profile } = await admin
         .from('profiles')
         .select('wngs_balance, active_theme, active_avatar, total_taps, current_stamina, max_stamina, last_stamina_regen')
@@ -271,7 +332,7 @@ export default async function handler(req, res) {
         const { data: th } = await admin.from('products').select('accent_color').eq('id', profile.active_theme).maybeSingle();
         themeAccent = th?.accent_color || null;
       }
-      return res.status(200).json({ success: true, profile, avatarColors, themeAccent });
+      return res.status(200).json({ success: true, profile, avatarColors, themeAccent, granted });
     }
 
     if (action === 'get_owned') {

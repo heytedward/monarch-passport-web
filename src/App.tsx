@@ -1,5 +1,5 @@
 import React from 'react'
-import { ChakraProvider, Box, Center, Spinner, useColorModeValue } from '@chakra-ui/react'
+import { ChakraProvider, Box, Center, Spinner, Text, useColorModeValue, useToast } from '@chakra-ui/react'
 import theme from './theme'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { PrivyProvider, usePrivy } from '@privy-io/react-auth'
@@ -97,6 +97,7 @@ function AppRoutes() {
 function AppContent() {
   const { user, ready, authenticated, getAccessToken } = usePrivy();
   const { activeTheme, activeThemeAccent, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent } = useStore();
+  const toast = useToast();
 
   const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
   const bgColor = useColorModeValue("gray.50", "black");
@@ -129,6 +130,23 @@ function AppContent() {
             setActiveAvatar(data.profile.active_avatar || null);
             setActiveAvatarColors(data.avatarColors || null);
             if (data.themeAccent) setActiveThemeAccent(data.themeAccent);
+          }
+          // Storefront purchases auto-granted on this login (matched by email).
+          if (Array.isArray(data?.granted) && data.granted.length > 0) {
+            toast({
+              duration: 8000,
+              position: 'top',
+              render: () => (
+                <Box bg="black" border="2px solid #FFB000" p={3} maxW="430px" mx="auto">
+                  <Text color="#FFB000" fontFamily="monospace" fontWeight="900" fontSize="xs">
+                    ORDER_SYNCED // {data.granted.length} ITEM{data.granted.length > 1 ? 'S' : ''} ADDED TO YOUR CLOSET
+                  </Text>
+                  <Text color="whiteAlpha.700" fontFamily="monospace" fontSize="10px" mt={1}>
+                    {data.granted.join(' // ').toUpperCase()}
+                  </Text>
+                </Box>
+              ),
+            });
           }
         } catch (e) {
           console.error('ensure_profile failed', e);

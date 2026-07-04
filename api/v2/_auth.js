@@ -30,3 +30,18 @@ export async function verifiedUserId(req) {
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
   return verifyPrivyToken(token);
 }
+
+// Linked email addresses (email/Google/Apple logins) for an already-verified
+// DID, lowercased and deduped. Used to match storefront purchases made with
+// the same email. Returns [] on any failure -- callers treat it best-effort.
+export async function getPrivyUserEmails(did) {
+  if (!did || !APP_ID || !APP_SECRET) return [];
+  try {
+    const u = await client().getUser(did);
+    const emails = [u?.email?.address, u?.google?.email, u?.apple?.email];
+    return [...new Set(emails.filter(Boolean).map((e) => String(e).toLowerCase()))];
+  } catch (e) {
+    console.error('PRIVY_GET_USER_FAILED:', e?.message || e);
+    return [];
+  }
+}
