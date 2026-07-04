@@ -84,6 +84,9 @@ const CommandCenter: React.FC = () => {
   const [avatarEdition, setAvatarEdition] = useState('');
   const [isCreatingAvatar, setIsCreatingAvatar] = useState(false);
 
+  // --- Digital Store Forge: forged-products manager (retire/restore) ---
+  const [togglingProductId, setTogglingProductId] = useState<string | null>(null);
+
   // --- ASCENSION season control ---
   const [seasons, setSeasons] = useState<any[]>([]);
   const [adminProducts, setAdminProducts] = useState<any[]>([]);
@@ -139,8 +142,10 @@ const CommandCenter: React.FC = () => {
     if (!isAuthorized) return;
     supabase.from('seasons').select('*').order('start_date', { ascending: false })
       .then(({ data }) => setSeasons(data || []));
-    supabase.from('products').select('id, name, category')
+    supabase.from('products')
+      .select('id, name, category, rarity, price_wngs, is_active, palette, accent_color, created_at')
       .in('category', ['AVATAR', 'THEME'])
+      .order('created_at', { ascending: false })
       .then(({ data }) => setAdminProducts(data || []));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthorized]);
@@ -383,6 +388,7 @@ const CommandCenter: React.FC = () => {
       toast({ title: 'THEME_DEPLOYED', description: `${themeName} IS LIVE IN THE STORE`, status: 'success' });
       setThemeName('');
       setThemePriceOverride('');
+      fetchAdminProducts();
     } catch (err: any) {
       addLog(`THEME_FORGE_FAILED // ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
@@ -414,11 +420,50 @@ const CommandCenter: React.FC = () => {
       setAvatarName('');
       setAvatarPriceOverride('');
       setAvatarPalette(rollPalette());
+      fetchAdminProducts();
     } catch (err: any) {
       addLog(`AVATAR_FORGE_FAILED // ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
     } finally {
       setIsCreatingAvatar(false);
+    }
+  };
+
+  // --- Digital Store Forge: forged-products manager ---
+  const fetchAdminProducts = async () => {
+    const { data } = await supabase.from('products')
+      .select('id, name, category, rarity, price_wngs, is_active, palette, accent_color, created_at')
+      .in('category', ['AVATAR', 'THEME'])
+      .order('created_at', { ascending: false });
+    setAdminProducts(data || []);
+  };
+
+  const toggleProductStatus = async (product: any) => {
+    const nextActive = product.is_active === false; // retired -> restore, live -> retire
+    setTogglingProductId(product.id);
+    addLog(`${nextActive ? 'RESTORING' : 'RETIRING'}_PRODUCT // ${product.name}`);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch('/api/v2/admin/mint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ kind: 'product_status', productId: product.id, isActive: nextActive, adminId: user?.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'STATUS_UPDATE_FAILED');
+      }
+      setAdminProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, is_active: nextActive } : p));
+      toast({
+        title: nextActive ? 'PRODUCT_RESTORED' : 'PRODUCT_RETIRED',
+        description: `${product.name} IS ${nextActive ? 'BACK IN' : 'REMOVED FROM'} THE STORE`,
+        status: 'success',
+      });
+    } catch (err: any) {
+      addLog(`STATUS_UPDATE_FAILED // ${err.message}`);
+      toast({ title: 'ERROR', description: err.message, status: 'error' });
+    } finally {
+      setTogglingProductId(null);
     }
   };
 
@@ -1167,6 +1212,55 @@ const CommandCenter: React.FC = () => {
               </CardBody>
             </Card>
           </SimpleGrid>
+
+          {/* FORGED PRODUCTS: retire/restore store listings without a DB edit */}
+          <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
+            <CardHeader pb={0}>
+              <HStack justify="space-between">
+                <Heading size="sm" color={monarchYellow}>FORGED_PRODUCTS</Heading>
+                <IconButton aria-label="Refresh products" icon={<MdRefresh />} size="sm" variant="outline" borderRadius="0" borderColor={borderColor} onClick={fetchAdminProducts} _hover={{ bg: 'whiteAlpha.100' }} />
+              </HStack>
+            </CardHeader>
+            <CardBody>
+              <VStack spacing={2} align="stretch">
+                {adminProducts.length === 0 && (
+                  <Text fontSize="xs" color="gray.500" fontFamily="monospace">NO_FORGED_PRODUCTS_YET</Text>
+                )}
+                {adminProducts.map((p) => {
+                  const retired = p.is_active === false;
+                  return (
+                    <HStack key={p.id} justify="space-between" p={2} border="1px solid" borderColor={borderColor} opacity={retired ? 0.45 : 1}>
+                      <HStack spacing={3} minW={0}>
+                        {p.category === 'AVATAR' ? (
+                          <DeStijlAvatar seed={p.id} colors={p.palette || undefined} size={28} />
+                        ) : (
+                          <Box w="28px" h="28px" flexShrink={0} bg={p.accent_color || monarchYellow} border="2px solid" borderColor={borderColor} />
+                        )}
+                        <Box minW={0}>
+                          <Text fontSize="xs" fontWeight="900" fontFamily="monospace" isTruncated>{p.name}</Text>
+                          <Text fontSize="10px" color="gray.500" fontFamily="monospace">
+                            {p.category} // {p.rarity || 'COMMON'} // {p.price_wngs} WNGS{retired ? ' // RETIRED' : ''}
+                          </Text>
+                        </Box>
+                      </HStack>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        borderRadius="0"
+                        borderColor={retired ? monarchYellow : destructiveRed}
+                        color={retired ? monarchYellow : destructiveRed}
+                        isLoading={togglingProductId === p.id}
+                        onClick={() => toggleProductStatus(p)}
+                        _hover={{ bg: 'whiteAlpha.100' }}
+                      >
+                        {retired ? 'RESTORE' : 'RETIRE'}
+                      </Button>
+                    </HStack>
+                  );
+                })}
+              </VStack>
+            </CardBody>
+          </Card>
         </VStack>
 
         {/* Footer/System Logs Section */}

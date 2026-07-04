@@ -90,9 +90,29 @@ async function createCosmetic(body, supabase, res) {
     return res.status(400).json({ error: 'Invalid price' });
   }
 
+  const category = kind === 'theme' ? 'THEME' : 'AVATAR';
+
+  // Duplicate guard: a re-submitted (or forgotten earlier) forge would silently
+  // create a second identical store listing. Case-insensitive match; % _ \ are
+  // escaped because ilike treats them as pattern wildcards.
+  const likePattern = name.replace(/([%_\\])/g, '\\$1');
+  const { data: existing, error: dupError } = await supabase
+    .from('products')
+    .select('id')
+    .eq('category', category)
+    .ilike('name', likePattern)
+    .maybeSingle();
+  if (dupError) throw dupError;
+  if (existing) {
+    return res.status(409).json({
+      error: `DUPLICATE_NAME // A ${category} NAMED "${name.toUpperCase()}" ALREADY EXISTS`,
+      existingId: existing.id,
+    });
+  }
+
   const row = {
     name,
-    category: kind === 'theme' ? 'THEME' : 'AVATAR',
+    category,
     rarity,
     price_wngs,
     price_usd: 0,
@@ -109,6 +129,27 @@ async function createCosmetic(body, supabase, res) {
 
   const { data, error } = await supabase.from('products').insert(row).select().single();
   if (error) throw error;
+
+  return res.status(200).json({ success: true, product: data });
+}
+
+// Retire/restore a store product (admin only). Toggles products.is_active so
+// pulling an item from the Shop never requires a manual DB edit. Folded here
+// to stay under the function cap. Dispatched by kind: 'product_status'.
+async function setProductStatus(body, supabase, res) {
+  const { productId, isActive } = body;
+  if (!productId || typeof productId !== 'string' || typeof isActive !== 'boolean') {
+    return res.status(400).json({ error: 'productId (string) and isActive (boolean) are required' });
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .update({ is_active: isActive })
+    .eq('id', productId)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return res.status(404).json({ error: 'PRODUCT_NOT_FOUND' });
 
   return res.status(200).json({ success: true, product: data });
 }
@@ -328,6 +369,9 @@ export default async function handler(req, res) {
     // 4. Dispatch: cosmetic product creation, ASCENSION season ops, or mint
     if (body.kind === 'theme' || body.kind === 'avatar') {
       return await createCosmetic(body, supabase, res);
+    }
+    if (body.kind === 'product_status') {
+      return await setProductStatus(body, supabase, res);
     }
     if (typeof body.kind === 'string' && body.kind.startsWith('season_')) {
       return await seasonOp(body, supabase, res);
