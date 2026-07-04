@@ -30,10 +30,14 @@ import DeStijlAvatar from '../components/DeStijlAvatar';
 import { rollPalette, RARITIES, priceForRarity } from '../lib/destijlPalette';
 import { supabase } from '../lib/supabase';
 
-const ADMIN_WALLETS = (import.meta.env.VITE_ADMIN_PRIVY_ID || "did:privy:cmjufzcf403jjl70dpyp1mood")
+// Entries may be full Privy DIDs, bare Privy IDs ("cmpho..."), or wallet
+// addresses. Bare entries also match as their did:privy: form, so the env var
+// works with or without the prefix.
+const ADMIN_WALLETS = (import.meta.env.VITE_ADMIN_PRIVY_ID || "did:privy:cmphogmw500340ckz646kklaw,did:privy:cmjufzcf403jjl70dpyp1mood")
   .split(",")
   .map((w: string) => w.trim())
-  .filter(Boolean);
+  .filter(Boolean)
+  .flatMap((w: string) => (w.startsWith('did:privy:') ? [w] : [w, `did:privy:${w}`]));
 
 const CommandCenter: React.FC = () => {
   const { user, authenticated, ready, getAccessToken } = usePrivy();

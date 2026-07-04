@@ -2,7 +2,7 @@
 
 This is the operations manual for running Monarch Passport day-to-day **without touching code or the database**. Everything routine happens in the Command Center at:
 
-**`https://monarch-passport.vercel.app/command-center`** (log in with the admin account first)
+**`https://passport.papillonbrand.us/command-center`** (log in with the admin account first)
 
 If a page shows `ACCESS DENIED // LEVEL 5 CLEARANCE REQUIRED`, you are not logged in with the admin Privy account.
 
@@ -14,7 +14,8 @@ If a page shows `ACCESS DENIED // LEVEL 5 CLEARANCE REQUIRED`, you are not logge
 
 1. Command Center → **Artifact & Link Forge** → the artifact mint form.
 2. Fill in: `TAG_PREFIX` (e.g. `GEN2`), `START_NUM` (e.g. `1`), `COUNT` (how many pieces), `TIER` (rarity), product name, collection, season. Tick **SEASON ARTIFACT** if claiming one should unlock the battlepass premium track.
-3. Click mint → you get a list of URLs like `https://monarch-passport.vercel.app/v/GEN2001`. Copy them.
+3. Click mint → you get a list of URLs like `https://passport.papillonbrand.us/v/GEN2001`. Copy them.
+   - If the URLs come back on `monarch-passport.vercel.app` instead of your domain, set the `BASE_URL` environment variable to `https://passport.papillonbrand.us` in Vercel → Settings → Environment Variables and redeploy. (Both domains work — this is just branding on the tag URLs.)
 4. Encode one URL per NFC tag (NTAG 424) in the physical garments. That's it — when a customer taps, the URL opens, they log in, claim, and the artifact appears in their Closet automatically. Repeat taps pay them small WNGS rewards on a 24-hour cooldown, with no work on your end.
 
 ### B. New avatar or theme in the digital store
@@ -37,7 +38,7 @@ Command Center → **Digital Store Forge** → **STORE_INVENTORY** at the bottom
 ### D. Give out WNGS (promos, refunds, make-goods)
 
 1. Command Center → claim-link generator: enter an ID (becomes the link code), WNGS value, item type, and optionally **MAX_REDEMPTIONS** (cap how many people can use it).
-2. Share the generated `https://monarch-passport.vercel.app/claim/<code>` link (or make a QR of it). Each user can redeem a given link once.
+2. Share the generated `https://passport.papillonbrand.us/claim/<code>` link (or make a QR of it). Each user can redeem a given link once.
 
 ### E. Post to the MONARCH_TIMES feed
 

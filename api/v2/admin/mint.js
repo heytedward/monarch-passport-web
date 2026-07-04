@@ -27,10 +27,13 @@ const RARITY_PRICES = {
 // agree on who's an admin even when VITE_ADMIN_PRIVY_ID isn't present at
 // function runtime. This is an allowlist, not a secret (security comes from the
 // verified Privy token below). Set VITE_ADMIN_PRIVY_ID in Vercel to override.
-const ADMIN_PRIVY_IDS = (process.env.VITE_ADMIN_PRIVY_ID || 'did:privy:cmjufzcf403jjl70dpyp1mood')
+const ADMIN_PRIVY_IDS = (process.env.VITE_ADMIN_PRIVY_ID || 'did:privy:cmphogmw500340ckz646kklaw,did:privy:cmjufzcf403jjl70dpyp1mood')
   .split(',')
   .map((id) => id.trim().toLowerCase())
-  .filter(Boolean);
+  .filter(Boolean)
+  // Bare Privy IDs ("cmpho...") also match as their did:privy: form, so the
+  // env var works with or without the prefix (mirrors CommandCenter's parse).
+  .flatMap((id) => (id.startsWith('did:privy:') ? [id] : [id, `did:privy:${id}`]));
 
 // `claimedAdminId` is whatever the client says its own Privy ID is (it
 // already has this from usePrivy()). We don't trust the claim by itself --
