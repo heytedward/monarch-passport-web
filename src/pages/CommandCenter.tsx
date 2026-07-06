@@ -57,6 +57,8 @@ const CommandCenter: React.FC = () => {
   const [feedImageData, setFeedImageData] = useState<string | null>(null);
   const [feedAuthor, setFeedAuthor] = useState('PAPILLON');
   const [isPosting, setIsPosting] = useState(false);
+  const [feedPosts, setFeedPosts] = useState<any[]>([]);
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
 
   const [mintPrefix, setMintPrefix] = useState('');
   const [mintStartNum, setMintStartNum] = useState('');
@@ -147,6 +149,11 @@ const CommandCenter: React.FC = () => {
     if (!isAuthorized) return;
     supabase.from('seasons').select('*').order('start_date', { ascending: false })
       .then(({ data }) => setSeasons(data || []));
+    supabase.from('monarch_times')
+      .select('id, title, author, status, image_url, created_at')
+      .order('created_at', { ascending: false })
+      .limit(25)
+      .then(({ data }) => setFeedPosts(data || []));
     // Inventory (incl. owner counts from user_assets) comes from the admin
     // endpoint -- RLS hides user_assets from the browser client. Inlined for
     // the same TDZ reason as the seasons query; fetchAdminProducts below is
@@ -558,10 +565,42 @@ const CommandCenter: React.FC = () => {
       });
       toast({ title: 'BROADCAST_LIVE', description: 'Posted to MONARCH_TIMES', status: 'success' });
       setFeedTitle(''); setFeedContent(''); setFeedImageUrl(''); setFeedImageData(null);
+      fetchFeedPosts();
     } catch (err: any) {
       addLog(`BROADCAST_FAILED // ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
     } finally { setIsPosting(false); }
+  };
+
+  const fetchFeedPosts = async () => {
+    const { data } = await supabase.from('monarch_times')
+      .select('id, title, author, status, image_url, created_at')
+      .order('created_at', { ascending: false })
+      .limit(25);
+    setFeedPosts(data || []);
+  };
+
+  const removeFeedPost = async (post: any) => {
+    if (!window.confirm(`DELETE_POST // "${post.title}" — this removes it from every user's feed. Proceed?`)) return;
+    setDeletingPostId(post.id);
+    addLog(`DELETING_POST // ${post.title}`);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch('/api/v2/admin/mint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ kind: 'feed_post_delete', postId: post.id, adminId: user?.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'DELETE_FAILED');
+      setFeedPosts((prev) => prev.filter((p) => p.id !== post.id));
+      toast({ title: 'POST_DELETED', description: `${post.title} REMOVED FROM THE FEED`, status: 'success' });
+    } catch (err: any) {
+      addLog(`DELETE_FAILED // ${err.message}`);
+      toast({ title: 'ERROR', description: err.message, status: 'error' });
+    } finally {
+      setDeletingPostId(null);
+    }
   };
 
   const createSeason = async () => {
@@ -683,6 +722,50 @@ const CommandCenter: React.FC = () => {
                 <Button w="full" bg={monarchYellow} color="black" borderRadius="0" fontWeight="bold" _hover={{ opacity: 0.8 }} onClick={postToFeed} isLoading={isPosting} loadingText="BROADCASTING...">
                   BROADCAST
                 </Button>
+              </VStack>
+            </CardBody>
+          </Card>
+
+          {/* FEED_LOG: recent posts with one-click delete — no DB edits needed */}
+          <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
+            <CardHeader pb={0}>
+              <HStack justify="space-between">
+                <Heading size="sm" color={monarchYellow}>FEED_LOG</Heading>
+                <IconButton aria-label="Refresh feed" icon={<MdRefresh />} size="xs" variant="outline" borderRadius="0" borderColor={borderColor} onClick={fetchFeedPosts} _hover={{ bg: 'whiteAlpha.100' }} />
+              </HStack>
+            </CardHeader>
+            <CardBody>
+              <VStack spacing={2} align="stretch">
+                {feedPosts.length === 0 && (
+                  <Text fontSize="xs" color="gray.500" fontFamily="monospace">FEED_EMPTY // NOTHING_BROADCAST_YET</Text>
+                )}
+                {feedPosts.map((p) => (
+                  <HStack key={p.id} justify="space-between" p={2} border="1px solid" borderColor={borderColor}>
+                    <HStack spacing={3} minW={0}>
+                      {p.image_url && (
+                        <Image src={p.image_url} alt="" boxSize="28px" objectFit="cover" flexShrink={0} />
+                      )}
+                      <Box minW={0}>
+                        <Text fontSize="xs" fontWeight="900" fontFamily="monospace" isTruncated>{p.title}</Text>
+                        <Text fontSize="10px" color="gray.500" fontFamily="monospace">
+                          {p.author || 'PAPILLON'} // {p.created_at ? new Date(p.created_at).toLocaleDateString() : ''}{p.status !== 'PUBLISHED' ? ` // ${p.status}` : ''}
+                        </Text>
+                      </Box>
+                    </HStack>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      borderRadius="0"
+                      borderColor={destructiveRed}
+                      color={destructiveRed}
+                      isLoading={deletingPostId === p.id}
+                      onClick={() => removeFeedPost(p)}
+                      _hover={{ bg: 'whiteAlpha.100' }}
+                    >
+                      DELETE
+                    </Button>
+                  </HStack>
+                ))}
               </VStack>
             </CardBody>
           </Card>

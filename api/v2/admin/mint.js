@@ -376,6 +376,41 @@ async function createFeedPost(body, supabase, res) {
   return res.status(200).json({ success: true, post: data });
 }
 
+// Delete a MONARCH_TIMES post (admin only): removes its comments, best-effort
+// removes its uploaded feed image, then the post row. Folded here to stay
+// under the function cap. Dispatched by kind: 'feed_post_delete'.
+async function deleteFeedPost(body, supabase, res) {
+  const { postId } = body;
+  if (!postId || typeof postId !== 'string') {
+    return res.status(400).json({ error: 'postId is required' });
+  }
+
+  const { data: post, error: findErr } = await supabase
+    .from('monarch_times')
+    .select('id, image_url')
+    .eq('id', postId)
+    .maybeSingle();
+  if (findErr) throw findErr;
+  if (!post) return res.status(404).json({ error: 'POST_NOT_FOUND' });
+
+  // Comments first -- the live schema has no FK cascade from post_comments.
+  const { error: cErr } = await supabase.from('post_comments').delete().eq('post_id', postId);
+  if (cErr && cErr.code !== '42P01') throw cErr; // tolerate table not existing
+
+  // Best-effort: clean up the uploaded image if it lives in our bucket.
+  if (post.image_url && post.image_url.includes('/feed-images/')) {
+    const path = post.image_url.split('/feed-images/')[1];
+    if (path) {
+      try { await supabase.storage.from('feed-images').remove([decodeURIComponent(path)]); } catch { /* non-fatal */ }
+    }
+  }
+
+  const { error: dErr } = await supabase.from('monarch_times').delete().eq('id', postId);
+  if (dErr) throw dErr;
+
+  return res.status(200).json({ success: true });
+}
+
 export default async function handler(req, res) {
   // 1. Guard against wrong methods
   if (req.method !== 'POST') {
@@ -436,6 +471,9 @@ export default async function handler(req, res) {
     }
     if (body.kind === 'feed_post') {
       return await createFeedPost(body, supabase, res);
+    }
+    if (body.kind === 'feed_post_delete') {
+      return await deleteFeedPost(body, supabase, res);
     }
 
     // ---- Artifact batch mint ----
