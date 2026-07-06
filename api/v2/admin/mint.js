@@ -410,6 +410,24 @@ export default async function handler(req, res) {
     if (body.kind === 'product_inventory') {
       return await productInventory(supabase, res);
     }
+
+    // Admin diagnostic: report what THIS deployment's Privy credentials can do
+    // (the auto-grant path depends on getUser, which login flows never
+    // exercise, so a bad PRIVY_APP_SECRET is otherwise invisible). Returns the
+    // resolved app id tail + the raw getUser outcome for a DID.
+    if (body.kind === 'privy_probe') {
+      const appId = process.env.PRIVY_APP_ID || process.env.VITE_PRIVY_APP_ID || null;
+      const probe = { appIdTail: appId ? appId.slice(-6) : null, secretSet: !!process.env.PRIVY_APP_SECRET };
+      try {
+        const { PrivyClient } = await import('@privy-io/server-auth');
+        const privy = new PrivyClient(appId, process.env.PRIVY_APP_SECRET);
+        const u = await privy.getUser(body.did || body.adminId);
+        probe.emails = [u?.email?.address, u?.google?.email, u?.apple?.email].filter(Boolean);
+      } catch (e) {
+        probe.error = e?.message || String(e);
+      }
+      return res.status(200).json({ success: true, probe });
+    }
     if (typeof body.kind === 'string' && body.kind.startsWith('season_')) {
       return await seasonOp(body, supabase, res);
     }
