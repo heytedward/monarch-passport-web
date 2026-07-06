@@ -33,7 +33,6 @@ import { MdRefresh, MdClose, MdSearch } from 'react-icons/md'
 import { PiShoppingBagFill } from 'react-icons/pi'
 import { motion } from 'framer-motion'
 import { usePrivy } from '@privy-io/react-auth'
-import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import ThemeSwatch from '../components/ThemeSwatch'
@@ -45,89 +44,6 @@ const MotionBox = motion.create(Box)
 // in the codebase; flip this to true to re-expose the Closet mint surface when
 // the official Web3 drop ships. See project_phase3_onchain_avatars memory.
 const SHOW_ONCHAIN_MINT = false
-
-const DigitalGarmentCard = ({ garment, border, cardBg, text, mutedText }: { garment: any, border: string, cardBg: string, text: string, mutedText: string }) => {
-  const percentage = Math.min(100, Math.max(0, (garment.quests_completed / garment.total_quests_required) * 100));
-  
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'burned_physical_shipped': return '#FF3333';
-      case 'unlocked_ready_to_burn': return '#00FF66';
-      case 'questing': return '#FFB000';
-      case 'digital_locked':
-      default:
-        return 'gray.500';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    return status.replace(/_/g, ' ').toUpperCase();
-  };
-
-  const truncateSolana = (addr?: string) => {
-    if (!addr) return "UNMINTED";
-    return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
-  };
-
-  return (
-    <Box 
-      border="1px solid" 
-      borderColor={text} 
-      p={4} 
-      bg={cardBg} 
-      position="relative"
-      transition="transform 0.2s"
-      _hover={{ transform: 'scale(1.02)', borderColor: "var(--monarch-accent)" }}
-    >
-      <Flex justify="space-between" align="center" mb={3}>
-        <HStack spacing={1.5}>
-          <Box w="6px" h="6px" borderRadius="full" bg={getStatusColor(garment.status)} />
-          <Text fontSize="8px" fontWeight="900" fontFamily="monospace" color={text}>
-            {getStatusLabel(garment.status)}
-          </Text>
-        </HStack>
-        <Text fontSize="7px" fontWeight="900" fontFamily="monospace" color={mutedText}>
-          {truncateSolana(garment.mint_address)}
-        </Text>
-      </Flex>
-
-      <Center h="120px" bg="black" border="1px solid" borderColor={border} mb={3} overflow="hidden" position="relative">
-        {garment.image_url ? (
-          <img src={garment.image_url} alt={garment.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <VStack spacing={1}>
-            <TShirtIcon color="white" boxSize="50px" />
-            <Text fontSize="6px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace">NO_IMAGE_ASSET</Text>
-          </VStack>
-        )}
-      </Center>
-
-      <VStack align="stretch" spacing={2}>
-        <Box>
-          <Heading fontSize="xs" fontWeight="900" fontFamily="'Archivo Black', sans-serif" color={text} isTruncated>
-            {garment.name.toUpperCase()}
-          </Heading>
-          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mt={0.5}>
-            SKU: {garment.sku}
-          </Text>
-        </Box>
-
-        <Box pt={1}>
-          <Flex justify="space-between" align="center" mb={1}>
-            <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">QUEST_PROGRESS</Text>
-            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">
-              {garment.quests_completed}/{garment.total_quests_required}
-            </Text>
-          </Flex>
-          <Box w="100%" h="6px" border="1px solid" borderColor={text} bg="transparent" p="1px">
-            <Box h="100%" bg="var(--monarch-accent)" w={`${percentage}%`} transition="width 0.3s" />
-          </Box>
-        </Box>
-      </VStack>
-    </Box>
-  );
-};
-
 
 const TShirtIcon = ({ color = "white", boxSize = "40px" }: { color?: string, boxSize?: string }) => (
   <Box position="relative" w={boxSize} h={boxSize}>
@@ -233,8 +149,6 @@ const Closet = () => {
   const { user, getAccessToken } = usePrivy();
   const [ownedAssets, setOwnedAssets] = useState<ClosetItemData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [digitalGarments, setDigitalGarments] = useState<any[]>([]);
-  const [isGarmentsLoading, setIsGarmentsLoading] = useState(false);
   const [isMinting, setIsMinting] = useState(false);
   const [seasonCollection, setSeasonCollection] = useState<{ season: any; total: number; owned: number; items: any[] } | null>(null);
 
@@ -497,62 +411,17 @@ const Closet = () => {
     fetchSeasonCollection();
   }, [user?.id]);
 
-  useEffect(() => {
-    const fetchDigitalGarments = async () => {
-      console.log('--- DB FETCH INITIATED ---');
-      console.log('Current Privy User ID:', user?.id);
-      console.log('Full Privy User Object:', JSON.stringify(user, null, 2));
-      if (!user?.id) {
-        console.warn('--- ABORT: user.id is falsy, skipping fetch ---');
-        return;
-      }
-      setIsGarmentsLoading(true);
-      try {
-        const token = await getAccessToken();
-        console.log('Access Token exists:', !!token);
-        console.log('Access Token (first 30 chars):', token ? token.substring(0, 30) + '...' : 'NULL');
-        if (token) {
-          const sessionResult = await supabase.auth.setSession({
-            access_token: token,
-            refresh_token: '',
-          });
-          console.log('setSession result:', JSON.stringify(sessionResult, null, 2));
-        } else {
-          console.warn('--- WARNING: No access token. RLS will likely block reads. ---');
-        }
-
-        // Also check what Supabase thinks the current user is
-        const { data: sessionData } = await supabase.auth.getSession();
-        console.log('Supabase active session user ID:', sessionData?.session?.user?.id ?? 'NO SESSION');
-
-        const { data, error } = await supabase
-          .from('digital_garments')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        console.log('Supabase Query Result:', { data, error });
-        console.log('Rows returned:', data?.length ?? 0);
-
-        if (error) throw error;
-        setDigitalGarments(data || []);
-      } catch (err) {
-        console.error('Error fetching digital garments:', err);
-      } finally {
-        setIsGarmentsLoading(false);
-      }
-    };
-
-    if (mode === 'digital') {
-      fetchDigitalGarments();
-    }
-  }, [user?.id, mode]);
-
   // Map a vault item's type to the coarse TYPE filter buckets.
   const matchesType = (item: ClosetItemData) =>
     typeFilter === 'ALL' ||
     (typeFilter === 'GEAR' && item.type === 'physical') ||
     (typeFilter === 'THEMES' && item.type === 'theme') ||
     (typeFilter === 'AVATARS' && item.type === 'digital');
+
+  // Tab buckets: VAULT holds physical gear + claimed artifacts; DIGITAL holds
+  // cosmetics (themes + avatar skins).
+  const matchesMode = (item: ClosetItemData) =>
+    mode === 'physical' ? item.type === 'physical' : item.type === 'theme' || item.type === 'digital';
 
   // Distinct collection + rarity values present in the vault, for filter chips.
   const collectionOptions = useMemo(() => {
@@ -570,16 +439,17 @@ const Closet = () => {
   const current_items = useMemo(() => {
     const q = search.trim().toLowerCase();
     return ownedAssets.filter((item) => {
+      if (!matchesMode(item)) return false;
       if (!matchesType(item)) return false;
       if (collectionFilter !== 'ALL' && item.collection !== collectionFilter) return false;
       if (rarityFilter !== 'ALL' && item.rarity !== rarityFilter) return false;
       if (q && !item.name.toLowerCase().includes(q) && !(item.collection || '').toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [ownedAssets, search, typeFilter, collectionFilter, rarityFilter]);
+  }, [ownedAssets, search, mode, typeFilter, collectionFilter, rarityFilter]);
 
-  const verifiedCount = mode === 'physical' ? current_items.length : digitalGarments.length;
-  const isCurrentLoading = mode === 'physical' ? isLoading : isGarmentsLoading;
+  const verifiedCount = current_items.length;
+  const isCurrentLoading = isLoading;
 
   const handleOpen = (item: ClosetItemData) => {
     setSelectedItem(item);
@@ -620,7 +490,7 @@ const Closet = () => {
               color={mode === 'physical' ? inverseText : text}
               fontSize="9px"
               fontWeight="900"
-              onClick={() => setMode('physical')}
+              onClick={() => { setMode('physical'); setTypeFilter('ALL'); }}
               leftIcon={<Box as="span" h="8px" w="8px" border="1px solid" borderColor={mode === 'physical' ? inverseText : text} borderRadius="full" bg={mode === 'physical' ? inverseText : "transparent"} />}
               _hover={{}}
             >
@@ -634,7 +504,7 @@ const Closet = () => {
               color={mode === 'digital' ? inverseText : text}
               fontSize="9px"
               fontWeight="900"
-              onClick={() => setMode('digital')}
+              onClick={() => { setMode('digital'); setTypeFilter('ALL'); }}
               leftIcon={<Box as="span" h="8px" w="8px" border="1px solid" borderColor={mode === 'digital' ? inverseText : text} borderRadius="full" bg={mode === 'digital' ? inverseText : "transparent"} />}
               _hover={{}}
             >
@@ -642,8 +512,8 @@ const Closet = () => {
             </Button>
           </Flex>
 
-          {/* VAULT search + filters */}
-          {mode === 'physical' && (
+          {/* Search + filters (both tabs) */}
+          {(
             <VStack align="stretch" spacing={3} mt={4}>
               <Flex
                 align="center"
@@ -656,7 +526,7 @@ const Closet = () => {
                 <Icon as={MdSearch} color={mutedText} boxSize="16px" mr={2} />
                 <Input
                   variant="unstyled"
-                  placeholder="SEARCH_VAULT"
+                  placeholder={mode === 'physical' ? 'SEARCH_VAULT' : 'SEARCH_DIGITAL'}
                   fontSize="10px"
                   fontWeight="900"
                   fontFamily="monospace"
@@ -666,9 +536,10 @@ const Closet = () => {
                 />
               </Flex>
 
-              {/* TYPE chips */}
+              {/* TYPE chips (DIGITAL only — the VAULT is all physical gear) */}
+              {mode === 'digital' && (
               <Wrap spacing={1}>
-                {(['ALL', 'GEAR', 'THEMES', 'AVATARS'] as const).map((t) => (
+                {(['ALL', 'THEMES', 'AVATARS'] as const).map((t) => (
                   <WrapItem key={t}>
                     <Button
                       size="xs"
@@ -689,6 +560,7 @@ const Closet = () => {
                   </WrapItem>
                 ))}
               </Wrap>
+              )}
 
               {/* COLLECTION + RARITY menus (only when there's something to filter) */}
               {(collectionOptions.length > 0 || rarityOptions.length > 0) && (
@@ -748,7 +620,7 @@ const Closet = () => {
         {/* Info Bar */}
         <Box borderY="1px solid" borderColor={border} px={6} py={2}>
           <Flex justify="space-between" align="center">
-            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">PROTOCOL: {mode === 'physical' ? 'VAULT' : 'ON_CHAIN'}_STORAGE</Text>
+            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">PROTOCOL: {mode === 'physical' ? 'VAULT' : 'DIGITAL'}_STORAGE</Text>
             <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">VAULT_SYNC: {isCurrentLoading ? 'PENDING' : 'ONLINE'}</Text>
           </Flex>
         </Box>
@@ -849,36 +721,7 @@ const Closet = () => {
               <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">PROTOCOL_TAG</Text>
             </Flex>
             
-            {mode === 'digital' ? (
-              isGarmentsLoading ? (
-                <Center h="200px">
-                  <Spinner color="var(--monarch-accent)" />
-                </Center>
-              ) : digitalGarments.length > 0 ? (
-                <SimpleGrid columns={2} spacing={4}>
-                  {digitalGarments.map((garment) => (
-                    <DigitalGarmentCard 
-                      key={garment.id} 
-                      garment={garment} 
-                      border={border} 
-                      cardBg={cardBg} 
-                      text={text} 
-                      mutedText={mutedText} 
-                    />
-                  ))}
-                </SimpleGrid>
-              ) : (
-                <Center h="200px" flexDirection="column" border="1px dashed" borderColor={border} p={6}>
-                  <TShirtIcon color={mutedText} boxSize="40px" />
-                  <Text fontSize="xs" fontWeight="900" color={mutedText} mt={4} fontFamily="monospace" textAlign="center">
-                    [ NO_DIGITAL_GARMENTS_DETECTED ]
-                  </Text>
-                  <Text fontSize="9px" color={mutedText} opacity={0.6} mt={2} fontFamily="monospace" textAlign="center">
-                    ACQUIRE PHYGYTAL GEAR OR DIGITAL COSMETICS TO SYNC
-                  </Text>
-                </Center>
-              )
-            ) : isLoading ? (
+            {isLoading ? (
               <Center h="200px">
                 <Spinner color="var(--monarch-accent)" />
               </Center>
