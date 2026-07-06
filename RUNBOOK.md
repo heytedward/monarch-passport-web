@@ -40,9 +40,11 @@ Command Center → **Digital Store Forge** → **STORE_INVENTORY** at the bottom
 1. Command Center → claim-link generator: enter an ID (becomes the link code), WNGS value, item type, and optionally **MAX_REDEMPTIONS** (cap how many people can use it).
 2. Share the generated `https://passport.papillonbrand.us/claim/<code>` link (or make a QR of it). Each user can redeem a given link once.
 
-### E. Post to the MONARCH_TIMES feed
+### E. Post to (and clean up) the MONARCH_TIMES feed
 
 Command Center → **MONARCH_TIMES Broadcast**: title, content, optional image (picked images are resized automatically). Posts appear on users' Home feed immediately.
+
+Below the posting form, **FEED_LOG** lists the latest 25 posts — **DELETE** removes a post from every user's feed (with a confirm prompt), including its comments and uploaded image. No database work needed.
 
 ### F. Refund a WNGS bundle purchase (Stripe)
 
