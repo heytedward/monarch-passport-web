@@ -175,9 +175,11 @@ const Ascension = () => {
 
   const accent = 'var(--monarch-accent)'
 
-  // A single reward on a rung (free or premium) as a rectangular card:
-  // grayscale while locked, full color with an accent glow once claimable
-  // (with the CLAIM button overlaid on the card), check once claimed.
+  // A single reward on a rung (free or premium) as a large feed-style card:
+  // a tall preview pane up top (like a MONARCH_TIMES post image) with the
+  // CLAIM button overlaid on the item when claimable, and the label strip
+  // below. Grayscale while locked, full color + accent glow when claimable,
+  // CLAIMED ribbon once collected.
   const RewardTile = ({ r }: { r: Reward }) => {
     const reached = level >= r.level
     const premiumLocked = r.track === 'premium' && !isPremium
@@ -186,56 +188,72 @@ const Ascension = () => {
     const canClaim = isAuthed && !locked && !isClaimed
     const prod = r.product_id ? productMap[r.product_id] : null
     const preview = prod && r.reward_type === 'avatar'
-      ? <DeStijlAvatar seed={prod.id} size={40} colors={Array.isArray(prod.palette) ? prod.palette : undefined} />
+      ? <DeStijlAvatar seed={prod.id} size={104} colors={Array.isArray(prod.palette) ? prod.palette : undefined} />
       : prod && r.reward_type === 'theme'
-        ? <ThemeSwatch accent={prod.accent_color} mode={prod.theme_mode} size={40} />
+        ? <ThemeSwatch accent={prod.accent_color} mode={prod.theme_mode} size={104} />
         : r.reward_type === 'wngs'
-          ? <Box w="40px" h="40px"><WngsCoin isStatic /></Box>
-          : <Icon as={MdMilitaryTech} boxSize="26px" color={accent} />
+          ? <Box w="120px" h="120px"><WngsCoin isStatic /></Box>
+          : <Icon as={MdMilitaryTech} boxSize="64px" color={accent} />
     return (
       <Box
         position="relative"
         border="2px solid"
         borderColor={canClaim ? accent : isClaimed ? 'whiteAlpha.500' : 'whiteAlpha.200'}
         bg="black"
-        boxShadow={canClaim ? `0 0 12px -3px ${accent}` : 'none'}
+        boxShadow={canClaim ? `0 0 14px -3px ${accent}` : 'none'}
         filter={locked && !isClaimed ? 'grayscale(1)' : 'none'}
-        opacity={locked && !isClaimed ? 0.45 : isClaimed ? 0.8 : 1}
+        opacity={locked && !isClaimed ? 0.45 : isClaimed ? 0.85 : 1}
         transition="all 0.2s"
-        p={3}
       >
-        <HStack spacing={3} align="center">
-          <Center flexShrink={0} w="46px" h="46px" border="2px solid"
-            borderColor={canClaim ? accent : 'whiteAlpha.400'} bg="black" overflow="hidden">
-            {preview}
-          </Center>
-          <Box minW={0} flex={1}>
-            <Text fontSize="7px" fontWeight="900" fontFamily="monospace" letterSpacing="0.12em"
-              color={r.track === 'premium' ? accent : 'whiteAlpha.500'}>
-              {r.track.toUpperCase()} // LVL {r.level}
-            </Text>
-            <Text fontSize="11px" fontWeight="900" color="white" fontFamily="monospace" noOfLines={1}>
-              {rewardLabel(r)}
-            </Text>
-          </Box>
-          {isClaimed ? (
-            <Icon as={MdCheck} color={accent} boxSize="18px" flexShrink={0} />
-          ) : locked ? (
-            <Icon as={MdLock} color="whiteAlpha.500" boxSize="15px" flexShrink={0} />
-          ) : null}
-        </HStack>
+        {/* Preview pane (the "item image") */}
+        <Center
+          position="relative" h="150px" bg="whiteAlpha.50"
+          borderBottom="2px solid"
+          borderColor={canClaim ? accent : 'whiteAlpha.200'}
+        >
+          {preview}
 
-        {canClaim && (
-          <Center position="absolute" inset={0} bg="blackAlpha.500" zIndex={1}>
-            <Button
-              size="sm" h="30px" px={6} borderRadius="0" bg={accent} color="black"
-              fontFamily="monospace" fontWeight="900" fontSize="10px" letterSpacing="0.1em"
-              isLoading={busy === r.id} onClick={() => handleClaim(r)} _hover={{ bg: 'white' }}
-            >
-              CLAIM
-            </Button>
-          </Center>
-        )}
+          {/* Status badge, top-right of the pane */}
+          {isClaimed ? (
+            <HStack position="absolute" top={2} right={2} bg={accent} px={2} py={0.5} spacing={1} zIndex={1}>
+              <Icon as={MdCheck} color="black" boxSize="10px" />
+              <Text fontSize="8px" fontWeight="900" color="black" fontFamily="monospace">CLAIMED</Text>
+            </HStack>
+          ) : locked ? (
+            <HStack position="absolute" top={2} right={2} border="1px solid" borderColor="whiteAlpha.500"
+              bg="blackAlpha.600" px={2} py={0.5} spacing={1} zIndex={1}>
+              <Icon as={MdLock} color="whiteAlpha.700" boxSize="10px" />
+              <Text fontSize="8px" fontWeight="900" color="whiteAlpha.700" fontFamily="monospace">
+                {premiumLocked ? 'PREMIUM' : `LVL ${r.level}`}
+              </Text>
+            </HStack>
+          ) : null}
+
+          {/* CLAIM overlaid on the item */}
+          {canClaim && (
+            <Center position="absolute" inset={0} bg="blackAlpha.500" zIndex={1}>
+              <Button
+                h="40px" px={10} borderRadius="0" bg={accent} color="black"
+                fontFamily="monospace" fontWeight="900" fontSize="12px" letterSpacing="0.15em"
+                isLoading={busy === r.id} onClick={() => handleClaim(r)}
+                _hover={{ bg: 'white', transform: 'scale(1.04)' }} transition="all 0.15s"
+              >
+                CLAIM
+              </Button>
+            </Center>
+          )}
+        </Center>
+
+        {/* Label strip */}
+        <Box p={3}>
+          <Text fontSize="7px" fontWeight="900" fontFamily="monospace" letterSpacing="0.15em"
+            color={r.track === 'premium' ? accent : 'whiteAlpha.500'}>
+            {r.track.toUpperCase()}_TRACK // LVL {r.level}
+          </Text>
+          <Heading fontSize="md" fontWeight="900" color="white" fontFamily="monospace" textTransform="uppercase" noOfLines={1} mt={0.5}>
+            {rewardLabel(r)}
+          </Heading>
+        </Box>
       </Box>
     )
   }
