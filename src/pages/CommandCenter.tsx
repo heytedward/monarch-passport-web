@@ -24,7 +24,7 @@ import {
   IconButton,
   Switch,
 } from '@chakra-ui/react';
-import { MdContentCopy, MdRefresh } from 'react-icons/md';
+import { MdContentCopy, MdRefresh, MdClose } from 'react-icons/md';
 import { usePrivy } from '@privy-io/react-auth';
 import DeStijlAvatar from '../components/DeStijlAvatar';
 import { rollPalette, RARITIES, priceForRarity } from '../lib/destijlPalette';
@@ -93,6 +93,20 @@ const CommandCenter: React.FC = () => {
   // --- Digital Store Forge: store inventory (retire/restore/re-release) ---
   const [togglingProductId, setTogglingProductId] = useState<string | null>(null);
   const [productFilter, setProductFilter] = useState<'ALL' | 'LIVE' | 'RETIRED'>('ALL');
+
+  // --- Product Forge: physical garments (in-house Shopify replacement) ---
+  const [prodName, setProdName] = useState('');
+  const [prodPrice, setProdPrice] = useState('');
+  const [prodCategory, setProdCategory] = useState('HOODIE');
+  const [prodDescription, setProdDescription] = useState('');
+  const [prodCollection, setProdCollection] = useState('');
+  const [prodSeason, setProdSeason] = useState('');
+  const [prodSizes, setProdSizes] = useState<{ size: string; stock: string }[]>(
+    ['S', 'M', 'L', 'XL'].map((s) => ({ size: s, stock: '' }))
+  );
+  const [prodImages, setProdImages] = useState<string[]>([]);
+  const [isCreatingProduct, setIsCreatingProduct] = useState(false);
+  const [restockingId, setRestockingId] = useState<string | null>(null);
 
   // --- ASCENSION season control ---
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -497,6 +511,118 @@ const CommandCenter: React.FC = () => {
       toast({ title: 'ERROR', description: err.message, status: 'error' });
     } finally {
       setTogglingProductId(null);
+    }
+  };
+
+  // --- Product Forge: physical garments ---
+  // Same downscale treatment as feed images (max 1280px JPEG) so a multi-photo
+  // product stays well under the function body limit.
+  const downscaleToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('READ_FAILED'));
+      reader.onload = () => {
+        const img = new window.Image();
+        img.onerror = () => reject(new Error('DECODE_FAILED'));
+        img.onload = () => {
+          const maxDim = 1280;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            const scale = maxDim / Math.max(width, height);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+
+  const handleProductImagesPick = async (files: FileList | null) => {
+    if (!files || !files.length) return;
+    try {
+      const picked = await Promise.all(Array.from(files).slice(0, 6).map(downscaleToDataUrl));
+      setProdImages((prev) => [...prev, ...picked].slice(0, 6));
+    } catch {
+      toast({ title: 'IMAGE_READ_FAILED', status: 'error' });
+    }
+  };
+
+  const createProduct = async () => {
+    const sizes = prodSizes
+      .filter((s) => s.size.trim() && s.stock !== '')
+      .map((s) => ({ size: s.size.trim().toUpperCase(), stock: parseInt(s.stock, 10) }));
+    if (!prodName.trim() || !prodPrice || sizes.length === 0) {
+      toast({ title: 'MISSING_DATA', description: 'NAME, PRICE_USD AND AT LEAST ONE SIZE/STOCK REQUIRED', status: 'error' });
+      return;
+    }
+    setIsCreatingProduct(true);
+    addLog(`FORGING_PRODUCT // ${prodName}`);
+    try {
+      await createCosmetic({
+        kind: 'physical_product',
+        name: prodName.trim(),
+        priceUsd: parseFloat(prodPrice),
+        category: prodCategory,
+        description: prodDescription.trim() || undefined,
+        collection: prodCollection.trim() || undefined,
+        season: prodSeason.trim() || undefined,
+        sizes,
+        imagesData: prodImages,
+      });
+      addLog(`PRODUCT_DEPLOYED // ${prodName}`);
+      toast({ title: 'PRODUCT_DEPLOYED', description: `${prodName.toUpperCase()} IS LIVE IN THE STORE`, status: 'success' });
+      setProdName(''); setProdPrice(''); setProdDescription('');
+      setProdCollection(''); setProdSeason('');
+      setProdSizes(['S', 'M', 'L', 'XL'].map((s) => ({ size: s, stock: '' })));
+      setProdImages([]);
+      fetchAdminProducts();
+    } catch (err: any) {
+      addLog(`PRODUCT_FORGE_FAILED // ${err.message}`);
+      toast({ title: 'ERROR', description: err.message, status: 'error' });
+    } finally {
+      setIsCreatingProduct(false);
+    }
+  };
+
+  const restockProduct = async (product: any) => {
+    const current = (product.sizes || []).map((s: any) => `${s.size}:${s.stock}`).join(', ');
+    const input = window.prompt(
+      `RESTOCK // ${product.name}\nEnter sizes as SIZE:COUNT pairs, comma-separated:`,
+      current || 'S:0, M:0, L:0, XL:0'
+    );
+    if (input == null) return;
+    const sizes = input.split(',')
+      .map((pair) => {
+        const [size, stock] = pair.split(':').map((x) => x.trim());
+        return { size, stock: parseInt(stock, 10) };
+      })
+      .filter((s) => s.size && Number.isInteger(s.stock) && s.stock >= 0);
+    if (!sizes.length) {
+      toast({ title: 'INVALID_FORMAT', description: 'USE SIZE:COUNT PAIRS, e.g. S:10, M:5', status: 'error' });
+      return;
+    }
+    setRestockingId(product.id);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch('/api/v2/admin/mint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ kind: 'product_stock', productId: product.id, sizes, adminId: user?.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'RESTOCK_FAILED');
+      toast({ title: 'STOCK_UPDATED', description: product.name.toUpperCase(), status: 'success' });
+      fetchAdminProducts();
+    } catch (err: any) {
+      toast({ title: 'ERROR', description: err.message, status: 'error' });
+    } finally {
+      setRestockingId(null);
     }
   };
 
@@ -1323,6 +1449,90 @@ const CommandCenter: React.FC = () => {
             </Card>
           </SimpleGrid>
 
+          {/* PRODUCT FORGE: physical garments — the in-house Shopify replacement */}
+          <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
+            <CardHeader pb={0}>
+              <Heading size="sm" color={monarchYellow}>FORGE PHYSICAL PRODUCT</Heading>
+            </CardHeader>
+            <CardBody>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FormLabel fontSize="xs">PHOTOS (UP TO 6 — FIRST IS THE COVER)</FormLabel>
+                  {prodImages.length > 0 && (
+                    <HStack spacing={2} mb={2} flexWrap="wrap">
+                      {prodImages.map((src, i) => (
+                        <Box key={i} position="relative">
+                          <Image src={src} boxSize="56px" objectFit="cover" border="1px solid" borderColor={borderColor} />
+                          <IconButton
+                            aria-label="Remove photo" icon={<MdClose />} size="xs" borderRadius="0"
+                            position="absolute" top="-8px" right="-8px"
+                            onClick={() => setProdImages((prev) => prev.filter((_, pi) => pi !== i))}
+                          />
+                        </Box>
+                      ))}
+                    </HStack>
+                  )}
+                  <Input type="file" accept="image/*" multiple border="none" p={0}
+                    onChange={(e) => { handleProductImagesPick(e.target.files); e.target.value = ''; }} />
+                </FormControl>
+
+                <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+                  <FormControl isRequired>
+                    <FormLabel fontSize="xs">PRODUCT_NAME</FormLabel>
+                    <Input borderRadius="0" placeholder="GENESIS HOODIE" fontSize="sm" value={prodName} onChange={(e) => setProdName(e.target.value)} />
+                  </FormControl>
+                  <FormControl isRequired>
+                    <FormLabel fontSize="xs">PRICE_USD</FormLabel>
+                    <Input borderRadius="0" type="number" placeholder="120" fontSize="sm" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel fontSize="xs">CATEGORY</FormLabel>
+                    <Select borderRadius="0" fontSize="sm" value={prodCategory} onChange={(e) => setProdCategory(e.target.value)}>
+                      {['HOODIE', 'TEE', 'CAP', 'SWEATS', 'ACCESSORY'].map((c) => <option key={c} value={c}>{c}</option>)}
+                    </Select>
+                  </FormControl>
+                </SimpleGrid>
+
+                <FormControl>
+                  <FormLabel fontSize="xs">DESCRIPTION</FormLabel>
+                  <Textarea borderRadius="0" fontSize="sm" rows={3} placeholder="Heavyweight fleece. NFC artifact embedded in the cuff." value={prodDescription} onChange={(e) => setProdDescription(e.target.value)} />
+                </FormControl>
+
+                <HStack spacing={4}>
+                  <FormControl>
+                    <FormLabel fontSize="xs">COLLECTION</FormLabel>
+                    <Input borderRadius="0" placeholder="GENESIS" fontSize="sm" value={prodCollection} onChange={(e) => setProdCollection(e.target.value)} />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel fontSize="xs">SEASON</FormLabel>
+                    <Input borderRadius="0" placeholder="S01" fontSize="sm" value={prodSeason} onChange={(e) => setProdSeason(e.target.value)} />
+                  </FormControl>
+                </HStack>
+
+                <FormControl>
+                  <FormLabel fontSize="xs">SIZES // STOCK</FormLabel>
+                  <SimpleGrid columns={{ base: 2, md: 4 }} spacing={2}>
+                    {prodSizes.map((row, i) => (
+                      <HStack key={i} spacing={1}>
+                        <Input borderRadius="0" fontSize="xs" w="56px" value={row.size}
+                          onChange={(e) => setProdSizes((prev) => prev.map((r, ri) => ri === i ? { ...r, size: e.target.value } : r))} />
+                        <Input borderRadius="0" fontSize="xs" type="number" placeholder="QTY" value={row.stock}
+                          onChange={(e) => setProdSizes((prev) => prev.map((r, ri) => ri === i ? { ...r, stock: e.target.value } : r))} />
+                      </HStack>
+                    ))}
+                  </SimpleGrid>
+                  <Button mt={2} size="xs" variant="outline" borderRadius="0" borderColor={borderColor} color={labelText} onClick={() => setProdSizes((prev) => [...prev, { size: '', stock: '' }])} _hover={{ bg: 'whiteAlpha.100' }}>
+                    + SIZE
+                  </Button>
+                </FormControl>
+
+                <Button bg={monarchYellow} color="black" borderRadius="0" fontWeight="bold" _hover={{ opacity: 0.8 }} onClick={createProduct} isLoading={isCreatingProduct} loadingText="FORGING...">
+                  FORGE PRODUCT
+                </Button>
+              </VStack>
+            </CardBody>
+          </Card>
+
           {/* STORE INVENTORY: every cosmetic ever forged, live or retired.
               RETIRE pulls an item from the Shop; RESTORE re-releases it. */}
           <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
@@ -1365,20 +1575,31 @@ const CommandCenter: React.FC = () => {
                   .filter((p) => productFilter === 'ALL' || (productFilter === 'RETIRED') === (p.is_active === false))
                   .map((p) => {
                     const retired = p.is_active === false;
+                    const isPhysical = p.category !== 'AVATAR' && p.category !== 'THEME' && p.category !== 'WNGS_BUNDLE';
                     const lineage = [p.season, p.collection, p.edition].filter(Boolean).join(' / ');
                     const forgedOn = p.created_at ? new Date(p.created_at).toLocaleDateString() : null;
+                    const stockLine = (p.sizes || []).map((s: any) => `${s.size}:${s.stock}`).join(' ');
                     return (
                       <HStack key={p.id} justify="space-between" p={2} border="1px solid" borderColor={borderColor} opacity={retired ? 0.45 : 1}>
                         <HStack spacing={3} minW={0}>
                           {p.category === 'AVATAR' ? (
                             <DeStijlAvatar seed={p.id} colors={p.palette || undefined} size={28} />
+                          ) : isPhysical ? (
+                            Array.isArray(p.images) && p.images[0] ? (
+                              <Image src={p.images[0]} boxSize="28px" objectFit="cover" flexShrink={0} border="1px solid" borderColor={borderColor} />
+                            ) : (
+                              <Box w="28px" h="28px" flexShrink={0} border="1px dashed" borderColor={borderColor} />
+                            )
                           ) : (
                             <Box w="28px" h="28px" flexShrink={0} bg={p.accent_color || monarchYellow} border="2px solid" borderColor={borderColor} />
                           )}
                           <Box minW={0}>
                             <Text fontSize="xs" fontWeight="900" fontFamily="monospace" isTruncated>{p.name}</Text>
-                            <Text fontSize="10px" color="gray.500" fontFamily="monospace">
-                              {p.category} // {p.rarity || 'COMMON'} // {p.price_wngs} WNGS // OWNERS:{p.owners ?? 0}{retired ? ' // RETIRED' : ''}
+                            <Text fontSize="10px" color="gray.500" fontFamily="monospace" isTruncated>
+                              {isPhysical
+                                ? `${p.category} // $${p.price_usd} // STOCK: ${stockLine || '—'}`
+                                : `${p.category} // ${p.rarity || 'COMMON'} // ${p.price_wngs} WNGS // OWNERS:${p.owners ?? 0}`}
+                              {retired ? ' // RETIRED' : ''}
                             </Text>
                             {(lineage || forgedOn) && (
                               <Text fontSize="10px" color="gray.600" fontFamily="monospace" isTruncated>
@@ -1387,18 +1608,31 @@ const CommandCenter: React.FC = () => {
                             )}
                           </Box>
                         </HStack>
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          borderRadius="0"
-                          borderColor={retired ? monarchYellow : destructiveRed}
-                          color={retired ? monarchYellow : destructiveRed}
-                          isLoading={togglingProductId === p.id}
-                          onClick={() => toggleProductStatus(p)}
-                          _hover={{ bg: 'whiteAlpha.100' }}
-                        >
-                          {retired ? 'RESTORE' : 'RETIRE'}
-                        </Button>
+                        <HStack spacing={1} flexShrink={0}>
+                          {isPhysical && !retired && (
+                            <Button
+                              size="xs" variant="outline" borderRadius="0"
+                              borderColor={monarchYellow} color={monarchYellow}
+                              isLoading={restockingId === p.id}
+                              onClick={() => restockProduct(p)}
+                              _hover={{ bg: 'whiteAlpha.100' }}
+                            >
+                              RESTOCK
+                            </Button>
+                          )}
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            borderRadius="0"
+                            borderColor={retired ? monarchYellow : destructiveRed}
+                            color={retired ? monarchYellow : destructiveRed}
+                            isLoading={togglingProductId === p.id}
+                            onClick={() => toggleProductStatus(p)}
+                            _hover={{ bg: 'whiteAlpha.100' }}
+                          >
+                            {retired ? 'RESTORE' : 'RETIRE'}
+                          </Button>
+                        </HStack>
                       </HStack>
                     );
                   })}

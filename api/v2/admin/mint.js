@@ -136,6 +136,125 @@ async function createCosmetic(body, supabase, res) {
   return res.status(200).json({ success: true, product: data });
 }
 
+// Physical garment categories. Anything outside the digital categories
+// renders as a physical item in both storefront and passport shops.
+const PHYSICAL_CATEGORIES = ['HOODIE', 'TEE', 'CAP', 'SWEATS', 'ACCESSORY', 'CLOTHING'];
+
+// Decode a base64 data URL and upload it to a public bucket; returns the
+// public URL. Mirrors the feed-image upload path.
+async function uploadDataUrlImage(supabase, bucket, dataUrl) {
+  const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(dataUrl);
+  if (!match) throw new Error('Invalid image data');
+  const contentType = match[1];
+  const ext = contentType.split('/')[1].replace('jpeg', 'jpg');
+  const buffer = Buffer.from(match[2], 'base64');
+  if (buffer.length > 8 * 1024 * 1024) throw new Error('Image too large (max 8MB)');
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from(bucket).upload(path, buffer, { contentType, upsert: false });
+  if (error) throw error;
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
+// Product Forge: create a physical garment product (the in-house replacement
+// for Shopify). Writes a products row (description + image gallery) plus
+// per-size stock rows. Dispatched by kind: 'physical_product'.
+async function createPhysicalProduct(body, supabase, res) {
+  const { name, priceUsd, category, description, sizes, imagesData, collection, season, edition } = body;
+
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: 'name is required' });
+  }
+  const price = Number(priceUsd);
+  if (!Number.isFinite(price) || price <= 0) {
+    return res.status(400).json({ error: 'priceUsd must be a positive number' });
+  }
+  const cat = String(category || 'CLOTHING').toUpperCase();
+  if (!PHYSICAL_CATEGORIES.includes(cat)) {
+    return res.status(400).json({ error: `category must be one of ${PHYSICAL_CATEGORIES.join(', ')}` });
+  }
+  const sizeRows = (Array.isArray(sizes) ? sizes : [])
+    .map((s) => ({ size: String(s.size || '').trim().toUpperCase(), stock: Number(s.stock) }))
+    .filter((s) => s.size && Number.isInteger(s.stock) && s.stock >= 0);
+  if (!sizeRows.length) {
+    return res.status(400).json({ error: 'at least one size with a stock count is required' });
+  }
+
+  // Duplicate guard (same rule as the cosmetic forge, scoped to physical).
+  const likePattern = String(name).replace(/([%_\\])/g, '\\$1');
+  const { data: existing, error: dupError } = await supabase
+    .from('products')
+    .select('id')
+    .in('category', PHYSICAL_CATEGORIES)
+    .ilike('name', likePattern)
+    .maybeSingle();
+  if (dupError) throw dupError;
+  if (existing) {
+    return res.status(409).json({
+      error: `DUPLICATE_NAME // A PHYSICAL PRODUCT NAMED "${String(name).toUpperCase()}" ALREADY EXISTS`,
+      existingId: existing.id,
+    });
+  }
+
+  // Upload gallery images (client downscales before sending).
+  const images = [];
+  for (const dataUrl of (Array.isArray(imagesData) ? imagesData : []).slice(0, 6)) {
+    if (typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
+      images.push(await uploadDataUrlImage(supabase, 'product-images', dataUrl));
+    }
+  }
+
+  // URL slug -- the join key the storefront checkout, stock decrement, and
+  // passport closet grant all key on.
+  const handle = String(name).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+  const { data: product, error } = await supabase
+    .from('products')
+    .insert({
+      name: String(name).trim(),
+      handle,
+      category: cat,
+      rarity: 'COMMON',
+      price_usd: price,
+      price_wngs: 0,
+      is_active: true,
+      description: description ? String(description).trim() : null,
+      images,
+      collection: collection || null,
+      season: season || null,
+      edition: edition || null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  const { error: sizeErr } = await supabase
+    .from('product_sizes')
+    .insert(sizeRows.map((s) => ({ product_id: product.id, ...s })));
+  if (sizeErr) throw sizeErr;
+
+  return res.status(200).json({ success: true, product, sizes: sizeRows });
+}
+
+// Adjust per-size stock for a physical product (restock / correction).
+// Dispatched by kind: 'product_stock'.
+async function updateProductStock(body, supabase, res) {
+  const { productId, sizes } = body;
+  if (!productId || typeof productId !== 'string' || !Array.isArray(sizes)) {
+    return res.status(400).json({ error: 'productId and sizes[] are required' });
+  }
+  const rows = sizes
+    .map((s) => ({ product_id: productId, size: String(s.size || '').trim().toUpperCase(), stock: Number(s.stock) }))
+    .filter((s) => s.size && Number.isInteger(s.stock) && s.stock >= 0);
+  if (!rows.length) return res.status(400).json({ error: 'no valid size rows' });
+
+  const { error } = await supabase
+    .from('product_sizes')
+    .upsert(rows, { onConflict: 'product_id,size' });
+  if (error) throw error;
+
+  return res.status(200).json({ success: true });
+}
+
 // Retire/restore a store product (admin only). Toggles products.is_active so
 // pulling an item from the Shop never requires a manual DB edit. Folded here
 // to stay under the function cap. Dispatched by kind: 'product_status'.
@@ -164,8 +283,8 @@ async function setProductStatus(body, supabase, res) {
 async function productInventory(supabase, res) {
   const { data: products, error } = await supabase
     .from('products')
-    .select('id, name, category, rarity, price_wngs, is_active, palette, accent_color, theme_mode, collection, season, edition, created_at')
-    .in('category', ['AVATAR', 'THEME'])
+    .select('id, name, category, rarity, price_wngs, price_usd, is_active, palette, accent_color, theme_mode, collection, season, edition, images, created_at')
+    .in('category', ['AVATAR', 'THEME', ...PHYSICAL_CATEGORIES])
     .order('created_at', { ascending: false });
   if (error) throw error;
 
@@ -182,9 +301,25 @@ async function productInventory(supabase, res) {
     if (a.product_id) owners[a.product_id] = (owners[a.product_id] || 0) + 1;
   }
 
+  // Per-size stock for physical products. Tolerate the table not existing yet
+  // (db/physical_store.sql not applied) so the cosmetics inventory still works.
+  const sizesByProduct = {};
+  const { data: sizeRows, error: sizesError } = await supabase
+    .from('product_sizes')
+    .select('product_id, size, stock');
+  if (!sizesError) {
+    for (const s of sizeRows || []) {
+      (sizesByProduct[s.product_id] = sizesByProduct[s.product_id] || []).push({ size: s.size, stock: s.stock });
+    }
+  }
+
   return res.status(200).json({
     success: true,
-    products: (products || []).map((p) => ({ ...p, owners: owners[p.id] || 0 })),
+    products: (products || []).map((p) => ({
+      ...p,
+      owners: owners[p.id] || 0,
+      sizes: sizesByProduct[p.id] || null,
+    })),
   });
 }
 
@@ -444,6 +579,12 @@ export default async function handler(req, res) {
     }
     if (body.kind === 'product_inventory') {
       return await productInventory(supabase, res);
+    }
+    if (body.kind === 'physical_product') {
+      return await createPhysicalProduct(body, supabase, res);
+    }
+    if (body.kind === 'product_stock') {
+      return await updateProductStock(body, supabase, res);
     }
 
     // Admin diagnostic: report what THIS deployment's Privy credentials can do
