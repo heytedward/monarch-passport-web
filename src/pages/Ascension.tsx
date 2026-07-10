@@ -8,6 +8,7 @@ import { MdBolt, MdRefresh, MdLock, MdCheck, MdMilitaryTech } from 'react-icons/
 import { supabase } from '../lib/supabase'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import ThemeSwatch from '../components/ThemeSwatch'
+import { WngsCoin } from '../components/WngsCoin'
 import useStore from '../store/useStore'
 import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST } from '../lib/ascension'
 
@@ -174,55 +175,68 @@ const Ascension = () => {
 
   const accent = 'var(--monarch-accent)'
 
-  // A single reward on a rung (free or premium), with its claim/lock/claimed state.
-  const RewardChip = ({ r }: { r: Reward }) => {
+  // A single reward on a rung (free or premium) as a rectangular card:
+  // grayscale while locked, full color with an accent glow once claimable
+  // (with the CLAIM button overlaid on the card), check once claimed.
+  const RewardTile = ({ r }: { r: Reward }) => {
     const reached = level >= r.level
-    const locked = r.track === 'premium' && !isPremium
+    const premiumLocked = r.track === 'premium' && !isPremium
     const isClaimed = claimed.has(r.id)
-    const canClaim = reached && !locked && !isClaimed
+    const locked = !reached || premiumLocked
+    const canClaim = isAuthed && !locked && !isClaimed
     const prod = r.product_id ? productMap[r.product_id] : null
     const preview = prod && r.reward_type === 'avatar'
-      ? <DeStijlAvatar seed={prod.id} size={26} colors={Array.isArray(prod.palette) ? prod.palette : undefined} />
+      ? <DeStijlAvatar seed={prod.id} size={40} colors={Array.isArray(prod.palette) ? prod.palette : undefined} />
       : prod && r.reward_type === 'theme'
-        ? <ThemeSwatch accent={prod.accent_color} mode={prod.theme_mode} size={26} />
-        : null
+        ? <ThemeSwatch accent={prod.accent_color} mode={prod.theme_mode} size={40} />
+        : r.reward_type === 'wngs'
+          ? <Box w="40px" h="40px"><WngsCoin isStatic /></Box>
+          : <Icon as={MdMilitaryTech} boxSize="26px" color={accent} />
     return (
-      <Flex
-        align="center" justify="space-between" gap={2} minH="38px" px={2} py={1}
-        border="1px solid"
-        borderColor={canClaim ? accent : isClaimed ? 'whiteAlpha.400' : 'whiteAlpha.200'}
-        bg={isClaimed ? 'whiteAlpha.50' : 'transparent'}
-        opacity={reached || !locked ? 1 : 0.55}
+      <Box
+        position="relative"
+        border="2px solid"
+        borderColor={canClaim ? accent : isClaimed ? 'whiteAlpha.500' : 'whiteAlpha.200'}
+        bg="black"
+        boxShadow={canClaim ? `0 0 12px -3px ${accent}` : 'none'}
+        filter={locked && !isClaimed ? 'grayscale(1)' : 'none'}
+        opacity={locked && !isClaimed ? 0.45 : isClaimed ? 0.8 : 1}
+        transition="all 0.2s"
+        p={3}
       >
-        <HStack spacing={2} minW={0}>
-          {preview && (
-            <Box flexShrink={0} lineHeight={0} border="2px solid" borderColor="whiteAlpha.700" p="1px" bg="black">
-              {preview}
-            </Box>
-          )}
-          <Box minW={0}>
-            <Text fontSize="6px" fontWeight="900" fontFamily="monospace" letterSpacing="0.12em"
+        <HStack spacing={3} align="center">
+          <Center flexShrink={0} w="46px" h="46px" border="2px solid"
+            borderColor={canClaim ? accent : 'whiteAlpha.400'} bg="black" overflow="hidden">
+            {preview}
+          </Center>
+          <Box minW={0} flex={1}>
+            <Text fontSize="7px" fontWeight="900" fontFamily="monospace" letterSpacing="0.12em"
               color={r.track === 'premium' ? accent : 'whiteAlpha.500'}>
-              {r.track.toUpperCase()}
+              {r.track.toUpperCase()} // LVL {r.level}
             </Text>
-            <Text fontSize="9px" fontWeight="900" color="white" fontFamily="monospace" noOfLines={1}>
+            <Text fontSize="11px" fontWeight="900" color="white" fontFamily="monospace" noOfLines={1}>
               {rewardLabel(r)}
             </Text>
           </Box>
+          {isClaimed ? (
+            <Icon as={MdCheck} color={accent} boxSize="18px" flexShrink={0} />
+          ) : locked ? (
+            <Icon as={MdLock} color="whiteAlpha.500" boxSize="15px" flexShrink={0} />
+          ) : null}
         </HStack>
-        {isClaimed ? (
-          <Icon as={MdCheck} color={accent} boxSize="15px" flexShrink={0} />
-        ) : canClaim ? (
-          <Button size="xs" h="20px" px={2} fontSize="7px" borderRadius="0" bg={accent} color="black"
-            flexShrink={0} isLoading={busy === r.id} onClick={() => handleClaim(r)} _hover={{ bg: 'white' }}>
-            CLAIM
-          </Button>
-        ) : locked ? (
-          <Icon as={MdLock} color="whiteAlpha.500" boxSize="13px" flexShrink={0} />
-        ) : (
-          <Text fontSize="6px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" flexShrink={0}>LVL {r.level}</Text>
+
+        {canClaim && (
+          <Center position="absolute" inset={0} bg="blackAlpha.500" zIndex={1}>
+            <Button
+              size="sm" h="30px" px={6} borderRadius="0" bg={accent} color="black"
+              fontFamily="monospace" fontWeight="900" fontSize="10px" letterSpacing="0.1em"
+              isLoading={busy === r.id} onClick={() => handleClaim(r)} _hover={{ bg: 'white' }}
+            >
+              CLAIM
+            </Button>
+          </Center>
         )}
-      </Flex>
+      </Box>
     )
   }
 
@@ -243,7 +257,7 @@ const Ascension = () => {
             </Text>
           </Flex>
         )}
-        <HStack spacing={3} align="stretch" minH={hasReward ? '44px' : '30px'}>
+        <HStack spacing={3} align="stretch" minH={hasReward ? '60px' : '30px'}>
           {/* spine + node */}
           <Box position="relative" w="32px" flexShrink={0}>
             <Box position="absolute" left="50%" top={0} bottom={0} w="2px" transform="translateX(-50%)"
@@ -257,9 +271,9 @@ const Ascension = () => {
             </Center>
           </Box>
           {/* rewards */}
-          <VStack spacing={1} align="stretch" flex={1} justify="center" py={hasReward ? 1 : 0}>
-            {cell.free && <RewardChip r={cell.free} />}
-            {cell.premium && <RewardChip r={cell.premium} />}
+          <VStack spacing={1.5} align="stretch" flex={1} justify="center" py={hasReward ? 1.5 : 0}>
+            {cell.free && <RewardTile r={cell.free} />}
+            {cell.premium && <RewardTile r={cell.premium} />}
           </VStack>
         </HStack>
       </Box>
