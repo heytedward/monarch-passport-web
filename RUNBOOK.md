@@ -18,6 +18,18 @@ If a page shows `ACCESS DENIED // LEVEL 5 CLEARANCE REQUIRED`, you are not logge
    - If the URLs come back on `monarch-passport.vercel.app` instead of your domain, set the `BASE_URL` environment variable to `https://passport.papillonbrand.us` in Vercel → Settings → Environment Variables and redeploy. (Both domains work — this is just branding on the tag URLs.)
 4. Encode one URL per NFC tag (NTAG 424) in the physical garments. That's it — when a customer taps, the URL opens, they log in, claim, and the artifact appears in their Closet automatically. Repeat taps pay them small WNGS rewards on a 24-hour cooldown, with no work on your end.
 
+### B2. New physical garment on the storefront (papillonbrand.us)
+
+The storefront catalog is fully in-house now — **no Shopify, no subscription**. Command Center → **Digital Store Forge** → **FORGE PHYSICAL PRODUCT**:
+
+1. Pick up to 6 photos (first one is the cover — photos are resized automatically).
+2. Name, price in USD, category (HOODIE/TEE/CAP/SWEATS/ACCESSORY), description, optional collection/season.
+3. Set stock per size (S/M/L/XL by default; add more with `+ SIZE`).
+4. **FORGE PRODUCT** → it's live on papillonbrand.us/shop immediately. Buyers pick a size; checkout is Stripe; stock decrements per size automatically on purchase; the buyer's Passport Closet gets the item on their next login.
+5. Restock or correct counts anytime via **RESTOCK** on the product's STORE_INVENTORY row (enter `S:10, M:5` style pairs). RETIRE hides it from the storefront.
+
+One-time setup: run `db/physical_store.sql` in Supabase → SQL Editor.
+
 ### B. New avatar or theme in the digital store
 
 1. Command Center → **Digital Store Forge**.
