@@ -69,7 +69,7 @@ Command Center → **ASCENSION Season Control**: create the new season, add its 
 
 ### H. Storefront purchases → customer Closets (automatic)
 
-When someone buys on **papillonbrand.us**, the Stripe webhook records each purchased item against the **email they used at checkout** (table: `purchase_grants`). The next time a Passport account with that same email logs in, the item is minted into their Closet vault automatically and they see an "ORDER_SYNCED" notice. No action needed from you per order.
+When someone buys on **papillonbrand.us**, the Stripe webhook records each purchased item against the **email they used at checkout** (table: `purchase_grants`). The next time a Passport account with that same email logs in, the item is minted into their Closet vault automatically, they're credited the purchase's **WNGS reward (10 WNGS per $1** — the rate shown in the storefront cart), and they see an "ORDER_SYNCED" notice. No action needed from you per order.
 
 - **One-time setup**: run `db/purchase_grants.sql` in Supabase → SQL Editor (creates the queue table). Until this is run, the webhook logs an error and skips the grant — orders still work.
 - **Caveat**: customers who log into the Passport **only with a wallet** (no email/Google/Apple linked) can't be matched — their items wait as `PENDING` rows in Supabase → `purchase_grants`. Same if they used a different email at checkout than on their Passport account. To resolve one manually: edit the row's `email` to match the customer's Passport email, and it grants on their next login.

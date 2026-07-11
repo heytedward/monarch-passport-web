@@ -218,11 +218,13 @@ async function mintAvatar(admin, userId, body, res) {
 
 // Storefront -> Closet auto-grant. monarch-labs' Stripe webhook queues one
 // purchase_grants row per purchased line item (keyed by buyer email); here we
-// match the logged-in user's Privy emails and mint each unit as an already-
-// activated artifact so it shows in the Closet vault. Returns granted labels.
+// match the logged-in user's Privy emails, mint each unit as an already-
+// activated artifact so it shows in the Closet vault, and credit the
+// purchase's WNGS reward (10 wngs per $1 -- keep in sync with the storefront
+// cart display). Returns { names, wngs }.
 async function grantPendingPurchases(admin, userId) {
   const emails = await getPrivyUserEmails(userId);
-  if (!emails.length) return [];
+  if (!emails.length) return { names: [], wngs: 0 };
 
   const { data: grants, error } = await admin
     .from('purchase_grants')
@@ -230,9 +232,18 @@ async function grantPendingPurchases(admin, userId) {
     .in('email', emails)
     .eq('status', 'PENDING');
   if (error) throw error;
-  if (!grants || !grants.length) return [];
+  if (!grants || !grants.length) return { names: [], wngs: 0 };
+
+  // Prices for the WNGS reward, looked up by handle.
+  const handles = [...new Set(grants.map((g) => String(g.product_handle).toLowerCase()))];
+  const { data: priceRows } = await admin
+    .from('products')
+    .select('handle, price_usd')
+    .in('handle', handles);
+  const priceByHandle = Object.fromEntries((priceRows || []).map((p) => [p.handle, Number(p.price_usd) || 0]));
 
   const grantedNames = [];
+  let totalWngs = 0;
   for (const grant of grants) {
     // Claim the grant first (conditional update) so a concurrent login can't
     // double-mint; only the winner proceeds to create artifacts.
@@ -265,8 +276,22 @@ async function grantPendingPurchases(admin, userId) {
       continue;
     }
     grantedNames.push(qty > 1 ? `${name} x${qty}` : name);
+    totalWngs += Math.round((priceByHandle[String(grant.product_handle).toLowerCase()] || 0) * 10) * qty;
   }
-  return grantedNames;
+
+  // Credit the purchase reward once for everything granted this login.
+  if (totalWngs > 0) {
+    const { data: prof } = await admin.from('profiles').select('wngs_balance').eq('id', userId).maybeSingle();
+    await admin.from('profiles').update({ wngs_balance: (prof?.wngs_balance || 0) + totalWngs }).eq('id', userId);
+    await admin.from('transactions').insert({
+      user_id: userId,
+      amount: totalWngs,
+      transaction_type: 'PURCHASE_REWARD',
+      metadata: { source: 'store_order_sync', items: grantedNames },
+    });
+  }
+
+  return { names: grantedNames, wngs: totalWngs };
 }
 
 export default async function handler(req, res) {
@@ -308,11 +333,14 @@ export default async function handler(req, res) {
       } catch (qErr) {
         console.error('QUEST_LOGIN_WARN:', qErr);
       }
-      // Storefront purchases waiting on this email -> Closet. Same best-effort
-      // rule: a grant failure must never block login.
+      // Storefront purchases waiting on this email -> Closet + WNGS reward.
+      // Same best-effort rule: a grant failure must never block login.
       let granted = [];
+      let grantedWngs = 0;
       try {
-        granted = await grantPendingPurchases(admin, userId);
+        const grantResult = await grantPendingPurchases(admin, userId);
+        granted = grantResult.names;
+        grantedWngs = grantResult.wngs;
       } catch (gErr) {
         console.error('PURCHASE_GRANT_WARN:', gErr);
       }
@@ -332,7 +360,7 @@ export default async function handler(req, res) {
         const { data: th } = await admin.from('products').select('accent_color').eq('id', profile.active_theme).maybeSingle();
         themeAccent = th?.accent_color || null;
       }
-      return res.status(200).json({ success: true, profile, avatarColors, themeAccent, granted });
+      return res.status(200).json({ success: true, profile, avatarColors, themeAccent, granted, grantedWngs });
     }
 
     if (action === 'get_owned') {

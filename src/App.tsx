@@ -144,6 +144,11 @@ function AppContent() {
                   <Text color="whiteAlpha.700" fontFamily="monospace" fontSize="10px" mt={1}>
                     {data.granted.join(' // ').toUpperCase()}
                   </Text>
+                  {data.grantedWngs > 0 && (
+                    <Text color="#FFB000" fontFamily="monospace" fontWeight="900" fontSize="10px" mt={1}>
+                      +{data.grantedWngs} $WNGS CREDITED
+                    </Text>
+                  )}
                 </Box>
               ),
             });
