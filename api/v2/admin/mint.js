@@ -161,6 +161,11 @@ async function uploadDataUrlImage(supabase, bucket, dataUrl) {
 async function createPhysicalProduct(body, supabase, res) {
   const { name, priceUsd, category, description, sizes, imagesData, collection, season, edition } = body;
 
+  // Rarity drives the storefront card border. Defaults to COMMON.
+  const rarity = RARITY_PRICES[String(body.rarity || '').toUpperCase()]
+    ? String(body.rarity).toUpperCase()
+    : 'COMMON';
+
   if (!name || !String(name).trim()) {
     return res.status(400).json({ error: 'name is required' });
   }
@@ -213,7 +218,7 @@ async function createPhysicalProduct(body, supabase, res) {
       name: String(name).trim(),
       handle,
       category: cat,
-      rarity: 'COMMON',
+      rarity,
       price_usd: price,
       price_wngs: 0,
       is_active: true,

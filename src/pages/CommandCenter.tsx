@@ -105,8 +105,17 @@ const CommandCenter: React.FC = () => {
     ['S', 'M', 'L', 'XL'].map((s) => ({ size: s, stock: '' }))
   );
   const [prodImages, setProdImages] = useState<string[]>([]);
+  const [prodRarity, setProdRarity] = useState('COMMON');
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
   const [restockingId, setRestockingId] = useState<string | null>(null);
+
+  // --- Product Forge: collection batch (whole drops in one pass) ---
+  type BatchRow = { name: string; category: string; price: string; rarity: string; sizes: string; image: string | null };
+  const emptyBatchRow = (): BatchRow => ({ name: '', category: 'HOODIE', price: '', rarity: 'COMMON', sizes: 'S:0, M:0, L:0, XL:0', image: null });
+  const [batchCollection, setBatchCollection] = useState('');
+  const [batchSeason, setBatchSeason] = useState('');
+  const [batchRows, setBatchRows] = useState<BatchRow[]>([emptyBatchRow(), emptyBatchRow(), emptyBatchRow()]);
+  const [isForgingBatch, setIsForgingBatch] = useState(false);
 
   // --- ASCENSION season control ---
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -569,6 +578,7 @@ const CommandCenter: React.FC = () => {
         name: prodName.trim(),
         priceUsd: parseFloat(prodPrice),
         category: prodCategory,
+        rarity: prodRarity,
         description: prodDescription.trim() || undefined,
         collection: prodCollection.trim() || undefined,
         season: prodSeason.trim() || undefined,
@@ -588,6 +598,77 @@ const CommandCenter: React.FC = () => {
     } finally {
       setIsCreatingProduct(false);
     }
+  };
+
+  // "S:10, M:20" shorthand -> [{ size, stock }]
+  const parseSizesShorthand = (str: string) =>
+    str.split(',')
+      .map((pair) => {
+        const [size, stock] = pair.split(':').map((x) => x.trim());
+        return { size: (size || '').toUpperCase(), stock: parseInt(stock, 10) };
+      })
+      .filter((s) => s.size && Number.isInteger(s.stock) && s.stock >= 0);
+
+  const handleBatchImagePick = async (rowIndex: number, files: FileList | null) => {
+    if (!files || !files.length) return;
+    try {
+      const dataUrl = await downscaleToDataUrl(files[0]);
+      setBatchRows((prev) => prev.map((r, i) => (i === rowIndex ? { ...r, image: dataUrl } : r)));
+    } catch {
+      toast({ title: 'IMAGE_READ_FAILED', status: 'error' });
+    }
+  };
+
+  const forgeCollection = async () => {
+    const rows = batchRows.filter((r) => r.name.trim());
+    if (!batchCollection.trim() || rows.length === 0) {
+      toast({ title: 'MISSING_DATA', description: 'COLLECTION_NAME AND AT LEAST ONE PRODUCT ROW REQUIRED', status: 'error' });
+      return;
+    }
+    setIsForgingBatch(true);
+    addLog(`FORGING_COLLECTION // ${batchCollection} // ${rows.length} PRODUCTS`);
+    const failures: string[] = [];
+    let forged = 0;
+    for (const row of rows) {
+      const sizes = parseSizesShorthand(row.sizes);
+      const price = parseFloat(row.price);
+      if (!Number.isFinite(price) || price <= 0 || sizes.length === 0) {
+        failures.push(`${row.name}: bad price or sizes`);
+        continue;
+      }
+      try {
+        await createCosmetic({
+          kind: 'physical_product',
+          name: row.name.trim(),
+          priceUsd: price,
+          category: row.category,
+          rarity: row.rarity,
+          sizes,
+          imagesData: row.image ? [row.image] : [],
+          collection: batchCollection.trim(),
+          season: batchSeason.trim() || undefined,
+        });
+        forged++;
+      } catch (err: any) {
+        failures.push(`${row.name}: ${err.message}`);
+      }
+    }
+    addLog(`COLLECTION_FORGED // ${forged}_OK // ${failures.length}_FAILED`);
+    toast({
+      title: failures.length === 0 ? 'COLLECTION_DEPLOYED' : 'COLLECTION_PARTIAL',
+      description: failures.length === 0
+        ? `${batchCollection.toUpperCase()} // ${forged} PRODUCTS LIVE`
+        : `${forged} OK // FAILED: ${failures.join(' | ')}`,
+      status: failures.length === 0 ? 'success' : 'warning',
+      duration: 8000,
+    });
+    if (failures.length === 0) {
+      setBatchRows([emptyBatchRow(), emptyBatchRow(), emptyBatchRow()]);
+      setBatchCollection('');
+      setBatchSeason('');
+    }
+    fetchAdminProducts();
+    setIsForgingBatch(false);
   };
 
   const restockProduct = async (product: any) => {
@@ -1476,7 +1557,7 @@ const CommandCenter: React.FC = () => {
                     onChange={(e) => { handleProductImagesPick(e.target.files); e.target.value = ''; }} />
                 </FormControl>
 
-                <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+                <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4}>
                   <FormControl isRequired>
                     <FormLabel fontSize="xs">PRODUCT_NAME</FormLabel>
                     <Input borderRadius="0" placeholder="GENESIS HOODIE" fontSize="sm" value={prodName} onChange={(e) => setProdName(e.target.value)} />
@@ -1489,6 +1570,12 @@ const CommandCenter: React.FC = () => {
                     <FormLabel fontSize="xs">CATEGORY</FormLabel>
                     <Select borderRadius="0" fontSize="sm" value={prodCategory} onChange={(e) => setProdCategory(e.target.value)}>
                       {['HOODIE', 'TEE', 'CAP', 'SWEATS', 'ACCESSORY'].map((c) => <option key={c} value={c}>{c}</option>)}
+                    </Select>
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel fontSize="xs">RARITY</FormLabel>
+                    <Select borderRadius="0" fontSize="sm" value={prodRarity} onChange={(e) => setProdRarity(e.target.value)}>
+                      {RARITIES.map((r) => <option key={r} value={r}>{r}</option>)}
                     </Select>
                   </FormControl>
                 </SimpleGrid>
@@ -1528,6 +1615,72 @@ const CommandCenter: React.FC = () => {
 
                 <Button bg={monarchYellow} color="black" borderRadius="0" fontWeight="bold" _hover={{ opacity: 0.8 }} onClick={createProduct} isLoading={isCreatingProduct} loadingText="FORGING...">
                   FORGE PRODUCT
+                </Button>
+              </VStack>
+            </CardBody>
+          </Card>
+
+          {/* COLLECTION FORGE: batch-create a whole drop — shared collection/
+              season, one row per product (name/category/price/rarity/sizes/photo) */}
+          <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
+            <CardHeader pb={0}>
+              <Heading size="sm" color={monarchYellow}>FORGE COLLECTION (BATCH)</Heading>
+            </CardHeader>
+            <CardBody>
+              <VStack spacing={4} align="stretch">
+                <HStack spacing={4}>
+                  <FormControl isRequired>
+                    <FormLabel fontSize="xs">COLLECTION_NAME</FormLabel>
+                    <Input borderRadius="0" placeholder="GENESIS" fontSize="sm" value={batchCollection} onChange={(e) => setBatchCollection(e.target.value)} />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel fontSize="xs">SEASON</FormLabel>
+                    <Input borderRadius="0" placeholder="S01" fontSize="sm" value={batchSeason} onChange={(e) => setBatchSeason(e.target.value)} />
+                  </FormControl>
+                </HStack>
+
+                <VStack spacing={3} align="stretch">
+                  {batchRows.map((row, i) => (
+                    <Box key={i} border="1px solid" borderColor={borderColor} p={3}>
+                      <SimpleGrid columns={{ base: 1, md: 5 }} spacing={2} mb={2}>
+                        <Input borderRadius="0" fontSize="xs" placeholder="PRODUCT_NAME" value={row.name}
+                          onChange={(e) => setBatchRows((prev) => prev.map((r, ri) => ri === i ? { ...r, name: e.target.value } : r))} />
+                        <Select borderRadius="0" fontSize="xs" value={row.category}
+                          onChange={(e) => setBatchRows((prev) => prev.map((r, ri) => ri === i ? { ...r, category: e.target.value } : r))}>
+                          {['HOODIE', 'TEE', 'CAP', 'SWEATS', 'ACCESSORY'].map((c) => <option key={c} value={c}>{c}</option>)}
+                        </Select>
+                        <Input borderRadius="0" fontSize="xs" type="number" placeholder="PRICE_USD" value={row.price}
+                          onChange={(e) => setBatchRows((prev) => prev.map((r, ri) => ri === i ? { ...r, price: e.target.value } : r))} />
+                        <Select borderRadius="0" fontSize="xs" value={row.rarity}
+                          onChange={(e) => setBatchRows((prev) => prev.map((r, ri) => ri === i ? { ...r, rarity: e.target.value } : r))}>
+                          {RARITIES.map((r) => <option key={r} value={r}>{r}</option>)}
+                        </Select>
+                        <Input borderRadius="0" fontSize="xs" placeholder="S:10, M:20, L:20" value={row.sizes}
+                          onChange={(e) => setBatchRows((prev) => prev.map((r, ri) => ri === i ? { ...r, sizes: e.target.value } : r))} />
+                      </SimpleGrid>
+                      <HStack spacing={3}>
+                        {row.image && <Image src={row.image} boxSize="36px" objectFit="cover" border="1px solid" borderColor={borderColor} />}
+                        <Input type="file" accept="image/*" border="none" p={0} fontSize="xs"
+                          onChange={(e) => { handleBatchImagePick(i, e.target.files); e.target.value = ''; }} />
+                        {batchRows.length > 1 && (
+                          <IconButton aria-label="Remove row" icon={<MdClose />} size="xs" borderRadius="0" flexShrink={0}
+                            onClick={() => setBatchRows((prev) => prev.filter((_, ri) => ri !== i))} />
+                        )}
+                      </HStack>
+                    </Box>
+                  ))}
+                </VStack>
+
+                <HStack>
+                  <Button size="xs" variant="outline" borderRadius="0" borderColor={borderColor} color={labelText}
+                    onClick={() => setBatchRows((prev) => [...prev, emptyBatchRow()])} _hover={{ bg: 'whiteAlpha.100' }}>
+                    + PRODUCT
+                  </Button>
+                </HStack>
+
+                <Button bg={monarchYellow} color="black" borderRadius="0" fontWeight="bold" _hover={{ opacity: 0.8 }}
+                  onClick={forgeCollection} isLoading={isForgingBatch} loadingText="FORGING_COLLECTION...">
+                  FORGE COLLECTION
                 </Button>
               </VStack>
             </CardBody>
