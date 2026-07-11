@@ -317,7 +317,11 @@ const Shop = () => {
               category: p.category,
               rarity: itemType === 'digital' && !isWngsCategory(p.category) ? (p.rarity || 'COMMON') : undefined,
               featuredUntil: p.featured_until,
-              external_buy_url: p.external_buy_url,
+              // Physical items check out on the storefront (sizes + Stripe live
+              // there); the BUY_NOW branch opens this link. Explicit
+              // external_buy_url still wins for special cases.
+              external_buy_url: p.external_buy_url
+                || (itemType === 'physical' && p.handle ? `https://papillonbrand.us/product/${p.handle}` : undefined),
               collection: p.collection || undefined,
               edition: p.edition || undefined,
               themeAccent: p.accent_color || undefined,
