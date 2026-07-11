@@ -1511,12 +1511,12 @@ const CommandCenter: React.FC = () => {
 
                 <FormControl>
                   <FormLabel fontSize="xs">SIZES // STOCK</FormLabel>
-                  <SimpleGrid columns={{ base: 2, md: 4 }} spacing={2}>
+                  <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={2}>
                     {prodSizes.map((row, i) => (
-                      <HStack key={i} spacing={1}>
-                        <Input borderRadius="0" fontSize="xs" w="56px" value={row.size}
+                      <HStack key={i} spacing={2}>
+                        <Input borderRadius="0" fontSize="sm" fontWeight="900" textAlign="center" w="64px" flexShrink={0} placeholder="SIZE" value={row.size}
                           onChange={(e) => setProdSizes((prev) => prev.map((r, ri) => ri === i ? { ...r, size: e.target.value } : r))} />
-                        <Input borderRadius="0" fontSize="xs" type="number" placeholder="QTY" value={row.stock}
+                        <Input borderRadius="0" fontSize="sm" type="number" placeholder="QTY" flex={1} minW="80px" value={row.stock}
                           onChange={(e) => setProdSizes((prev) => prev.map((r, ri) => ri === i ? { ...r, stock: e.target.value } : r))} />
                       </HStack>
                     ))}
