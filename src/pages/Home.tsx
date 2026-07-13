@@ -19,6 +19,7 @@ import { usePrivy } from '@privy-io/react-auth'
 import { MdAccessTime, MdPerson, MdLocalFireDepartment, MdChatBubbleOutline, MdArrowBack, MdSend } from 'react-icons/md'
 import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
+import NotificationsBell from '../components/NotificationsBell'
 
 const BOOST_COST = 50;
 const COMMENT_COST = 10;
@@ -264,6 +265,7 @@ const Home = () => {
                 BALANCE: {wngsBalance} WNGS // SESSION_ACTIVE
               </Text>
             </VStack>
+            <NotificationsBell />
           </Flex>
         </Box>
 

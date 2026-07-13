@@ -24,6 +24,27 @@ const BOOST_FEATURE_THRESHOLD = 20;
 const COMMENT_COST = 10;
 const COMMENT_MAX_LEN = 500;
 
+// Notification feed: how far back the derived feed reaches. The audit ledger
+// (`transactions`) is never trimmed — this is only the display window, so
+// notifications effectively self-expire after 30 days.
+const NOTIF_WINDOW_DAYS = 30;
+
+// Maps WNGS ledger transaction_type -> a friendly confirmation. `kind` drives
+// the icon/accent client-side. Unknown types fall back to a humanized label.
+const NOTIF_LABELS = {
+  NFC_TAP: { title: 'Artifact activated', kind: 'scan' },
+  ARTIFACT_ACTIVATION: { title: 'Artifact activated', kind: 'scan' },
+  QUEST_REWARD: { title: 'Quest complete', kind: 'quest' },
+  SOCIAL_MINER_REWARD: { title: 'Social scan reward', kind: 'social' },
+  SOCIAL_MINE: { title: 'Social scan', kind: 'social' },
+  DIGITAL_PURCHASE: { title: 'Cosmetic unlocked', kind: 'shop' },
+  PURCHASE_REWARD: { title: 'Store purchase reward', kind: 'shop' },
+  ASCENSION_REWARD: { title: 'Ascension reward claimed', kind: 'ascension' },
+  ADMIN_GRANT: { title: 'Gift received', kind: 'gift' },
+  POST_BOOST: { title: 'Post boosted', kind: 'spend' },
+  POST_COMMENT: { title: 'Comment posted', kind: 'spend' },
+};
+
 // Spend WNGS to refill social-mining stamina to full (a net WNGS sink).
 async function rechargeStamina(admin, userId, res) {
   const { data: profile, error } = await admin
@@ -390,6 +411,37 @@ export default async function handler(req, res) {
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       return res.status(200).json({ success: true, transactions: data || [] });
+    }
+
+    // Derived notification feed: a rolling 30-day window over the WNGS ledger,
+    // mapped to friendly confirmations (scans, quests, gifts, purchases…).
+    // On-open model — nothing is written; the audit ledger stays intact and the
+    // feed simply stops showing rows older than the window (self-expiring).
+    if (action === 'get_notifications') {
+      const since = new Date(Date.now() - NOTIF_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await admin
+        .from('transactions')
+        .select('id, amount, transaction_type, created_at')
+        .eq('user_id', userId)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      const notifications = (data || []).map((t) => {
+        const label = NOTIF_LABELS[t.transaction_type] || {
+          title: String(t.transaction_type || 'ACTIVITY').replace(/_/g, ' ').toLowerCase(),
+          kind: 'system',
+        };
+        const amount = t.amount || 0;
+        return {
+          id: t.id,
+          kind: label.kind,
+          title: label.title,
+          amount,
+          positive: amount >= 0,
+          created_at: t.created_at,
+        };
+      });
+      return res.status(200).json({ success: true, notifications });
     }
 
     if (action === 'get_quests') {
