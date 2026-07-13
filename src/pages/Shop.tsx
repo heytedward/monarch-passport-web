@@ -8,6 +8,7 @@ import {
   Flex,
   Icon,
   Center,
+  Image,
   SimpleGrid,
   Container,
   Modal,
@@ -60,6 +61,7 @@ interface ShopItemData {
   borderColor?: string;
   wngsAmount?: number;
   external_buy_url?: string;
+  image?: string;
   category?: string;
   rarity?: string;
   featuredUntil?: string | null;
@@ -95,7 +97,20 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg }: { index: str
         transition="all 0.2s"
         opacity={owned ? 0.6 : 1}
       >
-        <Text position="absolute" top={1} left={1} fontSize="6px" color={text} opacity={0.4} fontFamily="monospace">{index}</Text>
+        {item.type === 'physical' && item.image && (
+          <Image
+            src={item.image}
+            alt={item.name}
+            position="absolute"
+            inset={0}
+            w="full"
+            h="full"
+            objectFit="cover"
+            zIndex={0}
+            opacity={owned ? 0.6 : 1}
+          />
+        )}
+        <Text position="absolute" top={1} left={1} fontSize="6px" color={text} opacity={0.4} fontFamily="monospace" zIndex={2}>{index}</Text>
         {owned ? (
           <Box position="absolute" top={1} right={1} bg="var(--monarch-accent)" px={1}>
             <Text fontSize="6px" fontWeight="900" color="black" fontFamily="monospace">OWNED</Text>
@@ -110,9 +125,9 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg }: { index: str
             {item.rarity}
           </Text>
         )}
-        <Center h="full" flexDirection="column">
+        <Center h="full" flexDirection="column" position="relative" zIndex={1}>
           {item.type === 'physical' ? (
-            <TShirtIcon color={text} />
+            item.image ? null : <TShirtIcon color={text} />
           ) : isWngsCategory((item as any).category) ? (
             <Box w="60px" h="60px">
               <WngsCoin isStatic={true} />
@@ -122,7 +137,7 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg }: { index: str
           ) : (
             <DeStijlAvatar seed={item.id} colors={item.palette} size={60} />
           )}
-          <Box mt={2} bg={text} px={2} py={0.5}>
+          <Box mt={item.type === 'physical' && item.image ? 0 : 2} position={item.type === 'physical' && item.image ? 'absolute' : 'static'} bottom={item.type === 'physical' && item.image ? 1 : undefined} bg={text} px={2} py={0.5}>
             <Text color={bg} fontSize="10px" fontWeight="900" fontFamily="monospace">{item.priceString}</Text>
           </Box>
         </Center>
@@ -305,6 +320,11 @@ const Shop = () => {
             // For WNGS bundles price_wngs stores the grant amount (received), price_usd is the cost
             const price = isWngsBundle ? (p.price_usd || 0) : itemType === 'digital' ? p.price_wngs : (p.price_usd || 0);
             const wngsAmount = isWngsBundle ? (p.price_wngs || 0) : undefined;
+            // Product photo: `images` is a jsonb array (URL strings or {url});
+            // fall back to the legacy `image_url` column.
+            const firstImage = Array.isArray(p.images) && p.images.length > 0
+              ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0]?.url)
+              : (p.image_url || undefined);
             return {
               id: p.id,
               type: itemType,
@@ -320,6 +340,7 @@ const Shop = () => {
               // Physical items check out on the storefront (sizes + Stripe live
               // there); the BUY_NOW branch opens this link. Explicit
               // external_buy_url still wins for special cases.
+              image: firstImage,
               external_buy_url: p.external_buy_url
                 || (itemType === 'physical' && p.handle ? `https://papillonbrand.us/product/${p.handle}` : undefined),
               collection: p.collection || undefined,
@@ -686,9 +707,13 @@ const Shop = () => {
                     cursor="pointer"
                   >
                     <VStack spacing={8}>
-                      <Box border={`2px solid ${text}`} p={6}>
+                      <Box border={`2px solid ${text}`} p={selectedItem.type === 'physical' && selectedItem.image ? 0 : 6}>
                         {selectedItem.type === 'physical' ? (
-                          <TShirtIcon color={text} boxSize="100px" />
+                          selectedItem.image ? (
+                            <Image src={selectedItem.image} alt={selectedItem.name} boxSize="180px" objectFit="cover" />
+                          ) : (
+                            <TShirtIcon color={text} boxSize="100px" />
+                          )
                         ) : isWngsCategory((selectedItem as any).category) ? (
                           <Box w="120px" h="120px">
                              <WngsCoin />
