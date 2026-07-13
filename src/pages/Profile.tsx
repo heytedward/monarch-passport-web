@@ -10,11 +10,12 @@ import {
   SimpleGrid,
   Button,
   Spinner,
+  useToast,
   useColorModeValue
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MdSettings, MdLock, MdBolt, MdCreditCard, MdHistory } from 'react-icons/md'
+import { MdSettings, MdLock, MdBolt, MdCreditCard, MdHistory, MdLocalOffer, MdContentCopy, MdClose } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
 import { supabase } from '../lib/supabase'
 import DeStijlAvatar from '../components/DeStijlAvatar'
@@ -23,6 +24,7 @@ import { effectiveStamina, DEFAULT_MAX_STAMINA } from '../lib/ascension'
 
 const Profile = () => {
   const navigate = useNavigate()
+  const toast = useToast()
   const { user, getAccessToken } = usePrivy()
   
   const solanaWallet = user?.linkedAccounts?.find(
@@ -38,7 +40,7 @@ const Profile = () => {
       ? '@' + solanaAddress.slice(0, 6).toUpperCase()
       : '@OPERATOR';
 
-  const { wngsBalance, totalTaps, isLoading } = useStore()
+  const { wngsBalance, totalTaps, isLoading, setWngsBalance } = useStore()
   const [activeTab, setActiveTab] = useState<'STATS' | 'WALLET' | 'QUESTS' | 'STAMPS'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
   const [userQuests, setUserQuests] = useState<Record<string, { status: string; progress: number; target: number }>>({});
@@ -50,6 +52,63 @@ const Profile = () => {
   const [stampsLoading, setStampsLoading] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [transLoading, setTransLoading] = useState(true);
+  const [discounts, setDiscounts] = useState<any[]>([]);
+  const [genUsd, setGenUsd] = useState(5);
+  const [genBusy, setGenBusy] = useState(false);
+
+  const discountApi = async (body: Record<string, any>) => {
+    const token = await getAccessToken();
+    const res = await fetch('/api/v2/purchase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ userId: user?.id, ...body }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.success) throw new Error(data?.error || 'REQUEST_FAILED');
+    return data;
+  };
+
+  const loadDiscounts = async () => {
+    if (!user?.id) return;
+    try {
+      const d = await discountApi({ action: 'get_discounts' });
+      setDiscounts(d.discounts || []);
+    } catch { /* leave empty */ }
+  };
+
+  const handleGenerateDiscount = async () => {
+    if (wngsBalance < genUsd * 100) {
+      toast({ title: 'NOT_ENOUGH_WNGS', status: 'error', duration: 3000 });
+      return;
+    }
+    setGenBusy(true);
+    try {
+      const d = await discountApi({ action: 'create_discount', discountUsd: genUsd });
+      setWngsBalance(d.balance);
+      toast({ title: `$${genUsd}_DISCOUNT_CREATED`, description: `CODE: ${d.code}`, status: 'success', duration: 5000 });
+      loadDiscounts();
+    } catch (e: any) {
+      toast({ title: 'COULD_NOT_CREATE', description: String(e?.message || ''), status: 'error', duration: 3000 });
+    } finally {
+      setGenBusy(false);
+    }
+  };
+
+  const handleCancelDiscount = async (code: string) => {
+    try {
+      const d = await discountApi({ action: 'cancel_discount', code });
+      setWngsBalance(d.balance);
+      toast({ title: 'CODE_CANCELLED', description: `+${d.refunded} WNGS REFUNDED`, status: 'success', duration: 3000 });
+      loadDiscounts();
+    } catch {
+      toast({ title: 'COULD_NOT_CANCEL', status: 'error', duration: 3000 });
+    }
+  };
+
+  const copyDiscount = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast({ title: 'COPIED', description: code, status: 'success', duration: 1500 });
+  };
 
   const handleCopyLink = () => {
     // Generate the unique link using the user's Privy ID or wallet
@@ -157,6 +216,11 @@ const Profile = () => {
     fetchTransactions();
   }, [user?.id]);
 
+  useEffect(() => {
+    if (user?.id) loadDiscounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   // After a successful WNGS purchase, Stripe returns to /profile?checkout=success
   // -> open the WALLET tab so the new balance + transaction are front and centre.
   useEffect(() => {
@@ -221,6 +285,65 @@ const Profile = () => {
             >
               BUY_WNGS
             </Button>
+
+            {/* WNGS -> storefront discount code */}
+            <Box borderTop={`2px solid ${text}`} pt={4} mt={1}>
+              <Flex justify="space-between" align="center" mb={1}>
+                <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">STORE_DISCOUNT</Text>
+                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">100 WNGS = $1</Text>
+              </Flex>
+              <Text fontSize="9px" color={mutedText} fontFamily="monospace" mb={3} lineHeight="1.5">
+                SPEND WNGS FOR A CODE TO REDEEM AT PAPILLONBRAND.US CHECKOUT (UP TO 30% OFF AN ORDER).
+              </Text>
+              <HStack spacing={2} mb={3}>
+                {[1, 5, 10, 25].map((v) => {
+                  const affordable = wngsBalance >= v * 100;
+                  const sel = genUsd === v;
+                  return (
+                    <Button
+                      key={v} flex={1} height="40px" borderRadius="0"
+                      onClick={() => setGenUsd(v)} isDisabled={!affordable}
+                      bg={sel ? 'var(--monarch-accent)' : 'transparent'} color={sel ? 'black' : text}
+                      border={`3px solid ${sel ? 'var(--monarch-accent)' : text}`} opacity={affordable ? 1 : 0.35}
+                      fontFamily="monospace" fontWeight="900" fontSize="xs"
+                      _hover={{ bg: sel ? 'var(--monarch-accent)' : cardBg }}
+                    >
+                      ${v}
+                    </Button>
+                  );
+                })}
+              </HStack>
+              <Button
+                width="100%" height="44px" borderRadius="0" onClick={handleGenerateDiscount}
+                isLoading={genBusy} isDisabled={wngsBalance < genUsd * 100}
+                bg={text} color={bg} fontFamily="monospace" fontWeight="900" fontSize="xs"
+                leftIcon={<MdLocalOffer />} _hover={{ opacity: 0.85 }}
+              >
+                GENERATE ${genUsd} CODE // {genUsd * 100} WNGS
+              </Button>
+
+              {discounts.filter((d) => d.status === 'active').length > 0 && (
+                <VStack align="stretch" spacing={2} mt={4}>
+                  {discounts.filter((d) => d.status === 'active').map((d) => (
+                    <Flex key={d.code} align="center" justify="space-between" p={3} border={`2px solid ${text}`}>
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="900" fontSize="sm" color={text} fontFamily="monospace" letterSpacing="0.05em">{d.code}</Text>
+                        <Text fontSize="8px" color={mutedText} fontFamily="monospace">${Number(d.discount_usd)} OFF // ACTIVE</Text>
+                      </VStack>
+                      <HStack spacing={1}>
+                        <Center as="button" onClick={() => copyDiscount(d.code)} w="34px" h="34px" border={`2px solid ${text}`} color={text} _hover={{ bg: cardBg }}>
+                          <Icon as={MdContentCopy} boxSize="15px" />
+                        </Center>
+                        <Center as="button" onClick={() => handleCancelDiscount(d.code)} w="34px" h="34px" border={`2px solid ${text}`} color={text} _hover={{ bg: cardBg }}>
+                          <Icon as={MdClose} boxSize="15px" />
+                        </Center>
+                      </HStack>
+                    </Flex>
+                  ))}
+                  <Text fontSize="8px" color={mutedText} fontFamily="monospace">CANCEL AN UNUSED CODE ANYTIME TO REFUND ITS WNGS.</Text>
+                </VStack>
+              )}
+            </Box>
 
             <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace" pt={2}>TRANSACTION_HISTORY</Text>
             {transLoading ? (

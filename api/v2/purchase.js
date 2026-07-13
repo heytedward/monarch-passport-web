@@ -41,9 +41,25 @@ const NOTIF_LABELS = {
   PURCHASE_REWARD: { title: 'Store purchase reward', kind: 'shop' },
   ASCENSION_REWARD: { title: 'Ascension reward claimed', kind: 'ascension' },
   ADMIN_GRANT: { title: 'Gift received', kind: 'gift' },
+  DISCOUNT_REDEMPTION: { title: 'WNGS discount created', kind: 'spend' },
+  DISCOUNT_REFUND: { title: 'Discount refunded', kind: 'gift' },
   POST_BOOST: { title: 'Post boosted', kind: 'spend' },
   POST_COMMENT: { title: 'Comment posted', kind: 'spend' },
 };
+
+// WNGS → storefront discount: 100 WNGS = $1 off (mirrors the 10-per-$1 earn
+// rate, a clean 10% loop). The 30% order cap is enforced storefront-side at
+// checkout where the order total is known.
+const WNGS_PER_DISCOUNT_DOLLAR = 100;
+const MAX_DISCOUNT_USD = 500;
+
+// Unambiguous code alphabet (no 0/O/1/I).
+function genDiscountCode() {
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 8; i++) s += abc[Math.floor(Math.random() * abc.length)];
+  return 'WNGS-' + s;
+}
 
 // Spend WNGS to refill social-mining stamina to full (a net WNGS sink).
 async function rechargeStamina(admin, userId, res) {
@@ -442,6 +458,85 @@ export default async function handler(req, res) {
         };
       });
       return res.status(200).json({ success: true, notifications });
+    }
+
+    // Spend WNGS to mint a fixed-dollar storefront discount code. The WNGS is
+    // debited here (in the authenticated passport) so the storefront never has
+    // to trust an identity — it only validates the code.
+    if (action === 'create_discount') {
+      const discountUsd = Math.floor(Number(req.body?.discountUsd) || 0);
+      if (!(discountUsd >= 1) || discountUsd > MAX_DISCOUNT_USD) {
+        return res.status(400).json({ error: 'INVALID_DISCOUNT_AMOUNT' });
+      }
+      const cost = discountUsd * WNGS_PER_DISCOUNT_DOLLAR;
+
+      const { data: prof } = await admin.from('profiles').select('wngs_balance').eq('id', userId).maybeSingle();
+      const bal = prof?.wngs_balance || 0;
+      if (bal < cost) return res.status(400).json({ error: 'INSUFFICIENT_WNGS', balance: bal, needed: cost });
+
+      // Guarded debit (optimistic concurrency): only succeeds if the balance
+      // hasn't moved since we read it.
+      const { data: debited } = await admin
+        .from('profiles')
+        .update({ wngs_balance: bal - cost })
+        .eq('id', userId)
+        .eq('wngs_balance', bal)
+        .select('wngs_balance')
+        .maybeSingle();
+      if (!debited) return res.status(409).json({ error: 'BALANCE_CHANGED_RETRY' });
+
+      const code = genDiscountCode();
+      const { error: insErr } = await admin.from('wngs_discounts').insert({
+        code, user_id: userId, wngs_spent: cost, discount_usd: discountUsd, status: 'active',
+      });
+      if (insErr) {
+        // Never keep the WNGS if the code wasn't created — refund immediately.
+        await admin.from('profiles').update({ wngs_balance: debited.wngs_balance + cost }).eq('id', userId);
+        console.error('CREATE_DISCOUNT_INSERT_FAIL:', insErr);
+        return res.status(500).json({ error: 'DISCOUNT_CREATE_FAILED' });
+      }
+      await admin.from('transactions').insert({
+        user_id: userId, amount: -cost, transaction_type: 'DISCOUNT_REDEMPTION',
+        metadata: { code, discount_usd: discountUsd },
+      });
+      return res.status(200).json({ success: true, code, discountUsd, wngsSpent: cost, balance: debited.wngs_balance });
+    }
+
+    if (action === 'get_discounts') {
+      const { data } = await admin
+        .from('wngs_discounts')
+        .select('code, wngs_spent, discount_usd, status, created_at, redeemed_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      return res.status(200).json({ success: true, discounts: data || [] });
+    }
+
+    // Cancel an unused code → full WNGS refund. Only 'active' codes; the
+    // guarded status flip prevents refunding a code that just got redeemed.
+    if (action === 'cancel_discount') {
+      const code = String(req.body?.code || '');
+      const { data: row } = await admin
+        .from('wngs_discounts').select('*').eq('code', code).eq('user_id', userId).maybeSingle();
+      if (!row) return res.status(404).json({ error: 'CODE_NOT_FOUND' });
+      if (row.status !== 'active') return res.status(400).json({ error: 'CODE_NOT_ACTIVE' });
+
+      const { data: cancelled } = await admin
+        .from('wngs_discounts')
+        .update({ status: 'cancelled' })
+        .eq('code', code)
+        .eq('status', 'active')
+        .select('code')
+        .maybeSingle();
+      if (!cancelled) return res.status(409).json({ error: 'CODE_STATE_CHANGED' });
+
+      const { data: prof } = await admin.from('profiles').select('wngs_balance').eq('id', userId).maybeSingle();
+      const bal = prof?.wngs_balance || 0;
+      await admin.from('profiles').update({ wngs_balance: bal + row.wngs_spent }).eq('id', userId);
+      await admin.from('transactions').insert({
+        user_id: userId, amount: row.wngs_spent, transaction_type: 'DISCOUNT_REFUND', metadata: { code },
+      });
+      return res.status(200).json({ success: true, refunded: row.wngs_spent, balance: bal + row.wngs_spent });
     }
 
     if (action === 'get_quests') {
