@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Box, Flex, Text, VStack, HStack, Center, Spinner, useColorModeValue,
 } from '@chakra-ui/react';
@@ -29,6 +29,14 @@ const KIND_ICON: Record<string, any> = {
   system: PiSparkleFill,
 };
 
+// Per-device "last seen" mark for the unread badge (Phase 2). Kept in
+// localStorage — a lightweight, backend-free unread count that's plenty for a
+// phone-first app; a server-side last_seen can replace it later if needed.
+const SEEN_KEY = 'monarch_notifs_seen_at';
+const readSeen = () => {
+  try { return localStorage.getItem(SEEN_KEY) || ''; } catch { return ''; }
+};
+
 const timeAgo = (iso: string) => {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
   if (s < 60) return 'just now';
@@ -40,14 +48,15 @@ const timeAgo = (iso: string) => {
   return `${d}d ago`;
 };
 
-// Notifications bell + slide-down panel. On-open model: fetches the derived
-// 30-day feed each time it's opened (no realtime, no unread tracking yet).
+// Notifications bell + slide-down panel. Fetches the derived 30-day feed when
+// the passport opens (on-open model) so the bell can show an unread badge;
+// opening the panel marks everything seen and clears the badge.
 const NotificationsBell = () => {
   const { user, getAccessToken } = usePrivy();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [seenAt, setSeenAt] = useState<string>(() => readSeen());
 
   const iconColor = useColorModeValue('black', 'white');
   const panelBg = useColorModeValue('gray.50', 'black');
@@ -55,26 +64,43 @@ const NotificationsBell = () => {
   const muted = useColorModeValue('gray.500', 'gray.500');
 
   const load = async () => {
+    if (!user?.id) return;
     setLoading(true);
     try {
       const token = await getAccessToken();
       const res = await fetch('/api/v2/purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userId: user?.id, action: 'get_notifications' }),
+        body: JSON.stringify({ userId: user.id, action: 'get_notifications' }),
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.success) setItems(data.notifications || []);
     } catch { /* leave empty */ } finally {
       setLoading(false);
-      setLoaded(true);
     }
+  };
+
+  // Fetch once when the passport opens so the badge is live before any tap.
+  useEffect(() => {
+    if (user?.id) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const unread = useMemo(() => {
+    const seen = seenAt ? new Date(seenAt).getTime() : 0;
+    return items.filter((n) => new Date(n.created_at).getTime() > seen).length;
+  }, [items, seenAt]);
+
+  const markSeen = () => {
+    const now = new Date().toISOString();
+    try { localStorage.setItem(SEEN_KEY, now); } catch { /* ignore */ }
+    setSeenAt(now);
   };
 
   const toggle = () => {
     const next = !open;
     setOpen(next);
-    if (next && !loaded) load();
+    if (next) markSeen(); // opening clears the badge
   };
 
   return (
@@ -85,13 +111,34 @@ const NotificationsBell = () => {
         onClick={toggle}
         w="40px"
         h="40px"
+        position="relative"
         border={`3px solid ${borderCol}`}
         color={open ? 'var(--monarch-accent)' : iconColor}
         transition="all 0.15s"
         _hover={{ transform: 'translateY(-1px)' }}
-        aria-label="Notifications"
+        aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
       >
         <PiBellFill size={20} />
+        {unread > 0 && (
+          <Center
+            position="absolute"
+            top="-8px"
+            right="-8px"
+            minW="18px"
+            h="18px"
+            px="4px"
+            bg="var(--monarch-accent)"
+            color="black"
+            border={`2px solid ${borderCol}`}
+            borderRadius="full"
+            fontSize="9px"
+            fontWeight="900"
+            fontFamily="monospace"
+            lineHeight="1"
+          >
+            {unread > 9 ? '9+' : unread}
+          </Center>
+        )}
       </Center>
 
       {/* Panel */}
