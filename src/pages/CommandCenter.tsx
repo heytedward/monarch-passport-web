@@ -868,7 +868,7 @@ const CommandCenter: React.FC = () => {
 
   return (
     <Box minH="100vh" bg={bgColor} p={8} fontFamily="monospace">
-      <VStack align="stretch" spacing={8} maxW="1280px" mx="auto">
+      <VStack align="stretch" spacing={8} maxW="1600px" mx="auto">
         {/* Header Section */}
         <VStack align="start" spacing={0} borderLeft={`4px solid ${monarchYellow}`} pl={4}>
           <Heading size="2xl" fontWeight="900" letterSpacing="-0.02em" textTransform="uppercase">

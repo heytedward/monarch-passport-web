@@ -94,6 +94,28 @@ function AppRoutes() {
   );
 }
 
+// The whole app is a centered ~430px phone column — except the admin, which
+// breaks out to full width (and drops the phone nav) so its tools have room.
+function AppFrame() {
+  const location = useLocation();
+  const isFullWidth = location.pathname === '/command-center' || location.pathname === '/admin';
+  return (
+    <Box
+      as="main"
+      maxW={isFullWidth ? '100%' : '430px'}
+      mx="auto"
+      minH="100vh"
+      position="relative"
+      pt="0"
+      px={0}
+      pb={isFullWidth ? 0 : '80px'}
+    >
+      {!isFullWidth && <Navbar />}
+      <AppRoutes />
+    </Box>
+  );
+}
+
 function AppContent() {
   const { user, ready, authenticated, getAccessToken } = usePrivy();
   const { activeTheme, activeThemeAccent, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent } = useStore();
@@ -170,11 +192,8 @@ function AppContent() {
           .de-stijl-heading { font-family: 'Archivo Black', sans-serif !important; }
           .de-stijl-body { font-family: 'Space Mono', monospace !important; }
         `}</style>
-        {/* Phone-tight frame: the whole app is a centered ~430px column. */}
-        <Box as="main" maxW="430px" mx="auto" minH="100vh" position="relative" pt="0" px={0} pb="80px">
-          <Navbar />
-          <AppRoutes />
-        </Box>
+        {/* Phone-tight frame for the app; the admin breaks out to full width. */}
+        <AppFrame />
       </Box>
     </Router>
   );
