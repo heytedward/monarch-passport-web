@@ -39,10 +39,21 @@ const ADMIN_WALLETS = (import.meta.env.VITE_ADMIN_PRIVY_ID || "did:privy:cmphogm
   .filter(Boolean)
   .flatMap((w: string) => (w.startsWith('did:privy:') ? [w] : [w, `did:privy:${w}`]));
 
+// The Command Center is split into focused screens; the nav shows one at a
+// time so each tool gets room to breathe (and it's usable on a phone).
+const SECTIONS = [
+  { id: 'PHYSICAL', label: 'PHYSICAL' },
+  { id: 'COSMETICS', label: 'COSMETICS' },
+  { id: 'ARTIFACTS', label: 'ARTIFACTS' },
+  { id: 'ASCENSION', label: 'ASCENSION' },
+  { id: 'FEED', label: 'FEED' },
+] as const;
+
 const CommandCenter: React.FC = () => {
   const { user, authenticated, ready, getAccessToken } = usePrivy();
   const toast = useToast();
 
+  const [activeSection, setActiveSection] = useState<string>('PHYSICAL');
   const [claimId, setClaimId] = useState('');
   const [wngsValue, setWngsValue] = useState('');
   const [itemType, setItemType] = useState('CLOTHING');
@@ -857,7 +868,7 @@ const CommandCenter: React.FC = () => {
 
   return (
     <Box minH="100vh" bg={bgColor} p={8} fontFamily="monospace">
-      <VStack align="stretch" spacing={8} maxW="1200px" mx="auto">
+      <VStack align="stretch" spacing={8} maxW="1280px" mx="auto">
         {/* Header Section */}
         <VStack align="start" spacing={0} borderLeft={`4px solid ${monarchYellow}`} pl={4}>
           <Heading size="2xl" fontWeight="900" letterSpacing="-0.02em" textTransform="uppercase">
@@ -873,9 +884,31 @@ const CommandCenter: React.FC = () => {
           </HStack>
         </VStack>
 
-        <Divider borderColor={borderColor} />
+        {/* Section nav — one focused screen at a time, scrolls on mobile */}
+        <Box position="sticky" top={0} zIndex={20} bg={bgColor} py={3} borderBottom={`2px solid ${borderColor}`} overflowX="auto">
+          <HStack spacing={2} minW="max-content">
+            {SECTIONS.map((s) => (
+              <Button
+                key={s.id}
+                size="sm"
+                borderRadius="0"
+                fontFamily="monospace"
+                fontWeight="900"
+                letterSpacing="0.08em"
+                bg={activeSection === s.id ? monarchYellow : 'transparent'}
+                color={activeSection === s.id ? 'black' : undefined}
+                border="1px solid"
+                borderColor={activeSection === s.id ? monarchYellow : borderColor}
+                _hover={{ borderColor: monarchYellow }}
+                onClick={() => setActiveSection(s.id)}
+              >
+                {s.label}
+              </Button>
+            ))}
+          </HStack>
+        </Box>
 
-        {/* MONARCH_TIMES Broadcast Section */}
+        {activeSection === 'FEED' && (
         <VStack align="stretch" spacing={6}>
           <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
             // MONARCH_TIMES Broadcast
@@ -978,9 +1011,9 @@ const CommandCenter: React.FC = () => {
           </Card>
         </VStack>
 
-        <Divider borderColor={borderColor} />
+        )}
 
-        {/* ASCENSION Season Control Section */}
+        {activeSection === 'ASCENSION' && (
         <VStack align="stretch" spacing={6}>
           <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
             // ASCENSION Season Control
@@ -1118,9 +1151,9 @@ const CommandCenter: React.FC = () => {
           </SimpleGrid>
         </VStack>
 
-        <Divider borderColor={borderColor} />
+        )}
 
-        {/* Artifact & Link Forge Section */}
+        {activeSection === 'ARTIFACTS' && (
         <VStack align="stretch" spacing={6}>
           <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
             // Artifact & Link Forge
@@ -1383,12 +1416,12 @@ const CommandCenter: React.FC = () => {
           </Card>
         </VStack>
 
-        <Divider borderColor={borderColor} />
+        )}
 
-        {/* Digital Store Forge Section */}
+        {activeSection === 'COSMETICS' && (
         <VStack align="stretch" spacing={6}>
           <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
-            // Digital Store Forge
+            // Cosmetics Forge
           </Heading>
 
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
@@ -1529,7 +1562,14 @@ const CommandCenter: React.FC = () => {
               </CardBody>
             </Card>
           </SimpleGrid>
+        </VStack>
+        )}
 
+        {activeSection === 'PHYSICAL' && (
+        <VStack align="stretch" spacing={6}>
+          <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
+            // Physical Products
+          </Heading>
           {/* PRODUCT FORGE: physical garments — the in-house Shopify replacement */}
           <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
             <CardHeader pb={0}>
@@ -1793,6 +1833,7 @@ const CommandCenter: React.FC = () => {
             </CardBody>
           </Card>
         </VStack>
+        )}
 
         {/* Footer/System Logs Section */}
         <Box p={4} bg="black" border="1px solid" borderColor="whiteAlpha.200">
