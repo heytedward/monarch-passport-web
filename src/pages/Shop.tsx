@@ -105,7 +105,8 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg }: { index: str
             inset={0}
             w="full"
             h="full"
-            objectFit="cover"
+            p={2}
+            objectFit="contain"
             zIndex={0}
             opacity={owned ? 0.6 : 1}
           />
@@ -710,7 +711,7 @@ const Shop = () => {
                       <Box border={`2px solid ${text}`} p={selectedItem.type === 'physical' && selectedItem.image ? 0 : 6}>
                         {selectedItem.type === 'physical' ? (
                           selectedItem.image ? (
-                            <Image src={selectedItem.image} alt={selectedItem.name} boxSize="180px" objectFit="cover" />
+                            <Image src={selectedItem.image} alt={selectedItem.name} boxSize="180px" objectFit="contain" />
                           ) : (
                             <TShirtIcon color={text} boxSize="100px" />
                           )
