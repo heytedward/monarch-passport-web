@@ -105,8 +105,7 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg }: { index: str
             inset={0}
             w="full"
             h="full"
-            p={2}
-            objectFit="contain"
+            objectFit="cover"
             zIndex={0}
             opacity={owned ? 0.6 : 1}
           />
