@@ -694,60 +694,99 @@ const Shop = () => {
                   style={{ transformStyle: "preserve-3d" }}
                 >
                   {/* FRONT */}
-                  <Center
+                  <Box
                     position="absolute"
                     inset={0}
                     bg={bg}
                     border="4px solid"
                     borderColor={selectedItem.borderColor || text}
                     style={{ backfaceVisibility: "hidden" }}
-                    flexDirection="column"
-                    p={8}
+                    overflow="hidden"
                     onClick={() => setIsFlipped(true)}
                     cursor="pointer"
                   >
-                    <VStack spacing={8}>
-                      <Box border={`2px solid ${text}`} p={selectedItem.type === 'physical' && selectedItem.image ? 0 : 6}>
-                        {selectedItem.type === 'physical' ? (
-                          selectedItem.image ? (
-                            <Image src={selectedItem.image} alt={selectedItem.name} boxSize="180px" objectFit="contain" />
-                          ) : (
-                            <TShirtIcon color={text} boxSize="100px" />
-                          )
-                        ) : isWngsCategory((selectedItem as any).category) ? (
-                          <Box w="120px" h="120px">
-                             <WngsCoin />
+                    {selectedItem.type === 'physical' && selectedItem.image ? (
+                      <>
+                        {/* Full-bleed product art */}
+                        <Image
+                          src={selectedItem.image}
+                          alt={selectedItem.name}
+                          position="absolute"
+                          inset={0}
+                          w="full"
+                          h="full"
+                          objectFit="cover"
+                        />
+                        <VStack
+                          position="absolute"
+                          bottom={0}
+                          left={0}
+                          right={0}
+                          spacing={1}
+                          pt={12}
+                          pb={5}
+                          px={4}
+                          bgGradient="linear(to-t, blackAlpha.900, transparent)"
+                        >
+                          <Text fontSize="2xl" fontWeight="900" color="black" bg="white" px={4} fontStyle="italic">
+                            {selectedItem.priceString}
+                          </Text>
+                          <Text fontSize="10px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
+                            {selectedItem.name}
+                          </Text>
+                          {selectedItem.rarity && (
+                            <Text fontSize="8px" fontWeight="900" color={RARITY_COLORS[selectedItem.rarity] || mutedText} fontFamily="monospace">
+                              [ {selectedItem.rarity} ]
+                            </Text>
+                          )}
+                          <HStack color="whiteAlpha.800" pt={1}>
+                            <Icon as={MdRefresh} />
+                            <Text fontSize="9px" fontWeight="900">TAP TO VIEW SPECS</Text>
+                          </HStack>
+                        </VStack>
+                      </>
+                    ) : (
+                      <Center position="absolute" inset={0} flexDirection="column" p={8}>
+                        <VStack spacing={8}>
+                          <Box border={`2px solid ${text}`} p={6}>
+                            {selectedItem.type === 'physical' ? (
+                              <TShirtIcon color={text} boxSize="100px" />
+                            ) : isWngsCategory((selectedItem as any).category) ? (
+                              <Box w="120px" h="120px">
+                                <WngsCoin />
+                              </Box>
+                            ) : (selectedItem as any).category === 'THEME' ? (
+                              <ThemeSwatch accent={selectedItem.themeAccent} mode={selectedItem.themeMode} size={120} />
+                            ) : (
+                              <DeStijlAvatar seed={selectedItem.id} colors={selectedItem.palette} size={120} />
+                            )}
                           </Box>
-                        ) : (selectedItem as any).category === 'THEME' ? (
-                          <ThemeSwatch accent={selectedItem.themeAccent} mode={selectedItem.themeMode} size={120} />
-                        ) : (
-                          <DeStijlAvatar seed={selectedItem.id} colors={selectedItem.palette} size={120} />
-                        )}
-                      </Box>
-                      <VStack spacing={2}>
-                        <Text fontSize="2xl" fontWeight="900" color={bg} bg={text} px={4} fontStyle="italic">
-                          {selectedItem.priceString}
-                        </Text>
-                        <Text fontSize="10px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
-                          {selectedItem.name}
-                        </Text>
-                        {selectedItem.rarity && (
-                          <Text fontSize="8px" fontWeight="900" color={RARITY_COLORS[selectedItem.rarity] || mutedText} fontFamily="monospace">
-                            [ {selectedItem.rarity} ]
-                          </Text>
-                        )}
-                        {isItemFeatured(selectedItem) && (
-                          <Text fontSize="8px" fontWeight="900" color="#FFB000" fontFamily="monospace">
-                            *** FEATURED_DROP ***
-                          </Text>
-                        )}
-                      </VStack>
-                      <HStack color={mutedText}>
-                        <Icon as={MdRefresh} />
-                        <Text fontSize="9px" fontWeight="900">TAP TO VIEW SPECS</Text>
-                      </HStack>
-                    </VStack>
-                  </Center>
+                          <VStack spacing={2}>
+                            <Text fontSize="2xl" fontWeight="900" color={bg} bg={text} px={4} fontStyle="italic">
+                              {selectedItem.priceString}
+                            </Text>
+                            <Text fontSize="10px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
+                              {selectedItem.name}
+                            </Text>
+                            {selectedItem.rarity && (
+                              <Text fontSize="8px" fontWeight="900" color={RARITY_COLORS[selectedItem.rarity] || mutedText} fontFamily="monospace">
+                                [ {selectedItem.rarity} ]
+                              </Text>
+                            )}
+                            {isItemFeatured(selectedItem) && (
+                              <Text fontSize="8px" fontWeight="900" color="#FFB000" fontFamily="monospace">
+                                *** FEATURED_DROP ***
+                              </Text>
+                            )}
+                          </VStack>
+                          <HStack color={mutedText}>
+                            <Icon as={MdRefresh} />
+                            <Text fontSize="9px" fontWeight="900">TAP TO VIEW SPECS</Text>
+                          </HStack>
+                        </VStack>
+                      </Center>
+                    )}
+                  </Box>
 
                   {/* BACK */}
                   <Center
