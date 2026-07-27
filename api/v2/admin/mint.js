@@ -281,6 +281,38 @@ async function setProductStatus(body, supabase, res) {
   return res.status(200).json({ success: true, product: data });
 }
 
+// Feature/un-feature a store product for a limited window (admin only).
+// Drives Shop.tsx's FEATURED badge, FEATURED filter tab, and catalog sort.
+// Folded here to stay under the function cap. Dispatched by kind:
+// 'product_featured'. Pass durationHours to feature, or clear: true to
+// un-feature early.
+async function setProductFeatured(body, supabase, res) {
+  const { productId, durationHours, clear } = body;
+  if (!productId || typeof productId !== 'string') {
+    return res.status(400).json({ error: 'productId is required' });
+  }
+
+  let featured_until = null;
+  if (!clear) {
+    const hours = Number(durationHours);
+    if (!Number.isFinite(hours) || hours <= 0) {
+      return res.status(400).json({ error: 'durationHours must be a positive number (or pass clear: true)' });
+    }
+    featured_until = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .update({ featured_until })
+    .eq('id', productId)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return res.status(404).json({ error: 'PRODUCT_NOT_FOUND' });
+
+  return res.status(200).json({ success: true, product: data });
+}
+
 // Store inventory (admin only): every forged cosmetic ever, live or retired,
 // with how many users own each -- the data needed to decide a re-release.
 // Folded here to stay under the function cap. Dispatched by kind:
@@ -288,7 +320,7 @@ async function setProductStatus(body, supabase, res) {
 async function productInventory(supabase, res) {
   const { data: products, error } = await supabase
     .from('products')
-    .select('id, name, category, rarity, price_wngs, price_usd, is_active, palette, accent_color, theme_mode, collection, season, edition, images, created_at')
+    .select('id, name, category, rarity, price_wngs, price_usd, is_active, palette, accent_color, theme_mode, collection, season, edition, images, featured_until, created_at')
     .in('category', ['AVATAR', 'THEME', ...PHYSICAL_CATEGORIES])
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -581,6 +613,9 @@ export default async function handler(req, res) {
     }
     if (body.kind === 'product_status') {
       return await setProductStatus(body, supabase, res);
+    }
+    if (body.kind === 'product_featured') {
+      return await setProductFeatured(body, supabase, res);
     }
     if (body.kind === 'product_inventory') {
       return await productInventory(supabase, res);
