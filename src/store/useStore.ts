@@ -30,6 +30,7 @@ interface UserState {
   cart: CartItem[]
   activeAvatarColors: string[] | null
   activeThemeAccent: string | null
+  username: string | null
   setUser: (user: { id: string } | null) => void
   setWngsBalance: (balance: number) => void
   setIsLoading: (loading: boolean) => void
@@ -45,6 +46,7 @@ interface UserState {
   setActiveTheme: (theme: string | null) => void
   setActiveAvatar: (avatar: string | null) => void
   setActiveThemeAccent: (accent: string | null) => void
+  setUsername: (username: string | null) => void
 }
 
 // The 3 built-in themes ship free and aren't looked up by product id; their
@@ -74,6 +76,7 @@ const useStore = create<UserState>()(
       cart: [],
       activeAvatarColors: null,
       activeThemeAccent: null,
+      username: null,
       setUser: (user) => set({ user }),
       setWngsBalance: (balance) => set({ wngsBalance: balance }),
       setIsLoading: (loading) => set({ isLoading: loading }),
@@ -89,7 +92,7 @@ const useStore = create<UserState>()(
         try {
           const { data, error } = await client
             .from('profiles')
-            .select('wngs_balance, active_theme, active_avatar, total_taps')
+            .select('wngs_balance, active_theme, active_avatar, total_taps, username')
             .eq('id', userId)
             .maybeSingle(); // Use maybeSingle to handle 0 rows gracefully
 
@@ -123,7 +126,8 @@ const useStore = create<UserState>()(
               // there's no per-user/per-avatar color data to restore here.
               // DeStijlAvatar falls back to its own procedural palette
               // whenever this is null, which is the real current behavior.
-              activeAvatarColors: null
+              activeAvatarColors: null,
+              username: data.username || null
             });
           } else {
             // Handle case where profile doesn't exist yet
@@ -154,6 +158,7 @@ const useStore = create<UserState>()(
       setActiveTheme: (theme) => set({ activeTheme: theme }),
       setActiveAvatar: (avatar) => set({ activeAvatar: avatar }),
       setActiveThemeAccent: (accent) => set({ activeThemeAccent: accent }),
+      setUsername: (username) => set({ username }),
     }),
     {
       name: 'monarch-passport-storage',

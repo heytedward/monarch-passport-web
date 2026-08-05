@@ -53,6 +53,24 @@ const NOTIF_LABELS = {
 const WNGS_PER_DISCOUNT_DOLLAR = 100;
 const MAX_DISCOUNT_USD = 500;
 
+// Public handles: 3-20 chars, alphanumeric + underscore. Reserved names are
+// blocked so they can't be claimed by a regular user.
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
+const RESERVED_USERNAMES = new Set([
+  'admin', 'administrator', 'root', 'support', 'help', 'papillon', 'monarch',
+  'moderator', 'mod', 'official', 'system', 'api', 'null', 'undefined', 'staff',
+]);
+
+function normalizeUsername(raw) {
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+// Escape LIKE/ILIKE wildcards (% _ \) so an ilike lookup matches the username
+// literally instead of as a pattern.
+function likeEscape(s) {
+  return s.replace(/[%_\\]/g, '\\$&');
+}
+
 // Unambiguous code alphabet (no 0/O/1/I).
 function genDiscountCode() {
   const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -383,7 +401,7 @@ export default async function handler(req, res) {
       }
       const { data: profile } = await admin
         .from('profiles')
-        .select('wngs_balance, active_theme, active_avatar, total_taps, current_stamina, max_stamina, last_stamina_regen')
+        .select('wngs_balance, active_theme, active_avatar, total_taps, current_stamina, max_stamina, last_stamina_regen, username')
         .eq('id', userId)
         .maybeSingle();
       // Resolve the equipped avatar's palette so the client can render it.
@@ -398,6 +416,54 @@ export default async function handler(req, res) {
         themeAccent = th?.accent_color || null;
       }
       return res.status(200).json({ success: true, profile, avatarColors, themeAccent, granted, grantedWngs });
+    }
+
+    if (action === 'check_username') {
+      const username = normalizeUsername(req.body?.username);
+      if (!USERNAME_RE.test(username)) {
+        return res.status(200).json({ success: true, available: false, reason: 'INVALID_FORMAT' });
+      }
+      if (RESERVED_USERNAMES.has(username.toLowerCase())) {
+        return res.status(200).json({ success: true, available: false, reason: 'RESERVED' });
+      }
+      const { data: existing } = await admin
+        .from('profiles')
+        .select('id')
+        .ilike('username', likeEscape(username))
+        .neq('id', userId)
+        .maybeSingle();
+      return res.status(200).json({ success: true, available: !existing });
+    }
+
+    if (action === 'set_username') {
+      const username = normalizeUsername(req.body?.username);
+      if (!USERNAME_RE.test(username)) {
+        return res.status(400).json({ error: 'INVALID_USERNAME_FORMAT' });
+      }
+      if (RESERVED_USERNAMES.has(username.toLowerCase())) {
+        return res.status(400).json({ error: 'USERNAME_RESERVED' });
+      }
+      const { data: existing } = await admin
+        .from('profiles')
+        .select('id')
+        .ilike('username', likeEscape(username))
+        .neq('id', userId)
+        .maybeSingle();
+      if (existing) {
+        return res.status(409).json({ error: 'USERNAME_TAKEN' });
+      }
+      const { error: updErr } = await admin
+        .from('profiles')
+        .update({ username })
+        .eq('id', userId);
+      if (updErr) {
+        // Case-insensitive unique index caught a race with a concurrent claim.
+        if (updErr.code === '23505') {
+          return res.status(409).json({ error: 'USERNAME_TAKEN' });
+        }
+        throw updErr;
+      }
+      return res.status(200).json({ success: true, username });
     }
 
     if (action === 'get_owned') {

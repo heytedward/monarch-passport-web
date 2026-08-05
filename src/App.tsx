@@ -118,7 +118,7 @@ function AppFrame() {
 
 function AppContent() {
   const { user, ready, authenticated, getAccessToken } = usePrivy();
-  const { activeTheme, activeThemeAccent, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent } = useStore();
+  const { activeTheme, activeThemeAccent, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent, setUsername } = useStore();
   const toast = useToast();
 
   const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
@@ -152,6 +152,7 @@ function AppContent() {
             setActiveAvatar(data.profile.active_avatar || null);
             setActiveAvatarColors(data.avatarColors || null);
             if (data.themeAccent) setActiveThemeAccent(data.themeAccent);
+            setUsername(data.profile.username || null);
           }
           // Storefront purchases auto-granted on this login (matched by email).
           if (Array.isArray(data?.granted) && data.granted.length > 0) {
@@ -180,7 +181,7 @@ function AppContent() {
         }
       })();
     }
-  }, [ready, authenticated, user?.id, getAccessToken, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent]);
+  }, [ready, authenticated, user?.id, getAccessToken, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent, setUsername]);
 
   return (
     <Router>
