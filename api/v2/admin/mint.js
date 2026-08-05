@@ -551,6 +551,36 @@ async function deleteFeedPost(body, supabase, res) {
   return res.status(200).json({ success: true });
 }
 
+// Moderation backstop: the automated blocklist in api/v2/purchase.js
+// (check_username/set_username) is best-effort and will miss things -- this
+// lets an admin force-clear a reported username so the user falls back to
+// their derived handle. Does not block them from claiming a new one.
+async function clearUsername(body, supabase, res) {
+  const { userId: targetUserId } = body;
+  if (!targetUserId || typeof targetUserId !== 'string') {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+
+  const { data: profile, error: findErr } = await supabase
+    .from('profiles')
+    .select('id, username')
+    .eq('id', targetUserId)
+    .maybeSingle();
+  if (findErr) throw findErr;
+  if (!profile) return res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
+  if (!profile.username) {
+    return res.status(200).json({ success: true, cleared: false, reason: 'NO_USERNAME_SET' });
+  }
+
+  const { error: updErr } = await supabase
+    .from('profiles')
+    .update({ username: null })
+    .eq('id', targetUserId);
+  if (updErr) throw updErr;
+
+  return res.status(200).json({ success: true, cleared: true, previousUsername: profile.username });
+}
+
 export default async function handler(req, res) {
   // 1. Guard against wrong methods
   if (req.method !== 'POST') {
@@ -620,6 +650,9 @@ export default async function handler(req, res) {
     }
     if (body.kind === 'feed_post_delete') {
       return await deleteFeedPost(body, supabase, res);
+    }
+    if (body.kind === 'clear_username') {
+      return await clearUsername(body, supabase, res);
     }
 
     // ---- Artifact batch mint ----

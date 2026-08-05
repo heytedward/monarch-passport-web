@@ -8,6 +8,7 @@ import { avatarSvg } from './_avatarSvg.js';
 import { verifyPrivyToken, getPrivyUserEmails } from './_auth.js';
 import { recordQuestAction } from './_quests.js';
 import { checkAndAwardStamps, isFullCollectionComplete, seasonMatchValues } from './_stamps.js';
+import { isUsernameBlocked } from './_moderation.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -426,6 +427,9 @@ export default async function handler(req, res) {
       if (RESERVED_USERNAMES.has(username.toLowerCase())) {
         return res.status(200).json({ success: true, available: false, reason: 'RESERVED' });
       }
+      if (isUsernameBlocked(username)) {
+        return res.status(200).json({ success: true, available: false, reason: 'BLOCKED' });
+      }
       const { data: existing } = await admin
         .from('profiles')
         .select('id')
@@ -442,6 +446,9 @@ export default async function handler(req, res) {
       }
       if (RESERVED_USERNAMES.has(username.toLowerCase())) {
         return res.status(400).json({ error: 'USERNAME_RESERVED' });
+      }
+      if (isUsernameBlocked(username)) {
+        return res.status(400).json({ error: 'USERNAME_BLOCKED' });
       }
       const { data: existing } = await admin
         .from('profiles')
