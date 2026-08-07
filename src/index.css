@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* App-wide tactile button press. Enabled buttons scale down briefly when
+   pressed, giving every control the same physical feedback as the framer
+   micro-interactions — in one place, instead of per-button. Gated on
+   prefers-reduced-motion so it vanishes for users who opt out. Framer-driven
+   controls (nav, cards) are <div>/<a>, not <button>, so they're untouched. */
+@media (prefers-reduced-motion: no-preference) {
+  button:not(:disabled) {
+    transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  button:not(:disabled):active {
+    transform: scale(0.95);
+  }
+}

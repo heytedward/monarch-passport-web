@@ -15,15 +15,21 @@ import {
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, useReducedMotion } from 'framer-motion'
 import { MdSettings, MdLock, MdBolt, MdCreditCard, MdHistory, MdLocalOffer, MdContentCopy, MdClose } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
 import { supabase } from '../lib/supabase'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import useStore from '../store/useStore'
+import { staggerContainer, staggerItem } from '../lib/motion'
 import { effectiveStamina, DEFAULT_MAX_STAMINA } from '../lib/ascension'
+
+const MotionSimpleGrid = motion.create(SimpleGrid)
+const MotionBox = motion.create(Box)
 
 const Profile = () => {
   const navigate = useNavigate()
+  const reduce = useReducedMotion()
   const toast = useToast()
   const { user, getAccessToken } = usePrivy()
   
@@ -248,11 +254,19 @@ const Profile = () => {
     switch (activeTab) {
       case 'STATS':
         return (
-          <SimpleGrid columns={2} spacing={0} borderBottom={`4px solid ${text}`}>
+          <MotionSimpleGrid
+            columns={2}
+            spacing={0}
+            borderBottom={`4px solid ${text}`}
+            variants={reduce ? undefined : staggerContainer}
+            initial={reduce ? undefined : 'initial'}
+            animate={reduce ? undefined : 'enter'}
+          >
             {stats.map((stat, idx) => (
-              <Box 
-                key={stat.label} 
-                p={6} 
+              <MotionBox
+                key={stat.label}
+                variants={reduce ? undefined : staggerItem}
+                p={6}
                 borderRight={idx % 2 === 0 ? `4px solid ${text}` : "none"}
                 borderBottom={idx < 2 ? `4px solid ${text}` : "none"}
                 bg={bg}
@@ -261,9 +275,9 @@ const Profile = () => {
                   <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">{stat.label}</Text>
                   <Text fontSize="3xl" fontWeight="900" color={text} fontFamily="monospace">{stat.value}</Text>
                 </VStack>
-              </Box>
+              </MotionBox>
             ))}
-          </SimpleGrid>
+          </MotionSimpleGrid>
         );
       case 'WALLET':
         return (
@@ -419,10 +433,16 @@ const Profile = () => {
             {stampsLoading ? (
               <Center p={8}><Spinner color="var(--monarch-accent)" /></Center>
             ) : stamps.length > 0 ? (
-              <SimpleGrid columns={2} spacing={4}>
+              <MotionSimpleGrid
+                columns={2}
+                spacing={4}
+                variants={reduce ? undefined : staggerContainer}
+                initial={reduce ? undefined : 'initial'}
+                animate={reduce ? undefined : 'enter'}
+              >
                 {stamps.map((stamp) => (
-                  <Box
-                    key={stamp.id}
+                  <MotionBox key={stamp.id} variants={reduce ? undefined : staggerItem}>
+                   <Box
                     p={4}
                     border={`4px solid ${stamp.earned ? 'var(--monarch-accent)' : text}`}
                     bg={bg}
@@ -457,9 +477,10 @@ const Profile = () => {
                         </Text>
                       )}
                     </VStack>
-                  </Box>
+                   </Box>
+                  </MotionBox>
                 ))}
-              </SimpleGrid>
+              </MotionSimpleGrid>
             ) : (
               <Center p={8}>
                 <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace">

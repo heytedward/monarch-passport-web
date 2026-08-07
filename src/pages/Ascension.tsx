@@ -4,13 +4,29 @@ import {
 } from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
+import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { MdBolt, MdRefresh, MdLock, MdCheck, MdMilitaryTech } from 'react-icons/md'
 import { supabase } from '../lib/supabase'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import ThemeSwatch from '../components/ThemeSwatch'
 import { WngsCoin } from '../components/WngsCoin'
 import useStore from '../store/useStore'
+import { SPRING_SNAPPY } from '../lib/motion'
 import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST } from '../lib/ascension'
+
+const MotionVStack = motion.create(VStack)
+const MotionBox = motion.create(Box)
+
+// The ladder can be ~30 rungs, so a tight stagger keeps the whole cascade
+// under ~0.8s — the summit-down build reads as the ladder assembling.
+const ladderContainer: Variants = {
+  initial: {},
+  enter: { transition: { staggerChildren: 0.025, delayChildren: 0.05 } },
+}
+const rungItem: Variants = {
+  initial: { opacity: 0, y: 12, scale: 0.98 },
+  enter: { opacity: 1, y: 0, scale: 1, transition: SPRING_SNAPPY },
+}
 
 interface Season {
   id: string; title: string; code: string | null; end_date: string;
@@ -28,6 +44,7 @@ interface Reward {
 
 const Ascension = () => {
   const { user, getAccessToken } = usePrivy()
+  const reduce = useReducedMotion()
   const toast = useToast()
   const { wngsBalance, setWngsBalance } = useStore()
 
@@ -391,11 +408,19 @@ const Ascension = () => {
           </HStack>
 
           {/* Rungs, summit (highest) down to base */}
-          <VStack spacing={0} align="stretch">
+          <MotionVStack
+            spacing={0}
+            align="stretch"
+            variants={reduce ? undefined : ladderContainer}
+            initial={reduce ? undefined : 'initial'}
+            animate={reduce ? undefined : 'enter'}
+          >
             {Array.from({ length: season.level_count }, (_, i) => season.level_count - i).map((lvl) => (
-              <Rung key={lvl} lvl={lvl} />
+              <MotionBox key={lvl} variants={reduce ? undefined : rungItem}>
+                <Rung lvl={lvl} />
+              </MotionBox>
             ))}
-          </VStack>
+          </MotionVStack>
 
           {/* Base — also where a brand-new (level 0) climber starts */}
           {level === 0 && (

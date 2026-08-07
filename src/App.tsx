@@ -2,8 +2,10 @@ import React from 'react'
 import { ChakraProvider, Box, Center, Spinner, Text, useColorModeValue, useToast } from '@chakra-ui/react'
 import theme from './theme'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import { PrivyProvider, usePrivy } from '@privy-io/react-auth'
 import Navbar from './components/Navbar'
+import PageTransition from './components/PageTransition'
 import ErrorBoundary from './components/ErrorBoundary'
 import Home from './pages/Home'
 import Passport from './pages/Passport'
@@ -65,12 +67,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // Routes wrapped in an ErrorBoundary keyed by pathname: if a page throws during
 // render, the boundary shows a fault screen instead of a blank page, and keying
 // on the path remounts (clears) it when the user navigates elsewhere.
+//
+// <AnimatePresence> sits OUTSIDE the pathname key so it can watch a page leave
+// and the next arrive; PageTransition (keyed by pathname) is the element it
+// animates in/out. ErrorBoundary lives inside, so it still resets per route.
 function AppRoutes() {
   const location = useLocation();
   return (
-    <ErrorBoundary key={location.pathname}>
-      <Routes location={location}>
-        <Route path="/" element={<Landing />} />
+    <AnimatePresence mode="wait" initial={false}>
+      <PageTransition key={location.pathname}>
+        <ErrorBoundary>
+          <Routes location={location}>
+            <Route path="/" element={<Landing />} />
         <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
         <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
         <Route path="/passport" element={<ProtectedRoute><Passport /></ProtectedRoute>} />
@@ -87,10 +95,12 @@ function AppRoutes() {
         <Route path="/social/:userId" element={<Social />} />
         <Route path="/command-center" element={<CommandCenter />} />
         <Route path="/admin" element={<CommandCenter />} />
-        {/* Unknown paths redirect home instead of rendering an empty page. */}
-        <Route path="*" element={<Navigate to="/home" replace />} />
-      </Routes>
-    </ErrorBoundary>
+            {/* Unknown paths redirect home instead of rendering an empty page. */}
+            <Route path="*" element={<Navigate to="/home" replace />} />
+          </Routes>
+        </ErrorBoundary>
+      </PageTransition>
+    </AnimatePresence>
   );
 }
 

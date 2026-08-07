@@ -16,10 +16,15 @@ import {
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
+import { motion, useReducedMotion } from 'framer-motion'
 import { MdAccessTime, MdPerson, MdLocalFireDepartment, MdChatBubbleOutline, MdArrowBack, MdSend } from 'react-icons/md'
 import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
 import NotificationsBell from '../components/NotificationsBell'
+import { staggerContainer, staggerItem } from '../lib/motion'
+
+const MotionVStack = motion(VStack)
+const MotionBox = motion(Box)
 
 const BOOST_COST = 50;
 const COMMENT_COST = 10;
@@ -208,6 +213,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
 
 const Home = () => {
   const { wngsBalance, activeTheme, activeThemeAccent } = useStore();
+  const reduceMotion = useReducedMotion();
   const [posts, setPosts] = useState<MonarchTimesPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -290,11 +296,19 @@ const Home = () => {
             </VStack>
           </Center>
         ) : posts.length > 0 ? (
-          <VStack spacing={0} align="stretch">
+          <MotionVStack
+            spacing={0}
+            align="stretch"
+            variants={reduceMotion ? undefined : staggerContainer}
+            initial={reduceMotion ? undefined : 'initial'}
+            animate={reduceMotion ? undefined : 'enter'}
+          >
             {posts.map(post => (
-              <PostCard key={post.id} post={post} accent={brandAccent} />
+              <MotionBox key={post.id} variants={reduceMotion ? undefined : staggerItem}>
+                <PostCard post={post} accent={brandAccent} />
+              </MotionBox>
             ))}
-          </VStack>
+          </MotionVStack>
         ) : (
           <Center py={40} px={10} textAlign="center">
             <VStack spacing={6}>

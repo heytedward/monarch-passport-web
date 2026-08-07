@@ -31,13 +31,15 @@ import {
 import { useState, useEffect, useMemo } from 'react'
 import { MdRefresh, MdClose, MdSearch } from 'react-icons/md'
 import { PiShoppingBagFill } from 'react-icons/pi'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
+import { staggerContainer, staggerItem } from '../lib/motion'
 import { usePrivy } from '@privy-io/react-auth'
 import useStore from '../store/useStore'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import ThemeSwatch from '../components/ThemeSwatch'
 
 const MotionBox = motion.create(Box)
+const MotionSimpleGrid = motion.create(SimpleGrid)
 
 // On-chain avatar minting is PARKED — cosmetics stay Web2 (a user_assets row +
 // equip.js). The mint flow, funded devnet keypair, and tracking columns remain
@@ -133,6 +135,7 @@ const ClosetSlot = ({ index, item, onOpen, text, border, bg }: { index: string, 
 const Closet = () => {
   const [mode, setMode] = useState<'physical' | 'digital'>('physical');
   const { setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent, activeTheme, activeAvatar, activeThemeAccent } = useStore();
+  const reduce = useReducedMotion();
   const toast = useToast();
   
   const bg = useColorModeValue("white", "black");
@@ -630,15 +633,26 @@ const Closet = () => {
                 <Spinner color="var(--monarch-accent)" />
               </Center>
             ) : (
-              <SimpleGrid columns={3} spacing={3}>
+              <MotionSimpleGrid
+                key={reduce ? undefined : `${mode}-${typeFilter}-${collectionFilter}-${rarityFilter}`}
+                columns={3}
+                spacing={3}
+                variants={reduce ? undefined : staggerContainer}
+                initial={reduce ? undefined : 'initial'}
+                animate={reduce ? undefined : 'enter'}
+              >
                 {current_items.map((item, idx) => (
-                  <ClosetSlot key={item.id} index={(idx + 1).toString().padStart(2, '0')} item={item} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                  <MotionBox key={item.id} variants={reduce ? undefined : staggerItem}>
+                    <ClosetSlot index={(idx + 1).toString().padStart(2, '0')} item={item} onOpen={handleOpen} text={text} border={border} bg={bg} />
+                  </MotionBox>
                 ))}
-                
+
                 {Array.from({ length: Math.max(0, 9 - current_items.length) }).map((_, idx) => (
-                  <ClosetSlot key={`empty-${idx}`} index={(current_items.length + idx + 1).toString().padStart(2, '0')} onOpen={() => {}} text={text} border={border} bg={bg} />
+                  <MotionBox key={`empty-${idx}`} variants={reduce ? undefined : staggerItem}>
+                    <ClosetSlot index={(current_items.length + idx + 1).toString().padStart(2, '0')} onOpen={() => {}} text={text} border={border} bg={bg} />
+                  </MotionBox>
                 ))}
-              </SimpleGrid>
+              </MotionSimpleGrid>
             )}
 
             {/* Grid Footer Info */}
