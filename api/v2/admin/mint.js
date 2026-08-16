@@ -168,15 +168,38 @@ async function createCosmetic(body, supabase, res) {
 // renders as a physical item in both storefront and passport shops.
 const PHYSICAL_CATEGORIES = ['HOODIE', 'TEE', 'CAP', 'SWEATS', 'ACCESSORY', 'CLOTHING'];
 
+// Raster formats only. The previous `image/[a-zA-Z+]+` pattern also admitted
+// image/svg+xml, and these buckets are PUBLIC — an SVG is a script-execution
+// vector, so uploading one gives you stored XSS on the storage origin. Content
+// type and file extension both derive from this list, never from user input.
+const ALLOWED_IMAGE_TYPES = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+// Parse a base64 image data URL into { contentType, ext, buffer }, rejecting
+// anything outside the allowlist or over the size cap. Throws with a
+// caller-safe message.
+function parseImageDataUrl(dataUrl) {
+  const match = /^data:([a-zA-Z0-9/+.-]+);base64,(.+)$/.exec(String(dataUrl || ''));
+  if (!match) throw new Error('Invalid image data');
+  const contentType = match[1].toLowerCase();
+  const ext = ALLOWED_IMAGE_TYPES[contentType];
+  if (!ext) {
+    throw new Error(`Unsupported image type: ${contentType} (allowed: ${Object.keys(ALLOWED_IMAGE_TYPES).join(', ')})`);
+  }
+  const buffer = Buffer.from(match[2], 'base64');
+  if (buffer.length > MAX_IMAGE_BYTES) throw new Error('Image too large (max 8MB)');
+  return { contentType, ext, buffer };
+}
+
 // Decode a base64 data URL and upload it to a public bucket; returns the
 // public URL. Mirrors the feed-image upload path.
 async function uploadDataUrlImage(supabase, bucket, dataUrl) {
-  const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(dataUrl);
-  if (!match) throw new Error('Invalid image data');
-  const contentType = match[1];
-  const ext = contentType.split('/')[1].replace('jpeg', 'jpg');
-  const buffer = Buffer.from(match[2], 'base64');
-  if (buffer.length > 8 * 1024 * 1024) throw new Error('Image too large (max 8MB)');
+  const { contentType, ext, buffer } = parseImageDataUrl(dataUrl);
   const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from(bucket).upload(path, buffer, { contentType, upsert: false });
   if (error) throw error;
@@ -513,18 +536,17 @@ async function createFeedPost(body, supabase, res) {
 
   let finalImageUrl = imageUrl || null;
   if (typeof imageData === 'string' && imageData.startsWith('data:')) {
-    const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(imageData);
-    if (!match) return res.status(400).json({ error: 'Invalid imageData' });
-    const contentType = match[1];
-    const ext = contentType.split('/')[1].replace('jpeg', 'jpg');
-    const buffer = Buffer.from(match[2], 'base64');
-    if (buffer.length > 8 * 1024 * 1024) {
-      return res.status(413).json({ error: 'Image too large (max 8MB)' });
+    let parsed;
+    try {
+      parsed = parseImageDataUrl(imageData);
+    } catch (e) {
+      const tooLarge = /too large/i.test(e.message);
+      return res.status(tooLarge ? 413 : 400).json({ error: e.message });
     }
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${parsed.ext}`;
     const { error: upErr } = await supabase.storage
       .from('feed-images')
-      .upload(path, buffer, { contentType, upsert: false });
+      .upload(path, parsed.buffer, { contentType: parsed.contentType, upsert: false });
     if (upErr) throw upErr;
     finalImageUrl = supabase.storage.from('feed-images').getPublicUrl(path).data.publicUrl;
   }

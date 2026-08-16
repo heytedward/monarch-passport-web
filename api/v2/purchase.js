@@ -5,8 +5,9 @@ if (process.env.NODE_ENV !== 'production') {
 import { createClient } from '@supabase/supabase-js';
 import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST, getActiveSeason } from './_ascension.js';
 import { avatarSvg } from './_avatarSvg.js';
-import { verifyPrivyToken, getPrivyUserEmails } from './_auth.js';
+import { verifyPrivyToken, getPrivyUserEmails, getPrivyUserWallets } from './_auth.js';
 import { recordQuestAction } from './_quests.js';
+import { enforceRateLimit, sendRateLimited } from './_ratelimit.js';
 import { checkAndAwardStamps, isFullCollectionComplete, seasonMatchValues } from './_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -52,6 +53,15 @@ const NOTIF_LABELS = {
 // checkout where the order total is known.
 const WNGS_PER_DISCOUNT_DOLLAR = 100;
 const MAX_DISCOUNT_USD = 500;
+
+// Actions that move WNGS, create redeemable value, or mint. Rate-limited
+// together per user so spend can't be spread across actions to dodge a cap.
+const SPEND_ACTIONS = new Set([
+  'collect', 'create_discount', 'cancel_discount', 'boost_post', 'add_comment',
+  'recharge_stamina', 'claim_reward', 'mint_avatar',
+]);
+const SPEND_LIMIT = 60;
+const SPEND_WINDOW_MS = 60 * 60 * 1000;
 
 // Unambiguous code alphabet (no 0/O/1/I).
 function genDiscountCode() {
@@ -201,6 +211,24 @@ async function mintAvatar(admin, userId, body, res) {
 
   let owner;
   try { owner = publicKey(recipient); } catch { return res.status(400).json({ error: 'INVALID_RECIPIENT' }); }
+
+  // The recipient must be a wallet the caller actually controls. Without this
+  // the address is just a client-supplied string, so a user could mint an asset
+  // they own into someone else's wallet -- irreversibly, since the NFT lands in
+  // that wallet and we have no authority to claw it back.
+  //
+  // Compared case-sensitively: Solana pubkeys are base58.
+  let wallets;
+  try {
+    wallets = await getPrivyUserWallets(userId);
+  } catch (e) {
+    // Fail closed. An unverifiable recipient must never be minted to.
+    console.error('MINT_WALLET_LOOKUP_FAILED:', e?.message || e);
+    return res.status(503).json({ error: 'RECIPIENT_VERIFICATION_UNAVAILABLE' });
+  }
+  if (!wallets.includes(String(recipient))) {
+    return res.status(403).json({ error: 'RECIPIENT_NOT_LINKED_TO_CALLER' });
+  }
 
   // Render the avatar and host image + metadata in Supabase Storage.
   const svg = avatarSvg(product.palette);
@@ -358,6 +386,20 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'ACCESS_DENIED // IDENTITY_VERIFICATION_FAILED' });
     }
 
+    // Cap the mutating actions only. The reads below (and ensure_profile, which
+    // runs on every session bootstrap) stay unlimited so normal app use is
+    // never throttled; the budget covers every WNGS sink together, so a script
+    // can't spread spend across actions to stay under a per-action limit.
+    if (SPEND_ACTIONS.has(action)) {
+      const rate = await enforceRateLimit(admin, {
+        scope: 'purchase_spend',
+        identifier: verifiedUserId,
+        limit: SPEND_LIMIT,
+        windowMs: SPEND_WINDOW_MS,
+      });
+      if (!rate.allowed) return sendRateLimited(res, rate.retryAfterMs);
+    }
+
     // --- reads (return the user's own data; the client's RLS reads are blocked) ---
     if (action === 'ensure_profile') {
       await admin.from('profiles').upsert(
@@ -421,9 +463,13 @@ export default async function handler(req, res) {
     }
 
     if (action === 'get_transactions') {
+      // Explicit column list, not select('*'): these rows go straight to the
+      // client, so any column added to the ledger later (an ip_hash, a cost
+      // basis, a fraud flag) would otherwise be published with no code change.
+      // These four are what Profile.tsx's history list renders.
       const { data } = await admin
         .from('transactions')
-        .select('*')
+        .select('id, amount, transaction_type, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       return res.status(200).json({ success: true, transactions: data || [] });
