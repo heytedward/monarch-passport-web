@@ -1,7 +1,7 @@
 # SECURITY AUDIT — monarch-passport-web
 
 Audit of the 20-point checklist against the codebase, covering fixes in
-`04563ad` and `f5e1073`.
+`04563ad` and `2968663`.
 
 Every finding below is grounded in a specific file and line. Nothing here was
 tested against the live Supabase instance — see item 4, which is the one finding
@@ -236,7 +236,7 @@ JSON. A string `startNum` made `startNum + i` concatenate rather than add
 arbitrarily many rows. Both are now integer-coerced, and a batch is capped at
 500.
 
-**Fixed in `f5e1073`:** `mintAvatar` took `recipient` from the request body and
+**Fixed in `2968663`:** `mintAvatar` took `recipient` from the request body and
 validated only that it parsed as a public key, so a user could mint an asset
 they own into *anyone's* wallet — irreversibly, since the NFT lands there and
 there's no authority to claw it back. It now resolves the caller's linked
@@ -303,7 +303,7 @@ take `/claim` and `/verify` down. That also means **the limits are not actually
 enforced until the migration is run.** Apply it, then confirm no
 `RATE_LIMIT_DEGRADED` lines appear in the function logs.
 
-**Closed in `f5e1073`:** `api/v2/purchase.js` now caps its mutating actions at
+**Closed in `2968663`:** `api/v2/purchase.js` now caps its mutating actions at
 60/hr per user (`collect`, `create_discount`, `cancel_discount`, `boost_post`,
 `add_comment`, `recharge_stamina`, `claim_reward`, `mint_avatar`) under a single
 shared budget, so spend can't be spread across actions to dodge a per-action
@@ -351,7 +351,7 @@ server-side bundle lookup rather than client price (`checkout/wngs.js`), comment
 length cap, rarity allowlist, 8MB image cap, and — from `04563ad` — integer
 coercion and a 500-row cap on artifact batches.
 
-Closed in `f5e1073`:
+Closed in `2968663`:
 
 - `mintAvatar` `recipient` — now verified against the caller's linked wallets
   (item 8).
@@ -392,7 +392,7 @@ stored XSS on the storage origin, reachable by an authenticated admin.
 `contentType` was also taken verbatim from the data URL and passed straight to
 Supabase Storage, with the file extension derived from it.
 
-`f5e1073` replaces both copies of the inline parse with a shared
+`2968663` replaces both copies of the inline parse with a shared
 `parseImageDataUrl()` in `admin/mint.js` that resolves content type *and*
 extension from a fixed allowlist (`image/png`, `image/jpeg`, `image/webp`,
 `image/gif`) rather than from user input. The MIME string is lowercased before
@@ -420,7 +420,7 @@ SHA-256 `ip_hash` for **every visitor who scanned their link**. Those hashes are
 unsalted over a 32-bit IPv4 space, which is exhaustible in seconds — effectively
 publishing visitor IP addresses to the link owner.
 
-`f5e1073` narrows the query to `id, amount, transaction_type, created_at` — the
+`2968663` narrows the query to `id, amount, transaction_type, created_at` — the
 four fields `Profile.tsx` actually renders — which drops `metadata` and
 `user_id` from the response entirely.
 
@@ -454,7 +454,7 @@ uses neither camera nor geolocation (`Scanner.tsx` is Web NFC, not
 camera-based), and Stripe Checkout is a redirect rather than an embedded
 payment request. Web NFC is deliberately not restricted.
 
-**CSP added in report-only mode (`f5e1073`).** A policy this app can't be
+**CSP added in report-only mode (`2968663`).** A policy this app can't be
 tested against locally shouldn't be enforced blind — Privy uses iframes and
 OAuth popups, and Stripe is a redirect — so it ships as
 `Content-Security-Policy-Report-Only`, which reports violations without blocking
@@ -494,7 +494,7 @@ was a real phishing vector.
 toolchain and never deployed — lower urgency than its label suggests. Same for
 `postcss`.
 
-`npm audit fix` in `f5e1073` resolved both classes without touching
+`npm audit fix` in `2968663` resolved both classes without touching
 `package.json` (lockfile only): **react-router-dom 6.30.2 → 6.30.4**, **postcss
 → 8.5.26**. Totals went from 106 → 91, critical 1 → 0, high 26 → 15. `npm run
 build` and `npm run typecheck` both pass on the upgraded tree.
