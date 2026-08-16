@@ -1,10 +1,28 @@
 import { createClient } from '@supabase/supabase-js';
+import { createHash, timingSafeEqual } from 'crypto';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const agentSecret = process.env.AGENT_SECRET_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Length-independent, constant-time bearer check.
+//
+// The previous comparison was `authHeader !== \`Bearer ${agentSecret}\``, which
+// fails open when AGENT_SECRET_KEY is unset: the template literal renders
+// "Bearer undefined", so anyone sending that header could publish to the feed.
+// A missing secret must be a hard failure, never a usable credential.
+function isAuthorizedAgent(authHeader) {
+  if (!agentSecret || typeof authHeader !== 'string') return false;
+  if (!authHeader.startsWith('Bearer ')) return false;
+  // SHA-256 both sides so the buffers are always 32 bytes: timingSafeEqual
+  // throws on length mismatch, and an early length check would itself leak the
+  // secret's length through timing.
+  const a = createHash('sha256').update(authHeader.slice(7)).digest();
+  const b = createHash('sha256').update(agentSecret).digest();
+  return timingSafeEqual(a, b);
+}
 
 export default async function handler(req, res) {
   // 1. Only allow POST requests
@@ -13,8 +31,7 @@ export default async function handler(req, res) {
   }
 
   // 2. Security: Check Authorization Header
-  const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${agentSecret}`) {
+  if (!isAuthorizedAgent(req.headers.authorization)) {
     return res.status(401).json({ error: "[ ACCESS_DENIED // INVALID_AGENT_SIGNATURE ]" });
   }
 

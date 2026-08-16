@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { addSeasonXp, getActiveSeason, setSeasonPremium, XP_ACTIVATION } from './_ascension.js';
 import { verifyPrivyToken } from './_auth.js';
 import { recordQuestAction } from './_quests.js';
+import { clientIpHash, enforceRateLimit, sendRateLimited } from './_ratelimit.js';
 import { checkAndAwardStamps, isFullCollectionComplete, normalizeSeasonCode } from './_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -15,6 +16,16 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // One-time WNGS bonus for activating an artifact, keyed by tier. There's no
 // tier->reward column in the DB yet, so this lives in code for now.
 const ACTIVATION_BONUS = { default: 50 };
+
+// Claiming is the endpoint an enumeration attack actually monetises: an
+// unclaimed tag_id assigns ownership to whoever asks first. Until tags carry
+// NTAG 424 SUN authentication, these caps are what bound the damage. Nobody
+// legitimately activates garments in bulk, so both budgets sit far above real
+// use and far below what walking an ID space needs.
+const CLAIM_IP_LIMIT = 5;
+const CLAIM_IP_WINDOW_MS = 60 * 60 * 1000;
+const CLAIM_USER_LIMIT = 10;
+const CLAIM_USER_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
@@ -41,6 +52,24 @@ export default async function handler(req, res) {
     }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Counted before the tag is looked up, so probes for non-existent tag IDs
+    // (what enumeration mostly produces) consume budget too.
+    const ipRate = await enforceRateLimit(admin, {
+      scope: 'claim_ip',
+      identifier: clientIpHash(req),
+      limit: CLAIM_IP_LIMIT,
+      windowMs: CLAIM_IP_WINDOW_MS,
+    });
+    if (!ipRate.allowed) return sendRateLimited(res, ipRate.retryAfterMs);
+
+    const userRate = await enforceRateLimit(admin, {
+      scope: 'claim_user',
+      identifier: verifiedUserId,
+      limit: CLAIM_USER_LIMIT,
+      windowMs: CLAIM_USER_WINDOW_MS,
+    });
+    if (!userRate.allowed) return sendRateLimited(res, userRate.retryAfterMs);
 
     const { data: artifact, error: fetchError } = await admin
       .from('artifacts')

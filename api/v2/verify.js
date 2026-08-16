@@ -4,6 +4,15 @@ if (process.env.NODE_ENV !== 'production') {
 }
 import { createClient } from '@supabase/supabase-js';
 import { verifyPrivyToken } from './_auth.js';
+import { clientIpHash, enforceRateLimit, sendRateLimited } from './_ratelimit.js';
+
+// Tag lookup is unauthenticated by design (anyone tapping a garment hits this
+// before logging in), and tag IDs minted before the randomised scheme are
+// sequential — so this endpoint is the enumeration surface. The limit is loose
+// enough that a person scanning their own garments never notices, and tight
+// enough that walking an ID space is impractical.
+const VERIFY_RATE_LIMIT = 30;
+const VERIFY_RATE_WINDOW_MS = 60 * 1000;
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -24,6 +33,14 @@ export default async function handler(req, res) {
       (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL),
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+
+    const rate = await enforceRateLimit(supabase, {
+      scope: 'verify',
+      identifier: clientIpHash(req),
+      limit: VERIFY_RATE_LIMIT,
+      windowMs: VERIFY_RATE_WINDOW_MS,
+    });
+    if (!rate.allowed) return sendRateLimited(res, rate.retryAfterMs);
 
     const { data: artifact, error } = await supabase
       .from('artifacts')

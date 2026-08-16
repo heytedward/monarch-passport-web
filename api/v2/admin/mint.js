@@ -4,7 +4,7 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
-import { randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { verifyPrivyToken } from '../_auth.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -19,6 +19,34 @@ const RARITY_PRICES = {
   MONARCH: 7500,
   MYTHIC: 15000,
 };
+
+// Upper bound on one artifact batch. Unbounded `count` let a single request
+// insert arbitrarily many rows (and time the function out mid-insert).
+const MAX_BATCH_MINT = 500;
+
+// Unambiguous alphabet, no 0/O/1/I (mirrors genDiscountCode in purchase.js) —
+// these end up printed on packaging and read back by humans.
+const TAG_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const TAG_SECRET_LEN = 10;
+
+// Random suffix appended to every minted tag_id.
+//
+// Tag IDs used to be purely sequential (`GEN-HOOD001`, `GEN-HOOD002`, ...) and
+// `api/v2/claim.js` hands ownership of any unclaimed tag to whoever asks for
+// it, so the whole batch could be walked and claimed from a browser. The
+// sequence is kept for admin legibility; the suffix is what makes a tag ID
+// unguessable — 32^10 (~2^50) per sequence slot.
+//
+// This is a stopgap, NOT authentication: it stops guessing, not cloning, since
+// the URL is still static and copyable off the chip. The real fix is NTAG 424
+// SUN message authentication, which makes each tap cryptographically unique.
+// 256 % 32 == 0, so the modulo below is unbiased.
+function tagSecret() {
+  const bytes = randomBytes(TAG_SECRET_LEN);
+  let out = '';
+  for (let i = 0; i < TAG_SECRET_LEN; i++) out += TAG_ALPHABET[bytes[i] % TAG_ALPHABET.length];
+  return out;
+}
 
 // Admins allowed to call this from the browser (e.g. CommandCenter) via a
 // Privy session token, so the static ADMIN_PASSPHRASE never has to be
@@ -629,6 +657,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
+    // Coerce explicitly: these arrive as JSON and a string startNum used to
+    // make `startNum + i` concatenate ("1" + 0 -> "10") instead of add.
+    const startNumInt = Number(startNum);
+    const countInt = Number(count);
+    if (!Number.isInteger(startNumInt) || startNumInt < 0) {
+      return res.status(400).json({ error: 'startNum must be a non-negative integer' });
+    }
+    if (!Number.isInteger(countInt) || countInt < 1 || countInt > MAX_BATCH_MINT) {
+      return res.status(400).json({ error: `count must be an integer between 1 and ${MAX_BATCH_MINT}` });
+    }
+
     // Default product if missing
     if (!product) product = 'Hoodie';
 
@@ -636,9 +675,9 @@ export default async function handler(req, res) {
     const generatedUrls = [];
     const baseUrl = process.env.BASE_URL || 'https://monarch-passport.vercel.app';
 
-    for (let i = 0; i < count; i++) {
-      const num = startNum + i;
-      const tagId = `${prefix}${num.toString().padStart(3, '0')}`;
+    for (let i = 0; i < countInt; i++) {
+      const num = startNumInt + i;
+      const tagId = `${prefix}${num.toString().padStart(3, '0')}-${tagSecret()}`;
 
       records.push({
         tag_id: tagId,
