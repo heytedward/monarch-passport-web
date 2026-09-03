@@ -27,7 +27,7 @@ Audit of the 20-point checklist, covering fixes in `04563ad`, `2968663` and
 | 17 | Trim API responses | FIXED — this was a live leak |
 | 18 | Add security headers | FIXED — CSP in report-only |
 | 19 | Force HTTPS | PASS |
-| 20 | Scan dependencies | FIXED for runtime; no CI |
+| 20 | Scan dependencies | FIXED — runtime advisories + CI |
 
 ### Act on this first
 
@@ -41,11 +41,13 @@ than an active breach — but it is the single most serious thing found.
 ### Then
 
 1. **#18 — promote CSP** from report-only to enforcing after a violation pass.
-2. **#20 — add CI.** Without it, dependency and typecheck state drifts back.
-3. **#12 — bot protection**, if abuse appears in the logs.
-4. **#17 — salt or drop `ip_hash`**, and trim the two catalog reads.
-5. **Capture existing RLS policies as migrations.** The correct ones live only
-   in the dashboard today, which is why item 4 needed a live check to audit.
+2. **#12 — bot protection**, if abuse appears in the logs.
+3. **#17 — salt or drop `ip_hash`**, and trim the two catalog reads.
+4. **Delete the six legacy tables** (`digital_assets`, `digital_garments`,
+   `inventory`, `store_orders`, `user_digital_inventory`, `user_seasons`) — no
+   code references any of them, and one carries a world-readable policy.
+5. **Tighten the CI audit gate** from `critical` to `high` once the
+   Metaplex/Irys/Solana tree is cleaned up or the on-chain path is resolved.
 
 Separately and above all of these: **NTAG 424 SUN message authentication.** The
 enumeration stopgap in `04563ad` raises the cost of guessing a tag ID but does
