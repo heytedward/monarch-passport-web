@@ -18,7 +18,6 @@ import { useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { MdSettings, MdLock, MdBolt, MdCreditCard, MdHistory, MdLocalOffer, MdContentCopy, MdClose } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
-import { supabase } from '../lib/supabase'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import useStore from '../store/useStore'
 import { staggerContainer, staggerItem } from '../lib/motion'
@@ -156,17 +155,18 @@ const Profile = () => {
     // page (ASCEND in the nav), so there's no season card here anymore.
     const loadProgress = async () => {
       if (!user?.id) return;
-      const { data: s } = await supabase
-        .from('seasons').select('id').eq('is_active', true)
-        .order('start_date', { ascending: false }).limit(1).maybeSingle();
-      if (s) {
-        const { data: p } = await supabase
-          .from('user_season_progress').select('*')
-          .eq('user_id', user.id).eq('season_id', s.id).maybeSingle();
-        setProgress(p);
-      }
       try {
         const token = await getAccessToken();
+        // Season progress comes from the server: reading it with the anon
+        // client required a world-readable RLS policy on user_season_progress,
+        // since Supabase can't identify a Privy user. See db/rls_hardening.sql.
+        const progRes = await fetch('/api/v2/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ userId: user.id, action: 'get_season_progress' }),
+        });
+        setProgress((await progRes.json().catch(() => null))?.progress || null);
+
         const res = await fetch('/api/v2/purchase', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

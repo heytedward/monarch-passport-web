@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { addSeasonXp, XP_TAP } from './_ascension.js';
 import { verifyPrivyToken } from './_auth.js';
 import { recordQuestAction } from './_quests.js';
+import { enforceRateLimit, sendRateLimited } from './_ratelimit.js';
 import { checkAndAwardStamps } from './_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -16,6 +17,12 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // column in the DB yet, so this lives in code for now.
 const TAP_REWARD = { default: 5 };
 const TAP_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+// The per-tag cooldown above is the real payout gate; this only stops a single
+// account hammering the endpoint across many owned tags. Set well above any
+// plausible wardrobe.
+const TAP_USER_LIMIT = 60;
+const TAP_USER_WINDOW_MS = 60 * 60 * 1000;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
@@ -42,6 +49,14 @@ export default async function handler(req, res) {
     }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const rate = await enforceRateLimit(admin, {
+      scope: 'tap_reward',
+      identifier: verifiedUserId,
+      limit: TAP_USER_LIMIT,
+      windowMs: TAP_USER_WINDOW_MS,
+    });
+    if (!rate.allowed) return sendRateLimited(res, rate.retryAfterMs);
 
     const { data: artifact, error: fetchError } = await admin
       .from('artifacts')

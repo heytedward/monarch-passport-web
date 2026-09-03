@@ -3,9 +3,15 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
+import { clientIpHash, enforceRateLimit, sendRateLimited } from './v2/_ratelimit.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Unauthenticated public signup — without a cap it's a free write endpoint for
+// spam and a way to probe which addresses are already on the list.
+const WAITLIST_IP_LIMIT = 5;
+const WAITLIST_IP_WINDOW_MS = 60 * 60 * 1000;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -31,6 +37,14 @@ export default async function handler(req, res) {
 
   try {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const rate = await enforceRateLimit(admin, {
+      scope: 'waitlist',
+      identifier: clientIpHash(req),
+      limit: WAITLIST_IP_LIMIT,
+      windowMs: WAITLIST_IP_WINDOW_MS,
+    });
+    if (!rate.allowed) return sendRateLimited(res, rate.retryAfterMs);
 
     const { error } = await admin
       .from('waitlist')

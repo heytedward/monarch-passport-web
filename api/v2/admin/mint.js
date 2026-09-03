@@ -4,7 +4,7 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
-import { randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { verifyPrivyToken } from '../_auth.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -19,6 +19,34 @@ const RARITY_PRICES = {
   MONARCH: 7500,
   MYTHIC: 15000,
 };
+
+// Upper bound on one artifact batch. Unbounded `count` let a single request
+// insert arbitrarily many rows (and time the function out mid-insert).
+const MAX_BATCH_MINT = 500;
+
+// Unambiguous alphabet, no 0/O/1/I (mirrors genDiscountCode in purchase.js) —
+// these end up printed on packaging and read back by humans.
+const TAG_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const TAG_SECRET_LEN = 10;
+
+// Random suffix appended to every minted tag_id.
+//
+// Tag IDs used to be purely sequential (`GEN-HOOD001`, `GEN-HOOD002`, ...) and
+// `api/v2/claim.js` hands ownership of any unclaimed tag to whoever asks for
+// it, so the whole batch could be walked and claimed from a browser. The
+// sequence is kept for admin legibility; the suffix is what makes a tag ID
+// unguessable — 32^10 (~2^50) per sequence slot.
+//
+// This is a stopgap, NOT authentication: it stops guessing, not cloning, since
+// the URL is still static and copyable off the chip. The real fix is NTAG 424
+// SUN message authentication, which makes each tap cryptographically unique.
+// 256 % 32 == 0, so the modulo below is unbiased.
+function tagSecret() {
+  const bytes = randomBytes(TAG_SECRET_LEN);
+  let out = '';
+  for (let i = 0; i < TAG_SECRET_LEN; i++) out += TAG_ALPHABET[bytes[i] % TAG_ALPHABET.length];
+  return out;
+}
 
 // Admins allowed to call this from the browser (e.g. CommandCenter) via a
 // Privy session token, so the static ADMIN_PASSPHRASE never has to be
@@ -140,15 +168,38 @@ async function createCosmetic(body, supabase, res) {
 // renders as a physical item in both storefront and passport shops.
 const PHYSICAL_CATEGORIES = ['HOODIE', 'TEE', 'CAP', 'SWEATS', 'ACCESSORY', 'CLOTHING'];
 
+// Raster formats only. The previous `image/[a-zA-Z+]+` pattern also admitted
+// image/svg+xml, and these buckets are PUBLIC — an SVG is a script-execution
+// vector, so uploading one gives you stored XSS on the storage origin. Content
+// type and file extension both derive from this list, never from user input.
+const ALLOWED_IMAGE_TYPES = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+// Parse a base64 image data URL into { contentType, ext, buffer }, rejecting
+// anything outside the allowlist or over the size cap. Throws with a
+// caller-safe message.
+function parseImageDataUrl(dataUrl) {
+  const match = /^data:([a-zA-Z0-9/+.-]+);base64,(.+)$/.exec(String(dataUrl || ''));
+  if (!match) throw new Error('Invalid image data');
+  const contentType = match[1].toLowerCase();
+  const ext = ALLOWED_IMAGE_TYPES[contentType];
+  if (!ext) {
+    throw new Error(`Unsupported image type: ${contentType} (allowed: ${Object.keys(ALLOWED_IMAGE_TYPES).join(', ')})`);
+  }
+  const buffer = Buffer.from(match[2], 'base64');
+  if (buffer.length > MAX_IMAGE_BYTES) throw new Error('Image too large (max 8MB)');
+  return { contentType, ext, buffer };
+}
+
 // Decode a base64 data URL and upload it to a public bucket; returns the
 // public URL. Mirrors the feed-image upload path.
 async function uploadDataUrlImage(supabase, bucket, dataUrl) {
-  const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(dataUrl);
-  if (!match) throw new Error('Invalid image data');
-  const contentType = match[1];
-  const ext = contentType.split('/')[1].replace('jpeg', 'jpg');
-  const buffer = Buffer.from(match[2], 'base64');
-  if (buffer.length > 8 * 1024 * 1024) throw new Error('Image too large (max 8MB)');
+  const { contentType, ext, buffer } = parseImageDataUrl(dataUrl);
   const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { error } = await supabase.storage.from(bucket).upload(path, buffer, { contentType, upsert: false });
   if (error) throw error;
@@ -485,18 +536,17 @@ async function createFeedPost(body, supabase, res) {
 
   let finalImageUrl = imageUrl || null;
   if (typeof imageData === 'string' && imageData.startsWith('data:')) {
-    const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(imageData);
-    if (!match) return res.status(400).json({ error: 'Invalid imageData' });
-    const contentType = match[1];
-    const ext = contentType.split('/')[1].replace('jpeg', 'jpg');
-    const buffer = Buffer.from(match[2], 'base64');
-    if (buffer.length > 8 * 1024 * 1024) {
-      return res.status(413).json({ error: 'Image too large (max 8MB)' });
+    let parsed;
+    try {
+      parsed = parseImageDataUrl(imageData);
+    } catch (e) {
+      const tooLarge = /too large/i.test(e.message);
+      return res.status(tooLarge ? 413 : 400).json({ error: e.message });
     }
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${parsed.ext}`;
     const { error: upErr } = await supabase.storage
       .from('feed-images')
-      .upload(path, buffer, { contentType, upsert: false });
+      .upload(path, parsed.buffer, { contentType: parsed.contentType, upsert: false });
     if (upErr) throw upErr;
     finalImageUrl = supabase.storage.from('feed-images').getPublicUrl(path).data.publicUrl;
   }
@@ -629,6 +679,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
+    // Coerce explicitly: these arrive as JSON and a string startNum used to
+    // make `startNum + i` concatenate ("1" + 0 -> "10") instead of add.
+    const startNumInt = Number(startNum);
+    const countInt = Number(count);
+    if (!Number.isInteger(startNumInt) || startNumInt < 0) {
+      return res.status(400).json({ error: 'startNum must be a non-negative integer' });
+    }
+    if (!Number.isInteger(countInt) || countInt < 1 || countInt > MAX_BATCH_MINT) {
+      return res.status(400).json({ error: `count must be an integer between 1 and ${MAX_BATCH_MINT}` });
+    }
+
     // Default product if missing
     if (!product) product = 'Hoodie';
 
@@ -636,9 +697,9 @@ export default async function handler(req, res) {
     const generatedUrls = [];
     const baseUrl = process.env.BASE_URL || 'https://monarch-passport.vercel.app';
 
-    for (let i = 0; i < count; i++) {
-      const num = startNum + i;
-      const tagId = `${prefix}${num.toString().padStart(3, '0')}`;
+    for (let i = 0; i < countInt; i++) {
+      const num = startNumInt + i;
+      const tagId = `${prefix}${num.toString().padStart(3, '0')}-${tagSecret()}`;
 
       records.push({
         tag_id: tagId,
