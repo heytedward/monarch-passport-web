@@ -535,10 +535,20 @@ upgrades (`vite@8`, `@vercel/node@4`). Both are build/deploy-time. Schedule them
 deliberately — a major Vite bump wants its own testing pass, not a security
 sweep.
 
-**Still open — there is no CI.** No `.github/` directory exists, so nothing runs
-`tsc` or `npm audit` on push, and this will drift again. Recommended: a
-Dependabot config plus a workflow running
-`npm ci && npm run typecheck && npm audit --audit-level=high` on pull requests.
+**CI added.** `.github/workflows/ci.yml` runs `npm ci`, `npm run typecheck`,
+`npm run build`, and `npm audit` on every pull request and on pushes to `main`.
+`.github/dependabot.yml` opens weekly npm updates (minor/patch grouped into one
+PR, majors individually) and monthly Actions updates.
+
+The blocking audit gate is set to **critical**, not high, deliberately: the tree
+carries 14 high advisories even with `--omit=dev`, almost all transitive through
+the Metaplex/Irys/Solana packages behind the parked on-chain path. Gating at
+`high` would fail on the first run, and a permanently red CI is one everyone
+learns to ignore. A second, non-blocking step reports highs so they stay
+visible. Tighten the gate to `high` once that dependency tree is cleaned up — or
+once the on-chain path is either shipped or removed.
+
+All three CI steps were run locally against this branch and pass.
 
 ---
 

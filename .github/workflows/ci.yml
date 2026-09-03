@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: typecheck / build / audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # `npm run build` already runs tsc, but running it separately gives a
+      # clearer failure when the break is types rather than bundling.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      # Blocking gate is CRITICAL, not high, and that is deliberate: the tree
+      # currently carries 14 high advisories, nearly all transitive through the
+      # Metaplex/Irys/Solana packages behind the parked on-chain path. Gating at
+      # `high` would fail on day one, and a permanently red CI is a CI everyone
+      # learns to ignore. Tighten this to `high` once that tree is cleaned up or
+      # the on-chain dependencies are dropped.
+      - name: Audit (blocking — critical only)
+        run: npm audit --audit-level=critical
+
+      # Non-blocking visibility so highs don't silently accumulate.
+      - name: Audit (advisory — high and above)
+        run: npm audit --audit-level=high || true
