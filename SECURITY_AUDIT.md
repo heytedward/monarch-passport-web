@@ -11,7 +11,7 @@ Audit of the 20-point checklist, covering fixes in `04563ad`, `2968663` and
 | 1 | Hide API keys | PASS |
 | 2 | Purge Git secrets | PASS |
 | 3 | Use public DB key | PASS |
-| 4 | Enable row-level security | **FIX READY — migration must be run** |
+| 4 | Enable row-level security | FIXED — applied and verified in production |
 | 5 | Encrypt sensitive data | PASS (one note on mainnet keys) |
 | 6 | Enforce server-side auth | FIXED — auth bypass closed |
 | 7 | Lock record access | FIXED — see #4 |
@@ -29,16 +29,16 @@ Audit of the 20-point checklist, covering fixes in `04563ad`, `2968663` and
 | 19 | Force HTTPS | PASS |
 | 20 | Scan dependencies | FIXED — runtime advisories + CI |
 
-### Act on this first
+### Status
 
-**Run `db/rls_hardening.sql`** — but deploy the app code first (see item 4's
-deploy-order note). Until it runs, `claim_links` accepts **unauthenticated
-INSERTs with an arbitrary `wngs_award`**, which is a direct write path into the
-currency supply for anyone holding the anon key. Row counts are currently tiny
-(2 claim links, 2 discounts, 4 profiles), so this is pre-launch exposure rather
-than an active breach — but it is the single most serious thing found.
+All 20 items are now closed or reduced to deliberate, documented trade-offs.
+The four world-open RLS policies — including the `claim_links` write path that
+let anyone mint WNGS with no account — were applied to production on
+2026-09-03 and verified by impersonating the `anon` role (see item 4). The
+Supabase security linter now reports **zero WARN-level findings**; the
+remaining INFO notices are the intended service-role-only posture.
 
-### Then
+### Remaining
 
 1. **#18 — promote CSP** from report-only to enforcing after a violation pass.
 2. **#12 — bot protection**, if abuse appears in the logs.
@@ -98,7 +98,7 @@ only. Every service-role client is constructed inside `api/` (verified across
 all 12 function files). No `service_role` reference exists anywhere under
 `src/`.
 
-## 4. Enable row-level security — VERIFIED against production; 4 real gaps found
+## 4. Enable row-level security — FIXED (4 gaps found in production, all closed)
 
 Checked live against project `dfpfkmrpnwioxzbwndzx` on 2026-09-03.
 
@@ -121,7 +121,8 @@ policies means deny-all to the anon key. That's the right posture for
 
 **Four policies were written as `USING (true)` / `WITH CHECK (true)` for the
 `public` role, though — which means the anon key, which ships in the browser
-bundle.** `db/rls_hardening.sql` removes them.
+bundle.** `db/rls_hardening.sql` removed all four; it was applied to production
+on 2026-09-03 and the result verified (see *Applied and verified* below).
 
 ### 4a. `claim_links` — the most serious finding in this audit
 
@@ -168,13 +169,31 @@ and is kept.
 Also worth noting: `artifact_scans` has a `scanner_ip` column (raw, not hashed).
 It appears unused by current code paths — confirm before it starts collecting.
 
-### Deploy order
+### Applied and verified
 
-**Ship the app code first, then run `db/rls_hardening.sql`.** Running it against
-the old frontend would blank the ASCENSION ladder and the ARTIFACT_LEVEL stat,
-since those reads only move server-side in this same change. The other four
-drops are safe in any order — nothing in `src/` touches those tables with the
-anon client.
+`db/rls_hardening.sql` was applied to production on 2026-09-03, after
+confirming the app code was live — Vercel deployment
+`dpl_BPxDURUJ1R75RuVY3aypUxeTu7Ag` (commit `daf1d2d`, the PR #1 merge) reached
+READY first, so the `get_season_progress` path existed before its policy was
+dropped.
+
+Verified by impersonating the `anon` role — the role the browser bundle's key
+maps to — inside rolled-back transactions:
+
+| Probe as `anon` | Before | After |
+|---|---|---|
+| `SELECT` `claim_links` | 2 rows | **0 rows** |
+| `SELECT` `wngs_discounts` | 2 rows | **0 rows** |
+| `SELECT` `user_season_progress` | all rows | **0 rows** |
+| `INSERT` into `claim_links` (`wngs_award: 999999`) | would succeed | **`42501` RLS violation** |
+| `SELECT` `products` / `seasons` (intended public) | works | **still works** (24 / 1 rows) |
+| `SELECT` `waitlist` / `profiles` / `transactions` | 0 rows | **0 rows** (already correct) |
+
+The INSERT probe ran inside a transaction that always rolls back; a follow-up
+count confirmed `claim_links` still holds its original 2 rows with no stray
+test data.
+
+Policy count went 30 → 22, matching `db/rls_policies.sql` exactly.
 
 ### Two linter warnings also fixed
 
@@ -575,22 +594,13 @@ All three CI steps were run locally against this branch and pass.
       and not a narrow `varchar` — minted IDs grew from ~11 to ~22 characters.
       Verification query is at the bottom of the migration file.
 
-**Deploy, then immediately**
+**Done on deploy (2026-09-03)**
 
-- [ ] Run `db/rls_hardening.sql`. **Order matters:** the app code moving
-      `user_season_progress` reads server-side must be live first, or the
-      ASCENSION ladder and ARTIFACT_LEVEL stat go blank. The other four policy
-      drops are safe in any order.
-- [ ] Re-run the verification query at the bottom of that migration — expect
-      exactly one row (`waitlist` INSERT, intentional).
-
-**After deploying**
-
-- [ ] Watch function logs for `RATE_LIMIT_DEGRADED` — it means the limiter is
-      failing open and no limits are being applied.
-- [ ] Run a full login → scan → claim → checkout pass with devtools open and
-      collect CSP violation reports (item 18), then promote the header from
-      `Content-Security-Policy-Report-Only` to enforcing.
+- [x] `db/rls_hardening.sql` applied, after confirming Vercel deployment
+      `dpl_BPxDURUJ1R75RuVY3aypUxeTu7Ag` (commit `daf1d2d`) reached READY so the
+      `get_season_progress` path was live before its policy was dropped.
+- [x] Verification query returns exactly one row (`waitlist` INSERT), and the
+      Supabase linter reports zero WARN-level findings.
 
 **Standing caveat**
 
