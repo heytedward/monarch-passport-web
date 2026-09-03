@@ -1,11 +1,8 @@
 # SECURITY AUDIT — monarch-passport-web
 
-Audit of the 20-point checklist against the codebase, covering fixes in
-`04563ad` and `2968663`.
-
-Every finding below is grounded in a specific file and line. Nothing here was
-tested against the live Supabase instance — see item 4, which is the one finding
-that *requires* a live check and is the only serious item still open.
+Audit of the 20-point checklist, covering fixes in `04563ad`, `2968663` and
+`HEAD`. Item 4 was verified directly against the production Supabase project on
+2026-09-03; everything else is grounded in a specific file and line.
 
 ## Summary
 
@@ -14,10 +11,10 @@ that *requires* a live check and is the only serious item still open.
 | 1 | Hide API keys | PASS |
 | 2 | Purge Git secrets | PASS |
 | 3 | Use public DB key | PASS |
-| 4 | Enable row-level security | **VERIFY — the one serious open item** |
+| 4 | Enable row-level security | **FIX READY — migration must be run** |
 | 5 | Encrypt sensitive data | PASS (one note on mainnet keys) |
 | 6 | Enforce server-side auth | FIXED — auth bypass closed |
-| 7 | Lock record access | PASS at API layer — depends on #4 |
+| 7 | Lock record access | FIXED — see #4 |
 | 8 | Block field tampering | FIXED |
 | 9 | Secure session cookies | N/A — Privy-managed |
 | 10 | Hash passwords | N/A — no passwords exist |
@@ -32,21 +29,31 @@ that *requires* a live check and is the only serious item still open.
 | 19 | Force HTTPS | PASS |
 | 20 | Scan dependencies | FIXED for runtime; no CI |
 
-**What's left, in order:**
+### Act on this first
 
-1. **#4 — verify RLS against production.** The only item that can still be
-   seriously wrong, and it can't be checked from the codebase.
-2. **#18 — promote CSP from report-only to enforcing** after a violation pass.
-3. **#20 — add CI.** Without it, the dependency and typecheck state drifts back.
-4. **#12 — bot protection**, if abuse appears in the logs.
-5. **#17 — salt or drop `ip_hash`**, and trim the two catalog reads.
+**Run `db/rls_hardening.sql`** — but deploy the app code first (see item 4's
+deploy-order note). Until it runs, `claim_links` accepts **unauthenticated
+INSERTs with an arbitrary `wngs_award`**, which is a direct write path into the
+currency supply for anyone holding the anon key. Row counts are currently tiny
+(2 claim links, 2 discounts, 4 profiles), so this is pre-launch exposure rather
+than an active breach — but it is the single most serious thing found.
+
+### Then
+
+1. **#18 — promote CSP** from report-only to enforcing after a violation pass.
+2. **#20 — add CI.** Without it, dependency and typecheck state drifts back.
+3. **#12 — bot protection**, if abuse appears in the logs.
+4. **#17 — salt or drop `ip_hash`**, and trim the two catalog reads.
+5. **Capture existing RLS policies as migrations.** The correct ones live only
+   in the dashboard today, which is why item 4 needed a live check to audit.
 
 Separately and above all of these: **NTAG 424 SUN message authentication.** The
 enumeration stopgap in `04563ad` raises the cost of guessing a tag ID but does
 not authenticate a tap — the URL is still static and clonable off a chip.
 
-Three findings in this audit were live issues rather than hardening: the agent
-auth bypass (#6), visitor IP hashes published to referral-link owners (#17), and
+Five findings here were live issues rather than hardening: world-open
+`claim_links` writes and `wngs_discounts` reads (#4), the agent auth bypass
+(#6), visitor IP hashes published to referral-link owners (#17), and
 mint-to-any-wallet (#8).
 
 ---
@@ -89,76 +96,97 @@ only. Every service-role client is constructed inside `api/` (verified across
 all 12 function files). No `service_role` reference exists anywhere under
 `src/`.
 
-## 4. Enable row-level security — VERIFY (most serious open item)
+## 4. Enable row-level security — VERIFIED against production; 4 real gaps found
 
-**This is the finding to act on first.**
+Checked live against project `dfpfkmrpnwioxzbwndzx` on 2026-09-03.
 
-The only RLS in the repo is `db/phase2_ascension.sql:76-86` (repeated in
-`phase2_fix.sql`), covering three tables — and the policies are permissive:
+**The good news: RLS is enabled on all 30 public tables.** The "applied by hand
+in the dashboard" hypothesis was correct — the repo simply never captured it.
+The per-user policies are also written correctly, scoping on
+`auth.jwt() ->> 'sub'` (the Privy DID): `profiles`, `transactions`,
+`user_assets`, `user_quests`, `user_digital_inventory` and `artifact_scans` all
+restrict reads to the owner. And `waitlist` has an INSERT policy but **no SELECT
+policy**, so signup addresses can be added and never read back — the worst case
+in the original draft of this audit did not materialise.
 
-```sql
-ALTER TABLE seasons              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_season_progress ENABLE ROW LEVEL SECURITY;
-ALTER TABLE season_rewards       ENABLE ROW LEVEL SECURITY;
+Tables carrying RLS with **zero** policies are also correct, not a gap: they're
+reached only by service-role code in `api/`, which bypasses RLS, so zero
+policies means deny-all to the anon key. That's the right posture for
+`artifacts`, `post_comments`, `purchase_grants`, `stamps`, `user_stamps`,
+`store_orders`, `inventory`, `collection_items`, `user_collection_items`,
+`user_seasons` and `rate_limits`. Supabase's linter flags these as INFO
+`rls_enabled_no_policy`; they can be ignored.
 
-CREATE POLICY user_season_progress_read ON user_season_progress FOR SELECT USING (true);
-```
+**Four policies were written as `USING (true)` / `WITH CHECK (true)` for the
+`public` role, though — which means the anon key, which ships in the browser
+bundle.** `db/rls_hardening.sql` removes them.
 
-`USING (true)` means **anyone holding the anon key can read every user's season
-progress** — and the anon key ships in the browser bundle by design. That's a
-cross-user data read, not a hypothetical.
+### 4a. `claim_links` — the most serious finding in this audit
 
-More importantly, **no migration in `db/` enables RLS on**: `profiles`,
-`artifacts`, `user_assets`, `transactions`, `products`, `monarch_times`,
-`post_comments`, `waitlist`, `purchase_grants`, `collection_items`,
-`quests`/`user_quests`, `stamps`/`user_stamps`.
+Five world-open policies: public SELECT (×2), public UPDATE (×2), public INSERT.
+The table holds QR redemption codes — `short_code`, `wngs_award`, `is_claimed`,
+`max_redemptions`.
 
-`src/lib/supabase.ts:8-10` asserts the opposite:
+With nothing but the anon key, an attacker could:
 
-```
-// RLS-protected tables (profiles, user_assets, transactions) require the
-// caller's Privy token; the bare anon client is blocked and returns nothing.
-```
+- **read every `short_code`** and redeem the lot;
+- **`UPDATE is_claimed` back to `false`** and replay a redemption indefinitely;
+- **`INSERT` their own rows** with an arbitrary `wngs_award` and redeem those —
+  minting WNGS from nothing, with no account, no physical item, and no NFC tag.
 
-Nothing in this repository implements that. Either it was applied by hand in the
-Supabase dashboard (plausible — `CLAUDE.md` notes migrations are run manually
-and that the live schema has drifted), or those tables are readable and possibly
-writable by anyone who opens devtools and copies the anon key.
+That last one is worse than the tag enumeration this engagement started with:
+enumeration at least required tags to exist. This is a direct, unauthenticated
+write path into the currency supply.
 
-If RLS is off on `waitlist`, every signup email is publicly dumpable. If it's off
-on `profiles`, so is every user's WNGS balance and Privy DID. If it's off for
-writes, WNGS balances are directly editable and the entire server-auth layer in
-item 6 is bypassable.
+### 4b. `wngs_discounts` — public read of live discount codes
 
-**Run this against production before anything else:**
+`USING (true)` SELECT on a table holding `code`, `discount_usd`, `status`.
+Anyone with the anon key could read every active discount code and spend it at
+the storefront. `discount_usd` is capped at `MAX_DISCOUNT_USD` ($500) per code.
 
-```sql
-SELECT c.relname AS table_name, c.relrowsecurity AS rls_enabled,
-       count(p.polname) AS policy_count
-FROM pg_class c
-JOIN pg_namespace n ON n.oid = c.relnamespace
-LEFT JOIN pg_policy p ON p.polrelid = c.oid
-WHERE n.nspname = 'public' AND c.relkind = 'r'
-GROUP BY c.relname, c.relrowsecurity
-ORDER BY c.relrowsecurity, c.relname;
-```
+### 4c. `user_season_progress` — cross-user read
 
-Every application table should show `rls_enabled = true`. Any table with RLS on
-and `policy_count = 0` is service-role-only (correct for `rate_limits`). Then
-re-check the three `USING (true)` policies above — `user_season_progress` should
-be scoped to the requesting user, not world-readable.
+`USING (true)` SELECT, exactly as predicted from `db/phase2_ascension.sql:76-86`.
+Every player's ASCENSION level readable by anyone.
 
-Note that RLS being off is *not* visible from application behaviour: the API
-layer uses the service-role key and works identically either way. It only shows
-up when someone queries PostgREST directly with the anon key.
+This one needed a **code change before the policy could be tightened**, and that
+is the interesting part: the policy was permissive *because* `Ascension.tsx` and
+`Profile.tsx` read the table with the anon client, and Supabase cannot identify
+a Privy user (it won't validate a Privy JWT, so `auth.jwt()` is null). A
+correctly-scoped policy would have denied those reads and blanked the ladder.
+Both reads now go through a new `get_season_progress` action in
+`api/v2/purchase.js` on the service role, so the policy can be dropped.
 
-*Encouraging sign:* the Supabase SQL editor's saved-query list includes several
-named "Enable Row-Level Security for …", "Enable RLS and Index …", and "Public
-Read Policy for …", which suggests RLS **was** configured by hand outside `db/`.
-That makes the "applied in the dashboard" hypothesis the likely one — but it
-also means the repo is not the source of truth for it. Run the query above to
-confirm coverage, then commit the resulting policies to `db/` as a migration so
-the next environment isn't rebuilt without them.
+### 4d. `artifact_scans` — forgeable log rows
+
+Public `INSERT ... WITH CHECK (true)`, so anyone could write scan rows. Written
+server-side by `log-social-scan.js`; the owner-scoped SELECT policy is correct
+and is kept.
+
+Also worth noting: `artifact_scans` has a `scanner_ip` column (raw, not hashed).
+It appears unused by current code paths — confirm before it starts collecting.
+
+### Deploy order
+
+**Ship the app code first, then run `db/rls_hardening.sql`.** Running it against
+the old frontend would blank the ASCENSION ladder and the ARTIFACT_LEVEL stat,
+since those reads only move server-side in this same change. The other four
+drops are safe in any order — nothing in `src/` touches those tables with the
+anon client.
+
+### Two linter warnings also fixed
+
+`update_updated_at_column` and `process_social_scan_reward` had mutable
+`search_path`. A `SECURITY DEFINER` function with a mutable search_path can be
+hijacked via a caller-controlled schema; the migration pins both to `public`.
+
+### The standing problem
+
+The repo is still not the source of truth for RLS. All of the above was
+configured in the dashboard and existed nowhere in `db/`, which is why this took
+a live check to find. `db/rls_hardening.sql` is a start; the correctly-scoped
+policies that already exist should also be captured as a migration so a rebuilt
+environment doesn't come up wide open.
 
 ## 5. Encrypt sensitive data — PASS, one note
 
@@ -202,7 +230,7 @@ Two endpoints are unauthenticated **by design** and remain so:
 isn't expected to be logged in, and payout is gated by an IP cooldown plus the
 owner's stamina) and `api/waitlist.js` (public signup, now rate-limited).
 
-## 7. Lock record access — PASS at the API layer
+## 7. Lock record access — FIXED
 
 Every read and write is scoped to the verified caller: `equip.js:48` checks
 `user_assets` ownership before equipping, `tap-reward.js:73` rejects when
@@ -211,9 +239,12 @@ caller doesn't own, and `verify.js:55-64` deliberately avoids leaking the
 owner's Privy DID to anonymous callers — it returns a boolean `isOwner`
 computed against an optional bearer token instead.
 
-**This item is only as strong as item 4.** All of it runs in serverless handlers
-using the service-role key. If RLS is off, a client can skip these handlers
-entirely and query PostgREST directly with the anon key.
+The original draft noted this item was "only as strong as item 4", since all of
+it runs on the service role and could be bypassed by querying PostgREST
+directly. That check has now been done: RLS is enabled everywhere, the per-user
+policies are correctly scoped to the Privy DID, and the four world-open policies
+that *did* allow a bypass are removed by `db/rls_hardening.sql`. Once that
+migration runs, the API layer and the database agree.
 
 ## 8. Block field tampering — FIXED
 
@@ -531,6 +562,15 @@ Dependabot config plus a workflow running
 - [ ] Before minting a new artifact batch, confirm `artifacts.tag_id` is `text`
       and not a narrow `varchar` — minted IDs grew from ~11 to ~22 characters.
       Verification query is at the bottom of the migration file.
+
+**Deploy, then immediately**
+
+- [ ] Run `db/rls_hardening.sql`. **Order matters:** the app code moving
+      `user_season_progress` reads server-side must be live first, or the
+      ASCENSION ladder and ARTIFACT_LEVEL stat go blank. The other four policy
+      drops are safe in any order.
+- [ ] Re-run the verification query at the bottom of that migration — expect
+      exactly one row (`waitlist` INSERT, intentional).
 
 **After deploying**
 

@@ -81,15 +81,22 @@ const Ascension = () => {
       // Per-user progress + stamina only when authenticated.
       if (!user?.id) { setProgress(null); setLoading(false); return }
 
-      const { data: prog } = await supabase
-        .from('user_season_progress').select('*').eq('user_id', user.id).eq('season_id', seasonRow.id).maybeSingle()
-      setProgress(prog as Progress | null)
-
-      // Profile/stamina via the service-role endpoint (RLS read is blocked).
+      // Progress + profile/stamina via the service-role endpoint. Progress used
+      // to be read straight from Supabase, but that required a world-readable
+      // RLS policy on user_season_progress (the anon client can't identify a
+      // Privy user), so it now goes through the server like everything else.
       // Best-effort: api/ functions don't run under `vite dev`, so never let a
       // failure here blank out the ladder.
       try {
         const token = await getAccessToken()
+        const progRes = await fetch('/api/v2/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ userId: user.id, action: 'get_season_progress' }),
+        })
+        const prog = (await progRes.json().catch(() => null))?.progress || null
+        setProgress(prog as Progress | null)
+
         const profRes = await fetch('/api/v2/purchase', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

@@ -613,6 +613,28 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, stamps: result, season: season || null });
     }
 
+    // This user's ASCENSION progress for the active season.
+    //
+    // Served here rather than read from the browser because the anon client
+    // can't identify a Privy user (Supabase won't validate a Privy JWT, so
+    // auth.jwt() is null in RLS). The table's policy therefore had to be
+    // `USING (true)` to work at all, which made every user's progress readable
+    // by anyone holding the anon key. Going through the service role lets that
+    // policy be scoped down -- see db/rls_hardening.sql.
+    //
+    // Returns the caller's own row, so no column trimming is needed.
+    if (action === 'get_season_progress') {
+      const season = await getActiveSeason(admin);
+      if (!season) return res.status(200).json({ success: true, season: null, progress: null });
+      const { data: progress } = await admin
+        .from('user_season_progress')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('season_id', season.id)
+        .maybeSingle();
+      return res.status(200).json({ success: true, season, progress: progress || null });
+    }
+
     // The active season's physical set (NFC season artifacts + collection_items)
     // with how many this user owns -- powers the Closet collection tracker.
     if (action === 'get_season_artifacts') {
