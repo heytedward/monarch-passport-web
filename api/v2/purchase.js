@@ -9,6 +9,7 @@ import { verifyPrivyToken, getPrivyUserEmails, getPrivyUserWallets } from './_au
 import { recordQuestAction } from './_quests.js';
 import { enforceRateLimit, sendRateLimited } from './_ratelimit.js';
 import { checkAndAwardStamps, isFullCollectionComplete, seasonMatchValues } from './_stamps.js';
+import { isUsernameBlocked } from './_moderation.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -62,6 +63,24 @@ const SPEND_ACTIONS = new Set([
 ]);
 const SPEND_LIMIT = 60;
 const SPEND_WINDOW_MS = 60 * 60 * 1000;
+
+// Public handles: 3-20 chars, alphanumeric + underscore. Reserved names are
+// blocked so they can't be claimed by a regular user.
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
+const RESERVED_USERNAMES = new Set([
+  'admin', 'administrator', 'root', 'support', 'help', 'papillon', 'monarch',
+  'moderator', 'mod', 'official', 'system', 'api', 'null', 'undefined', 'staff',
+]);
+
+function normalizeUsername(raw) {
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+// Escape LIKE/ILIKE wildcards (% _ \) so an ilike lookup matches the username
+// literally instead of as a pattern.
+function likeEscape(s) {
+  return s.replace(/[%_\\]/g, '\\$&');
+}
 
 // Unambiguous code alphabet (no 0/O/1/I).
 function genDiscountCode() {
@@ -425,7 +444,7 @@ export default async function handler(req, res) {
       }
       const { data: profile } = await admin
         .from('profiles')
-        .select('wngs_balance, active_theme, active_avatar, total_taps, current_stamina, max_stamina, last_stamina_regen')
+        .select('wngs_balance, active_theme, active_avatar, total_taps, current_stamina, max_stamina, last_stamina_regen, username')
         .eq('id', userId)
         .maybeSingle();
       // Resolve the equipped avatar's palette so the client can render it.
@@ -440,6 +459,60 @@ export default async function handler(req, res) {
         themeAccent = th?.accent_color || null;
       }
       return res.status(200).json({ success: true, profile, avatarColors, themeAccent, granted, grantedWngs });
+    }
+
+    if (action === 'check_username') {
+      const username = normalizeUsername(req.body?.username);
+      if (!USERNAME_RE.test(username)) {
+        return res.status(200).json({ success: true, available: false, reason: 'INVALID_FORMAT' });
+      }
+      if (RESERVED_USERNAMES.has(username.toLowerCase())) {
+        return res.status(200).json({ success: true, available: false, reason: 'RESERVED' });
+      }
+      if (isUsernameBlocked(username)) {
+        return res.status(200).json({ success: true, available: false, reason: 'BLOCKED' });
+      }
+      const { data: existing } = await admin
+        .from('profiles')
+        .select('id')
+        .ilike('username', likeEscape(username))
+        .neq('id', userId)
+        .maybeSingle();
+      return res.status(200).json({ success: true, available: !existing });
+    }
+
+    if (action === 'set_username') {
+      const username = normalizeUsername(req.body?.username);
+      if (!USERNAME_RE.test(username)) {
+        return res.status(400).json({ error: 'INVALID_USERNAME_FORMAT' });
+      }
+      if (RESERVED_USERNAMES.has(username.toLowerCase())) {
+        return res.status(400).json({ error: 'USERNAME_RESERVED' });
+      }
+      if (isUsernameBlocked(username)) {
+        return res.status(400).json({ error: 'USERNAME_BLOCKED' });
+      }
+      const { data: existing } = await admin
+        .from('profiles')
+        .select('id')
+        .ilike('username', likeEscape(username))
+        .neq('id', userId)
+        .maybeSingle();
+      if (existing) {
+        return res.status(409).json({ error: 'USERNAME_TAKEN' });
+      }
+      const { error: updErr } = await admin
+        .from('profiles')
+        .update({ username })
+        .eq('id', userId);
+      if (updErr) {
+        // Case-insensitive unique index caught a race with a concurrent claim.
+        if (updErr.code === '23505') {
+          return res.status(409).json({ error: 'USERNAME_TAKEN' });
+        }
+        throw updErr;
+      }
+      return res.status(200).json({ success: true, username });
     }
 
     if (action === 'get_owned') {
