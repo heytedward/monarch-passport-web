@@ -64,6 +64,13 @@ const SPEND_ACTIONS = new Set([
 const SPEND_LIMIT = 60;
 const SPEND_WINDOW_MS = 60 * 60 * 1000;
 
+// Identity churn, budgeted separately from spend: caps handle-squatting and
+// availability enumeration (check_username reveals which names are taken).
+// Sized for a debounced settings field, not a keystroke-per-request one.
+const USERNAME_ACTIONS = new Set(['check_username', 'set_username']);
+const USERNAME_LIMIT = 60;
+const USERNAME_WINDOW_MS = 60 * 60 * 1000;
+
 // Public handles: 3-20 chars, alphanumeric + underscore. Reserved names are
 // blocked so they can't be claimed by a regular user.
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
@@ -74,6 +81,40 @@ const RESERVED_USERNAMES = new Set([
 
 function normalizeUsername(raw) {
   return typeof raw === 'string' ? raw.trim() : '';
+}
+
+// Blocks near-misses of the auto-assigned serial format ("Monarch1", "monarch007")
+// that USERNAME_RE would otherwise allow. The serial form itself needs no guard:
+// it contains '#', which USERNAME_RE rejects outright.
+const SERIAL_LOOKALIKE_RE = /^monarch[0-9]+$/i;
+
+// Auto-assigned handle for a profile that has never claimed one.
+//
+// Sequential on purpose — a low number is a visible early-adopter marker, which
+// is worth more to this brand than concealing the signup count. Backed by a
+// Postgres sequence (db/usernames.sql) rather than max()+1 so concurrent first
+// logins can't collide.
+async function assignSerialUsername(admin, userId) {
+  const { data: serial, error } = await admin.rpc('next_monarch_serial');
+  if (error) throw error;
+  const username = `Monarch#${String(serial).padStart(4, '0')}`;
+
+  // `.is('username', null)` so this can never overwrite a claimed handle.
+  const { data: updated, error: updErr } = await admin
+    .from('profiles')
+    .update({ username })
+    .eq('id', userId)
+    .is('username', null)
+    .select('username')
+    .maybeSingle();
+  if (updErr) throw updErr;
+  if (updated) return updated.username;
+
+  // Lost a race with a concurrent assignment: the serial we drew is burned
+  // (harmless — gaps are expected). Report whatever actually stuck.
+  const { data: row } = await admin
+    .from('profiles').select('username').eq('id', userId).maybeSingle();
+  return row?.username || null;
 }
 
 // Escape LIKE/ILIKE wildcards (% _ \) so an ilike lookup matches the username
@@ -419,6 +460,16 @@ export default async function handler(req, res) {
       if (!rate.allowed) return sendRateLimited(res, rate.retryAfterMs);
     }
 
+    if (USERNAME_ACTIONS.has(action)) {
+      const rate = await enforceRateLimit(admin, {
+        scope: 'username',
+        identifier: verifiedUserId,
+        limit: USERNAME_LIMIT,
+        windowMs: USERNAME_WINDOW_MS,
+      });
+      if (!rate.allowed) return sendRateLimited(res, rate.retryAfterMs);
+    }
+
     // --- reads (return the user's own data; the client's RLS reads are blocked) ---
     if (action === 'ensure_profile') {
       await admin.from('profiles').upsert(
@@ -447,6 +498,17 @@ export default async function handler(req, res) {
         .select('wngs_balance, active_theme, active_avatar, total_taps, current_stamina, max_stamina, last_stamina_regen, username')
         .eq('id', userId)
         .maybeSingle();
+      // First login gets a serial handle. Best-effort, in line with the quest
+      // and grant hooks above: a failure here must never block sign-in, and the
+      // next ensure_profile will simply try again.
+      if (profile && !profile.username) {
+        try {
+          profile.username = await assignSerialUsername(admin, userId);
+        } catch (uErr) {
+          console.error('USERNAME_ASSIGN_WARN:', uErr);
+        }
+      }
+
       // Resolve the equipped avatar's palette so the client can render it.
       let avatarColors = null;
       let themeAccent = null;
@@ -466,7 +528,7 @@ export default async function handler(req, res) {
       if (!USERNAME_RE.test(username)) {
         return res.status(200).json({ success: true, available: false, reason: 'INVALID_FORMAT' });
       }
-      if (RESERVED_USERNAMES.has(username.toLowerCase())) {
+      if (RESERVED_USERNAMES.has(username.toLowerCase()) || SERIAL_LOOKALIKE_RE.test(username)) {
         return res.status(200).json({ success: true, available: false, reason: 'RESERVED' });
       }
       if (isUsernameBlocked(username)) {
@@ -486,7 +548,7 @@ export default async function handler(req, res) {
       if (!USERNAME_RE.test(username)) {
         return res.status(400).json({ error: 'INVALID_USERNAME_FORMAT' });
       }
-      if (RESERVED_USERNAMES.has(username.toLowerCase())) {
+      if (RESERVED_USERNAMES.has(username.toLowerCase()) || SERIAL_LOOKALIKE_RE.test(username)) {
         return res.status(400).json({ error: 'USERNAME_RESERVED' });
       }
       if (isUsernameBlocked(username)) {
