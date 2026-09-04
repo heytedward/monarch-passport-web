@@ -37,15 +37,21 @@ const Profile = () => {
   ) || (user as any)?.wallets?.find((w: any) => w.chainType === 'solana');
   const solanaAddress = (solanaWallet as any)?.address;
 
-  // Derive a handle from the real account (email > wallet > fallback).
-  const email = (user as any)?.email?.address as string | undefined;
-  const handle = email
-    ? '@' + email.split('@')[0].toUpperCase()
-    : solanaAddress
-      ? '@' + solanaAddress.slice(0, 6).toUpperCase()
-      : '@OPERATOR';
+  const { wngsBalance, totalTaps, isLoading, setWngsBalance, username } = useStore()
 
-  const { wngsBalance, totalTaps, isLoading, setWngsBalance } = useStore()
+  // The public callsign is the handle. It's shown verbatim — `Monarch#0001`
+  // and a claimed name both carry their own casing, and neither wants an '@'.
+  // The email/wallet derivations below are only a fallback for the moment
+  // before ensure_profile returns (and stop leaking the local part of an email
+  // into the UI once it does).
+  const email = (user as any)?.email?.address as string | undefined;
+  const handle = username
+    ? username
+    : email
+      ? '@' + email.split('@')[0].toUpperCase()
+      : solanaAddress
+        ? '@' + solanaAddress.slice(0, 6).toUpperCase()
+        : '@OPERATOR';
   const [activeTab, setActiveTab] = useState<'STATS' | 'WALLET' | 'QUESTS' | 'STAMPS'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
   const [userQuests, setUserQuests] = useState<Record<string, { status: string; progress: number; target: number }>>({});
@@ -115,12 +121,36 @@ const Profile = () => {
     toast({ title: 'COPIED', description: code, status: 'success', duration: 1500 });
   };
 
-  const handleCopyLink = () => {
-    // Generate the unique link using the user's Privy ID or wallet
+  // Native share sheet where the browser has one (every mobile browser, which
+  // is where these links actually get posted), clipboard everywhere else.
+  //
+  // navigator.share requires a user gesture and a secure context, and rejects
+  // with AbortError when the user simply dismisses the sheet — that's a normal
+  // outcome, not a failure, so it must not fall through to the clipboard path
+  // or show an error.
+  const handleShareLink = async () => {
     const socialUrl = `${window.location.origin}/social/${user?.id || 'guest'}`;
-    navigator.clipboard.writeText(socialUrl);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 3000);
+    const shareText = username
+      ? `${username} // MONARCH PASSPORT. Tap my signal to boost the network.`
+      : 'MONARCH PASSPORT. Tap my signal to boost the network.';
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'MONARCH PASSPORT', text: shareText, url: socialUrl });
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return; // user dismissed the sheet
+        // Anything else (no permission, unsupported payload) falls through.
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(socialUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 3000);
+    } catch {
+      toast({ title: 'COULD_NOT_COPY', description: socialUrl, status: 'error', duration: 5000 });
+    }
   };
 
   useEffect(() => {
@@ -584,7 +614,7 @@ const Profile = () => {
           </Text>
           
           <Button
-            onClick={handleCopyLink}
+            onClick={handleShareLink}
             bg="var(--monarch-accent)"
             color="black"
             height="50px"
@@ -596,7 +626,7 @@ const Profile = () => {
             _active={{ bg: "#cc8c00" }}
             width="full"
           >
-            {linkCopied ? '[ SIGNAL_COPIED_TO_CLIPBOARD ]' : 'GENERATE_SOCIAL_LINK'}
+            {linkCopied ? '[ SIGNAL_COPIED_TO_CLIPBOARD ]' : 'BROADCAST_SIGNAL'}
           </Button>
 
           <HStack spacing={4} pt={2}>

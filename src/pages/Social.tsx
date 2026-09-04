@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, VStack, Heading, Text, Button, Center } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
@@ -8,6 +8,10 @@ const MotionBox = motion(Box);
 
 const Social = () => {
   const { userId } = useParams<{ userId: string }>();
+  // The owner's public callsign, returned by log-social-scan on every 200 path.
+  // Read from that response rather than a second request, since `profiles` is
+  // RLS-locked to its owner and an anonymous visitor can't query it directly.
+  const [callsign, setCallsign] = useState<string | null>(null);
 
   useEffect(() => {
     const logScan = async () => {
@@ -20,10 +24,12 @@ const Social = () => {
             body: JSON.stringify({ userId }),
           });
 
+          const data = await response.json().catch(() => null);
           if (!response.ok) {
-            const data = await response.json();
-            console.error('Error logging social scan:', data.error);
+            console.error('Error logging social scan:', data?.error);
+            return;
           }
+          if (data?.username) setCallsign(data.username);
         } catch (err) {
           console.error('Error logging social scan:', err);
         }
@@ -61,13 +67,30 @@ const Social = () => {
             >
               // NETWORK CONNECTION ESTABLISHED
             </Heading>
-            <Text 
-              fontSize="xs" 
-              color="gray.500" 
-              fontFamily="monospace" 
+            {/* Reserve the row so the callsign appearing doesn't shift the
+                layout once the scan request resolves. */}
+            <Box minH="28px">
+              {callsign && (
+                <Text
+                  fontSize="lg"
+                  fontWeight="900"
+                  fontFamily="monospace"
+                  letterSpacing="0.1em"
+                  color="white"
+                >
+                  {callsign}
+                </Text>
+              )}
+            </Box>
+            <Text
+              fontSize="xs"
+              color="gray.500"
+              fontFamily="monospace"
               maxW="300px"
             >
-              YOU HAVE SUCCESSFULLY BOOSTED THIS COLLECTOR'S DAILY QUOTA.
+              {callsign
+                ? `YOU HAVE SUCCESSFULLY BOOSTED ${callsign}'S DAILY QUOTA.`
+                : "YOU HAVE SUCCESSFULLY BOOSTED THIS COLLECTOR'S DAILY QUOTA."}
             </Text>
           </VStack>
 

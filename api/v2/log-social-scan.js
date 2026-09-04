@@ -57,7 +57,7 @@ export default async function handler(req, res) {
 
     const { data: profile, error: profileError } = await admin
       .from('profiles')
-      .select('id, wngs_balance, current_stamina, max_stamina, last_stamina_regen')
+      .select('id, username, wngs_balance, current_stamina, max_stamina, last_stamina_regen')
       .eq('id', userId)
       .maybeSingle();
 
@@ -90,7 +90,7 @@ export default async function handler(req, res) {
         .limit(1)
         .maybeSingle();
       if (recentMine) {
-        return res.status(200).json({ success: true, mined: false, reason: 'RATE_LIMITED' });
+        return res.status(200).json({ success: true, mined: false, reason: 'RATE_LIMITED', username: profile.username || null });
       }
     }
 
@@ -102,7 +102,7 @@ export default async function handler(req, res) {
     );
 
     if (!ok) {
-      return res.status(200).json({ success: true, mined: false, reason: 'STAMINA_DEPLETED', stamina: 0 });
+      return res.status(200).json({ success: true, mined: false, reason: 'STAMINA_DEPLETED', stamina: 0, username: profile.username || null });
     }
 
     // Burn 1 stamina + credit the small WNGS trickle.
@@ -144,6 +144,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       mined: true,
+      username: profile.username || null,
       stamina: newStored,
       wngsAwarded: WNGS_SOCIAL_MINE,
       xpAwarded: xpProgress ? XP_SOCIAL_MINE : 0,
