@@ -128,7 +128,7 @@ function AppFrame() {
 
 function AppContent() {
   const { user, ready, authenticated, getAccessToken } = usePrivy();
-  const { activeTheme, activeThemeAccent, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent } = useStore();
+  const { activeTheme, activeThemeAccent, identityType, setIdentityType, fetchUserProfile } = useStore();
   const toast = useToast();
 
   const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
@@ -148,37 +148,30 @@ function AppContent() {
         // looking up this row, so a fresh login needs it created first.
         try {
           const token = await getAccessToken();
-          const res = await fetch('/api/v2/purchase', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
-          });
-          // Populate from the server response (service-role); the client's own
-          // RLS read is blocked (Privy token not validated by Supabase).
-          const data = await res.json().catch(() => null);
-          if (data?.profile) {
-            setWngsBalance(data.profile.wngs_balance || 0);
-            if (data.profile.active_theme) setActiveTheme(data.profile.active_theme);
-            setActiveAvatar(data.profile.active_avatar || null);
-            setActiveAvatarColors(data.avatarColors || null);
-            if (data.themeAccent) setActiveThemeAccent(data.themeAccent);
-          }
+          // Populates balance/theme/avatar from the server response
+          // (service-role); the client's own RLS read is blocked, since
+          // Supabase does not validate Privy tokens. This is the one place the
+          // balance is loaded for a session -- until it resolves, the UI shows
+          // a syncing state rather than the placeholder 0.
+          const data = await fetchUserProfile(user.id, token);
           // Storefront purchases auto-granted on this login (matched by email).
-          if (Array.isArray(data?.granted) && data.granted.length > 0) {
+          const granted = Array.isArray(data?.granted) ? data.granted : [];
+          const grantedWngs = data?.grantedWngs || 0;
+          if (granted.length > 0) {
             toast({
               duration: 8000,
               position: 'top',
               render: () => (
                 <Box bg="black" border="2px solid #FFB000" p={3} maxW="430px" mx="auto">
                   <Text color="#FFB000" fontFamily="monospace" fontWeight="900" fontSize="xs">
-                    ORDER_SYNCED // {data.granted.length} ITEM{data.granted.length > 1 ? 'S' : ''} ADDED TO YOUR CLOSET
+                    ORDER_SYNCED // {granted.length} ITEM{granted.length > 1 ? 'S' : ''} ADDED TO YOUR CLOSET
                   </Text>
                   <Text color="whiteAlpha.700" fontFamily="monospace" fontSize="10px" mt={1}>
-                    {data.granted.join(' // ').toUpperCase()}
+                    {granted.join(' // ').toUpperCase()}
                   </Text>
-                  {data.grantedWngs > 0 && (
+                  {grantedWngs > 0 && (
                     <Text color="#FFB000" fontFamily="monospace" fontWeight="900" fontSize="10px" mt={1}>
-                      +{data.grantedWngs} $WNGS CREDITED
+                      +{grantedWngs} $WNGS CREDITED
                     </Text>
                   )}
                 </Box>
@@ -190,7 +183,7 @@ function AppContent() {
         }
       })();
     }
-  }, [ready, authenticated, user?.id, getAccessToken, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent]);
+  }, [ready, authenticated, user?.id, getAccessToken, identityType, setIdentityType, fetchUserProfile]);
 
   return (
     <Router>

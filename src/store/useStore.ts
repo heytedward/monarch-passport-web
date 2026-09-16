@@ -1,10 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { createClient } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 export interface CartItem {
   id: string
@@ -13,9 +8,31 @@ export interface CartItem {
   image?: string
 }
 
+// Server payload returned by `ensure_profile` (api/v2/purchase.js).
+export interface ProfilePayload {
+  success?: boolean
+  profile?: {
+    wngs_balance?: number
+    active_theme?: string | null
+    active_avatar?: string | null
+    total_taps?: number
+    current_stamina?: number
+    max_stamina?: number
+    last_stamina_regen?: string | null
+  } | null
+  avatarColors?: string[] | null
+  themeAccent?: string | null
+  granted?: string[]
+  grantedWngs?: number
+}
+
 interface UserState {
   user: { id: string } | null
   wngsBalance: number
+  // False until a real balance has been read back from the server on this
+  // device. Without it there is no way to tell "this account has 0 WNGS" from
+  // "we have not fetched yet", and the UI renders the placeholder 0 as fact.
+  balanceSynced: boolean
   isLoading: boolean
   identityType: 'AGENT' | 'HUMAN' | null
   activeTheme: string | null
@@ -33,7 +50,7 @@ interface UserState {
   setUser: (user: { id: string } | null) => void
   setWngsBalance: (balance: number) => void
   setIsLoading: (loading: boolean) => void
-  fetchUserProfile: (userId: string, accessToken?: string | null) => Promise<void>
+  fetchUserProfile: (userId: string, accessToken?: string | null) => Promise<ProfilePayload | null>
   addPoints: (amount: number) => void
   collectStamp: (stampId: number) => void
   setIdentityType: (type: 'AGENT' | 'HUMAN' | null) => void
@@ -60,6 +77,7 @@ const useStore = create<UserState>()(
     (set) => ({
       user: null,
       wngsBalance: 0,
+      balanceSynced: false,
       isLoading: false,
       identityType: null,
       activeTheme: 'SYSTEM_DARK',
@@ -75,62 +93,59 @@ const useStore = create<UserState>()(
       activeAvatarColors: null,
       activeThemeAccent: null,
       setUser: (user) => set({ user }),
-      setWngsBalance: (balance) => set({ wngsBalance: balance }),
+      // Every setter here carries a server-confirmed balance (bootstrap, tap,
+      // claim, purchase, discount), so writing one also means the balance is
+      // no longer the un-fetched placeholder.
+      setWngsBalance: (balance) => set({ wngsBalance: balance, balanceSynced: true }),
       setIsLoading: (loading) => set({ isLoading: loading }),
+      // The single read path for this user's profile. It goes through the API
+      // on the service role, NOT through the browser's Supabase client: this
+      // app authenticates with Privy, Supabase cannot validate a Privy token,
+      // so `auth.jwt()` is null in the browser and every per-user RLS policy on
+      // `profiles` denies (see db/rls_policies.sql). Reading it client-side
+      // returned nothing no matter what Authorization header was attached.
+      //
+      // Returns the server payload so callers can act on the extras (pending
+      // storefront grants); balance, theme and avatar are applied here.
       fetchUserProfile: async (userId, accessToken) => {
+        if (!userId || !accessToken) return null;
         set({ isLoading: true });
-        // profiles RLS blocks the bare anon client, so build an authed client
-        // when we have the caller's Privy token (mirrors the server userClient).
-        const client = accessToken
-          ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-              global: { headers: { Authorization: `Bearer ${accessToken}` } },
-            })
-          : supabase;
         try {
-          const { data, error } = await client
-            .from('profiles')
-            .select('wngs_balance, active_theme, active_avatar, total_taps')
-            .eq('id', userId)
-            .maybeSingle(); // Use maybeSingle to handle 0 rows gracefully
+          const res = await fetch('/api/v2/purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+            body: JSON.stringify({ userId, action: 'ensure_profile' }),
+          });
+          const data: ProfilePayload | null = await res.json().catch(() => null);
 
-          if (error) {
-            console.error('Error fetching profile:', error);
-            return;
+          if (!res.ok || !data?.profile) {
+            // Leave the last known values in place rather than overwriting a
+            // real balance with a placeholder 0 on a failed fetch.
+            console.warn(`[System] No profile returned for ID: ${userId}.`);
+            return data;
           }
 
-          if (data) {
-            const activeTheme = data.active_theme || 'SYSTEM_DARK';
+          const profile = data.profile;
+          const activeTheme = profile.active_theme || 'SYSTEM_DARK';
+          // Resolve the equipped theme's accent. Built-in themes have fixed
+          // accents; a custom theme (its id is a product UUID) carries
+          // accent_color in `products`, which the server resolves for us.
+          const activeThemeAccent =
+            data.themeAccent ?? DEFAULT_THEME_ACCENTS[activeTheme] ?? null;
 
-            // Resolve the equipped theme's accent. Defaults are fixed; a custom
-            // theme (its id is a product UUID) carries accent_color in products.
-            let activeThemeAccent: string | null = DEFAULT_THEME_ACCENTS[activeTheme] ?? null;
-            if (activeThemeAccent === null && activeTheme) {
-              const { data: themeRow } = await supabase
-                .from('products')
-                .select('accent_color')
-                .eq('id', activeTheme)
-                .maybeSingle();
-              activeThemeAccent = themeRow?.accent_color || null;
-            }
-
-            set({
-              wngsBalance: data.wngs_balance || 0,
-              activeTheme,
-              activeAvatar: data.active_avatar,
-              totalTaps: data.total_taps || 0,
-              activeThemeAccent,
-              // `products` has no avatar_colors column in the live schema --
-              // there's no per-user/per-avatar color data to restore here.
-              // DeStijlAvatar falls back to its own procedural palette
-              // whenever this is null, which is the real current behavior.
-              activeAvatarColors: null
-            });
-          } else {
-            // Handle case where profile doesn't exist yet
-            console.warn(`[System] No profile found for ID: ${userId}.`);
-          }
+          set({
+            wngsBalance: profile.wngs_balance || 0,
+            balanceSynced: true,
+            activeTheme,
+            activeAvatar: profile.active_avatar || null,
+            totalTaps: profile.total_taps || 0,
+            activeThemeAccent,
+            activeAvatarColors: data.avatarColors || null,
+          });
+          return data;
         } catch (err) {
           console.error('Unexpected error fetching profile:', err);
+          return null;
         } finally {
           set({ isLoading: false });
         }

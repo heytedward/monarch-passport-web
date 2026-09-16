@@ -73,7 +73,9 @@ const Claim = () => {
       setItemName(result.itemName || null)
       setItemType(result.itemType || null)
       setStatus('SUCCESS')
-      fetchUserProfile(userId) // Sync global state
+      // Needs the token: the refresh reads the profile through the API on the
+      // service role. Without it the call bails and the balance never moves.
+      fetchUserProfile(userId, accessToken) // Sync global state
     } catch (err: any) {
       console.error('Claim error:', err)
       setStatus('ERROR')

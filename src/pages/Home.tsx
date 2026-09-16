@@ -51,8 +51,12 @@ interface MonarchTimesPost {
 // lists comments and a paid composer. Mirrors the flip cards used elsewhere.
 const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) => {
   const { user, getAccessToken } = usePrivy();
-  const { wngsBalance, setWngsBalance } = useStore();
+  const { wngsBalance, balanceSynced, setWngsBalance } = useStore();
   const toast = useToast();
+
+  // An un-fetched balance is 0, which would otherwise disable both paid
+  // actions and tell a funded user they have INSUFFICIENT_WNGS.
+  const canAfford = (cost: number) => balanceSynced && wngsBalance >= cost;
 
   const isMock = post.id?.startsWith('mock');
   const [flipped, setFlipped] = useState(false);
@@ -160,7 +164,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
           </VStack>
           <HStack spacing={0} borderTop="2px solid white" flexShrink={0}>
             <Button flex={1} h="48px" borderRadius="0" bg="black" color="white" fontFamily="monospace" fontSize="10px" fontWeight="900"
-              leftIcon={<MdLocalFireDepartment />} isLoading={boosting} onClick={handleBoost} isDisabled={isMock || wngsBalance < BOOST_COST}
+              leftIcon={<MdLocalFireDepartment />} isLoading={boosting} onClick={handleBoost} isDisabled={isMock || !canAfford(BOOST_COST)}
               borderRight="2px solid white" _hover={{ bg: accent, color: 'black' }}>
               HYPE{boostCount > 0 ? ` (${boostCount})` : ''} // {BOOST_COST}
             </Button>
@@ -201,8 +205,8 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
               bg="black" border="1px solid" borderColor="whiteAlpha.400" borderRadius="0" color="white" fontFamily="monospace" fontSize="xs"
               rows={2} resize="none" maxLength={500} _placeholder={{ color: 'gray.600' }} _focus={{ borderColor: accent, boxShadow: 'none' }} />
             <Button h="40px" borderRadius="0" bg={accent} color="black" fontFamily="monospace" fontSize="10px" fontWeight="900"
-              rightIcon={<MdSend />} isLoading={posting} isDisabled={!commentText.trim() || wngsBalance < COMMENT_COST} onClick={handleComment} _hover={{ bg: 'white' }}>
-              {wngsBalance < COMMENT_COST ? 'INSUFFICIENT_WNGS' : `TRANSMIT // ${COMMENT_COST} WNGS`}
+              rightIcon={<MdSend />} isLoading={posting} isDisabled={!commentText.trim() || !canAfford(COMMENT_COST)} onClick={handleComment} _hover={{ bg: 'white' }}>
+              {!balanceSynced ? 'SYNCING...' : wngsBalance < COMMENT_COST ? 'INSUFFICIENT_WNGS' : `TRANSMIT // ${COMMENT_COST} WNGS`}
             </Button>
           </VStack>
         </Box>
@@ -212,7 +216,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
 };
 
 const Home = () => {
-  const { wngsBalance, activeTheme, activeThemeAccent } = useStore();
+  const { wngsBalance, balanceSynced, activeTheme, activeThemeAccent } = useStore();
   const reduceMotion = useReducedMotion();
   const [posts, setPosts] = useState<MonarchTimesPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -268,7 +272,10 @@ const Home = () => {
                 MONARCH_TIMES
               </Heading>
               <Text fontSize="9px" fontWeight="900" color={brandAccent} fontFamily="monospace" letterSpacing="0.1em">
-                BALANCE: {wngsBalance} WNGS // SESSION_ACTIVE
+                {/* Until the session bootstrap has read a real balance back,
+                    say so. Printing the store's initial 0 here reads as "you
+                    have no WNGS" and contradicts /profile a tap later. */}
+                BALANCE: {balanceSynced ? `${wngsBalance} WNGS` : 'SYNCING...'} // SESSION_ACTIVE
               </Text>
             </VStack>
             <NotificationsBell />

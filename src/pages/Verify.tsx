@@ -140,7 +140,9 @@ const Verify: React.FC = () => {
 
       setTapAwarded(result.awarded);
       setTapState('rewarded');
-      fetchUserProfile(user.id);
+      // Needs the token: the refresh reads the profile through the API on the
+      // service role. Without it the call bails and the balance never moves.
+      fetchUserProfile(user.id, accessToken);
     } catch (err) {
       setTapState('error');
     }
@@ -186,7 +188,7 @@ const Verify: React.FC = () => {
       setPremiumUnlocked(!!result.premiumUnlocked);
       setJustClaimed(true);
       setArtifact({ ...artifact, isActivated: true, isOwner: true });
-      fetchUserProfile(user.id);
+      fetchUserProfile(user.id, accessToken);
     } catch (err) {
       setClaimState('error');
       setClaimError('CLAIM_FAILED // SYSTEM_ERROR');

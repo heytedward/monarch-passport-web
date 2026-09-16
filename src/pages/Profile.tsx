@@ -45,7 +45,10 @@ const Profile = () => {
       ? '@' + solanaAddress.slice(0, 6).toUpperCase()
       : '@OPERATOR';
 
-  const { wngsBalance, totalTaps, isLoading, setWngsBalance } = useStore()
+  const { wngsBalance, totalTaps, isLoading, balanceSynced, setWngsBalance } = useStore()
+  // `isLoading` only covers a refresh in flight; `balanceSynced` covers the
+  // first load, where the store still holds its placeholder 0.
+  const balancePending = isLoading || !balanceSynced;
   const [activeTab, setActiveTab] = useState<'STATS' | 'WALLET' | 'QUESTS' | 'STAMPS'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
   const [userQuests, setUserQuests] = useState<Record<string, { status: string; progress: number; target: number }>>({});
@@ -244,9 +247,9 @@ const Profile = () => {
   const questsCleared = activeQuests.filter((q) => userQuests[q.id]?.status === 'COMPLETED').length;
 
   const stats = [
-    { label: 'WNGS_BALANCE', value: isLoading ? "..." : wngsBalance.toString() },
+    { label: 'WNGS_BALANCE', value: balancePending ? "..." : wngsBalance.toString() },
     { label: 'QUESTS_CLEARED', value: `${questsCleared}/${activeQuests.length}` },
-    { label: 'TOTAL_TAPS', value: isLoading ? "..." : totalTaps.toString() },
+    { label: 'TOTAL_TAPS', value: balancePending ? "..." : totalTaps.toString() },
     { label: 'ARTIFACT_LEVEL', value: String(progress?.level ?? 0).padStart(2, '0') },
   ];
 
@@ -286,7 +289,7 @@ const Profile = () => {
               <VStack align="start" spacing={0}>
                 <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">AVAILABLE_WNGS</Text>
                 <Heading fontSize="4xl" fontWeight="900" fontStyle="italic" color={text} fontFamily="'Archivo Black', sans-serif" lineHeight="1">
-                  {isLoading ? 'SYNCING...' : wngsBalance}
+                  {balancePending ? 'SYNCING...' : wngsBalance}
                 </Heading>
               </VStack>
               <Icon as={MdBolt} color="var(--monarch-accent)" boxSize="28px" />
