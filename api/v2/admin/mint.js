@@ -6,6 +6,7 @@ if (process.env.NODE_ENV !== 'production') {
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes, randomUUID } from 'crypto';
 import { verifyPrivyToken } from '../_auth.js';
+import { normalizeSeasonCode } from '../_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -693,6 +694,44 @@ export default async function handler(req, res) {
     // Default product if missing
     if (!product) product = 'Hoodie';
 
+    // Resolve the operator's season input to a real seasons row.
+    //
+    // This used to go straight into artifacts.season as free text, which is
+    // how the same season ended up stored as '001', '1' and '01' at once --
+    // and why _stamps.js has to brute-force those spellings. Now the input is
+    // matched against the seasons table and rejected if it does not resolve,
+    // so a typo fails the mint instead of producing 100 tags in a season that
+    // does not exist. season_id is the FK; artifacts.season is kept as a
+    // canonical mirror of seasons.code for the existing readers.
+    let seasonId = null;
+    let seasonCode = null;
+    if (season !== undefined && season !== null && String(season).trim() !== '') {
+      const wanted = normalizeSeasonCode(season);
+      const { data: seasonRows, error: seasonErr } = await supabase
+        .from('seasons')
+        .select('id, code, title');
+      if (seasonErr) throw seasonErr;
+
+      const match = (seasonRows || []).find(
+        (r) =>
+          normalizeSeasonCode(r.code) === wanted ||
+          normalizeSeasonCode(r.title) === wanted ||
+          r.id === String(season).trim(),
+      );
+
+      if (!match) {
+        const known = (seasonRows || [])
+          .map((r) => r.code || r.title)
+          .filter(Boolean)
+          .join(', ');
+        return res.status(400).json({
+          error: `Unknown season "${season}". Known seasons: ${known || '(none created yet)'}`,
+        });
+      }
+      seasonId = match.id;
+      seasonCode = match.code || match.title;
+    }
+
     const records = [];
     const generatedUrls = [];
     const baseUrl = process.env.BASE_URL || 'https://monarch-passport.vercel.app';
@@ -707,7 +746,9 @@ export default async function handler(req, res) {
         is_activated: false,
         name: product,
         collection: collection || null,
-        season: season || null,
+        season_id: seasonId,
+        // Canonical mirror of seasons.code -- never raw operator input now.
+        season: seasonCode,
         is_season_artifact: !!isSeasonArtifact
       });
 
