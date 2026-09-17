@@ -7,14 +7,21 @@
 --
 -- After running:  https://<passport-domain>/tap/test-001
 --
--- Written as INSERT ... WHERE NOT EXISTS rather than ON CONFLICT because
--- there is no CREATE TABLE here to confirm a unique index on tag_id — this
--- form is safe either way and is re-runnable.
+-- artifacts.tag_id carries a UNIQUE constraint (artifacts_tag_id_key,
+-- verified against the live database), which is also what lets verify.js
+-- read a tag with .single(). ON CONFLICT makes this re-runnable.
+--
+-- Columns left to their defaults: item_type ('CLOTHING'), base_multiplier
+-- (1.00), referrals (0), shopify_variant_id (NULL). None are read by the
+-- tap flow.
+--
+-- STATUS: already applied to the live project (Monarch-Passport.,
+-- dfpfkmrpnwioxzbwndzx) — kept here so the tag can be recreated.
 -- ===========================================================================
 
 INSERT INTO artifacts (tag_id, name, tier, is_activated, owner_id, collection, season, is_season_artifact)
-SELECT 'test-001', 'Monarch Test Piece', 'MYTHIC', false, NULL, 'GENESIS', '001', true
-WHERE NOT EXISTS (SELECT 1 FROM artifacts WHERE tag_id = 'test-001');
+VALUES ('test-001', 'Monarch Test Piece', 'MYTHIC', false, NULL, 'GENESIS', '001', true)
+ON CONFLICT (tag_id) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- RESET — put the test tag back to unclaimed so the cinematic can be replayed.
