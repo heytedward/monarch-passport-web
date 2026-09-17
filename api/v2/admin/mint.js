@@ -11,6 +11,12 @@ import { normalizeSeasonCode } from '../_stamps.js';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
+// What a physical NFC-tagged piece is. Mirror of src/lib/itemTypes.ts and of
+// the CHECK constraint in db/artifact_item_type.sql -- keep the three in sync.
+// Validated here so a bad value returns a clean 400 naming the valid options,
+// rather than surfacing a raw Postgres constraint violation.
+const ITEM_TYPES = ['KEYCHAIN', 'HOODIE', 'TEE', 'CAP', 'JACKET', 'STICKER', 'OTHER'];
+
 // Auto-pricing by rarity (WNGS) for the Digital Store Forge. Source of truth --
 // mirror of src/lib/destijlPalette.ts RARITY_PRICES. Keep the two in sync.
 const RARITY_PRICES = {
@@ -674,7 +680,7 @@ export default async function handler(req, res) {
     }
 
     // ---- Artifact batch mint ----
-    let { prefix, startNum, count, tier, product, collection, season, isSeasonArtifact } = body;
+    let { prefix, startNum, count, tier, product, collection, season, isSeasonArtifact, itemType } = body;
 
     if (!prefix || startNum === undefined || !count || !tier) {
       return res.status(400).json({ error: 'Missing required parameters' });
@@ -693,6 +699,21 @@ export default async function handler(req, res) {
 
     // Default product if missing
     if (!product) product = 'Hoodie';
+
+    // What the piece physically is. Optional -- a tag whose type is genuinely
+    // not decided yet is a real state -- but a value that IS supplied has to
+    // be one we recognise. There is no default: the old 'CLOTHING' default is
+    // exactly how every artifact ended up mislabelled.
+    let resolvedItemType = null;
+    if (itemType !== undefined && itemType !== null && String(itemType).trim() !== '') {
+      const wanted = String(itemType).trim().toUpperCase();
+      if (!ITEM_TYPES.includes(wanted)) {
+        return res.status(400).json({
+          error: `Unknown itemType "${itemType}". Valid: ${ITEM_TYPES.join(', ')}`,
+        });
+      }
+      resolvedItemType = wanted;
+    }
 
     // Resolve the operator's season input to a real seasons row.
     //
@@ -746,6 +767,7 @@ export default async function handler(req, res) {
         is_activated: false,
         name: product,
         collection: collection || null,
+        item_type: resolvedItemType,
         season_id: seasonId,
         // Canonical mirror of seasons.code -- never raw operator input now.
         season: seasonCode,

@@ -28,6 +28,7 @@ import { MdContentCopy, MdRefresh, MdClose } from 'react-icons/md';
 import { usePrivy } from '@privy-io/react-auth';
 import DeStijlAvatar from '../components/DeStijlAvatar';
 import { rollPalette, RARITIES, priceForRarity } from '../lib/destijlPalette';
+import { ITEM_TYPES } from '../lib/itemTypes';
 import { supabase } from '../lib/supabase';
 
 // Entries may be full Privy DIDs, bare Privy IDs ("cmpho..."), or wallet
@@ -78,6 +79,7 @@ const CommandCenter: React.FC = () => {
   const [mintProduct, setMintProduct] = useState('');
   const [mintCollection, setMintCollection] = useState('');
   const [mintSeason, setMintSeason] = useState('');
+  const [mintItemType, setMintItemType] = useState('');
   const [mintIsSeasonArtifact, setMintIsSeasonArtifact] = useState(false);
   const [mintedUrls, setMintedUrls] = useState<string[]>([]);
   const [isMinting, setIsMinting] = useState(false);
@@ -356,6 +358,7 @@ const CommandCenter: React.FC = () => {
           product: mintProduct || undefined,
           collection: mintCollection || undefined,
           season: mintSeason || undefined,
+          itemType: mintItemType || undefined,
           isSeasonArtifact: mintIsSeasonArtifact,
           adminId: user?.id,
         }),
@@ -1378,13 +1381,40 @@ const CommandCenter: React.FC = () => {
                       </FormControl>
                       <FormControl>
                         <FormLabel fontSize="xs">SEASON</FormLabel>
-                        <Input
+                        {/* Picked from the seasons table, never typed. Free
+                            text here is what produced '001'/'1'/'01'/'S01' as
+                            four spellings of one season; the minter now
+                            rejects anything that does not resolve. */}
+                        <Select
                           borderRadius="0"
-                          placeholder="e.g. S01"
                           fontSize="sm"
+                          placeholder="none"
                           value={mintSeason}
                           onChange={(e) => setMintSeason(e.target.value)}
-                        />
+                        >
+                          {seasons.map((s: any) => (
+                            <option key={s.id} value={s.code || s.id}>
+                              {(s.code || s.id)} — {s.title}
+                            </option>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <FormControl>
+                        <FormLabel fontSize="xs">ITEM_TYPE</FormLabel>
+                        {/* What the piece physically is. No default: the old
+                            'CLOTHING' column default is why every artifact was
+                            mislabelled and keychains ended up named KEYCHAIN. */}
+                        <Select
+                          borderRadius="0"
+                          fontSize="sm"
+                          placeholder="unspecified"
+                          value={mintItemType}
+                          onChange={(e) => setMintItemType(e.target.value)}
+                        >
+                          {ITEM_TYPES.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </Select>
                       </FormControl>
                       <FormControl display="flex" alignItems="center" justifyContent="space-between">
                         <FormLabel fontSize="xs" mb={0}>IS_SEASON_ARTIFACT</FormLabel>
