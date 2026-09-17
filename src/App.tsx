@@ -23,6 +23,7 @@ import Verify from './pages/Verify'
 import Social from './pages/Social'
 import Ascension from './pages/Ascension'
 import Collect from './pages/Collect'
+import Tap from './pages/Tap'
 import useStore from './store/useStore'
 
 import { PRIVY_APP_ID } from './config'
@@ -90,6 +91,9 @@ function AppRoutes() {
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/collect/:code" element={<Collect />} />
         <Route path="/v/:id" element={<Verify />} />
+        {/* First-tap claim: the URL burned into NFC chips. Deliberately outside
+            ProtectedRoute -- the person tapping usually has no account yet. */}
+        <Route path="/tap/:tagId" element={<Tap />} />
         <Route path="/recruit" element={<Recruit />} />
         <Route path="/claim/:id" element={<Claim />} />
         <Route path="/social/:userId" element={<Social />} />
