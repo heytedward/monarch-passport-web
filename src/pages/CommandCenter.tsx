@@ -1662,7 +1662,14 @@ const CommandCenter: React.FC = () => {
                   </FormControl>
                   <FormControl>
                     <FormLabel fontSize="xs">SEASON</FormLabel>
-                    <Input borderRadius="0" placeholder="S01" fontSize="sm" value={prodSeason} onChange={(e) => setProdSeason(e.target.value)} />
+                    {/* Picked from the seasons table, never typed. The old
+                        "S01" placeholder here is exactly how products.season
+                        became a fourth spelling of Season 001. */}
+                    <Select borderRadius="0" fontSize="sm" placeholder="none" value={prodSeason} onChange={(e) => setProdSeason(e.target.value)}>
+                      {seasons.map((s: any) => (
+                        <option key={s.id} value={s.code || s.id}>{(s.code || s.id)} — {s.title}</option>
+                      ))}
+                    </Select>
                   </FormControl>
                 </HStack>
 
@@ -1705,7 +1712,14 @@ const CommandCenter: React.FC = () => {
                   </FormControl>
                   <FormControl>
                     <FormLabel fontSize="xs">SEASON</FormLabel>
-                    <Input borderRadius="0" placeholder="S01" fontSize="sm" value={batchSeason} onChange={(e) => setBatchSeason(e.target.value)} />
+                    {/* Picked from the seasons table, never typed. The old
+                        "S01" placeholder here is exactly how products.season
+                        became a fourth spelling of Season 001. */}
+                    <Select borderRadius="0" fontSize="sm" placeholder="none" value={batchSeason} onChange={(e) => setBatchSeason(e.target.value)}>
+                      {seasons.map((s: any) => (
+                        <option key={s.id} value={s.code || s.id}>{(s.code || s.id)} — {s.title}</option>
+                      ))}
+                    </Select>
                   </FormControl>
                 </HStack>
 
