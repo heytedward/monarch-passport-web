@@ -27,6 +27,7 @@ import Tap from './pages/Tap'
 import useStore from './store/useStore'
 
 import { PRIVY_APP_ID } from './config'
+import { loginMethodsForPath } from './lib/loginMethods'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { authenticated, ready } = usePrivy();
@@ -236,6 +237,15 @@ const Privy = PrivyProvider as unknown as React.ComponentType<any>;
 function App() {
   const { setIdentityType, identityType } = useStore();
 
+  // Route-scoped login methods: the tap flow drops wallet login (see
+  // src/lib/loginMethods.ts for why). Read from window.location because this
+  // component is the parent of the Router -- and that is sound here, because
+  // /tap/* is only ever reached as a cold load from an NFC chip, never by
+  // in-app navigation, so the pathname at mount is the real one.
+  const loginMethods = loginMethodsForPath(
+    typeof window === 'undefined' ? '/' : window.location.pathname,
+  );
+
   return (
     <Privy
       appId={PRIVY_APP_ID}
@@ -245,7 +255,7 @@ function App() {
         }
       }}
       config={{
-        loginMethods: ['email', 'wallet', 'google', 'apple'],
+        loginMethods,
         appearance: {
           theme: 'dark',
           accentColor: '#FFB000',
