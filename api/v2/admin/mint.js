@@ -6,9 +6,16 @@ if (process.env.NODE_ENV !== 'production') {
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes, randomUUID } from 'crypto';
 import { verifyPrivyToken } from '../_auth.js';
+import { normalizeSeasonCode } from '../_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+// What a physical NFC-tagged piece is. Mirror of src/lib/itemTypes.ts and of
+// the CHECK constraint in db/artifact_item_type.sql -- keep the three in sync.
+// Validated here so a bad value returns a clean 400 naming the valid options,
+// rather than surfacing a raw Postgres constraint violation.
+const ITEM_TYPES = ['KEYCHAIN', 'HOODIE', 'TEE', 'CAP', 'JACKET', 'STICKER', 'OTHER'];
 
 // Auto-pricing by rarity (WNGS) for the Digital Store Forge. Source of truth --
 // mirror of src/lib/destijlPalette.ts RARITY_PRICES. Keep the two in sync.
@@ -673,7 +680,7 @@ export default async function handler(req, res) {
     }
 
     // ---- Artifact batch mint ----
-    let { prefix, startNum, count, tier, product, collection, season, isSeasonArtifact } = body;
+    let { prefix, startNum, count, tier, product, collection, season, isSeasonArtifact, itemType } = body;
 
     if (!prefix || startNum === undefined || !count || !tier) {
       return res.status(400).json({ error: 'Missing required parameters' });
@@ -693,6 +700,59 @@ export default async function handler(req, res) {
     // Default product if missing
     if (!product) product = 'Hoodie';
 
+    // What the piece physically is. Optional -- a tag whose type is genuinely
+    // not decided yet is a real state -- but a value that IS supplied has to
+    // be one we recognise. There is no default: the old 'CLOTHING' default is
+    // exactly how every artifact ended up mislabelled.
+    let resolvedItemType = null;
+    if (itemType !== undefined && itemType !== null && String(itemType).trim() !== '') {
+      const wanted = String(itemType).trim().toUpperCase();
+      if (!ITEM_TYPES.includes(wanted)) {
+        return res.status(400).json({
+          error: `Unknown itemType "${itemType}". Valid: ${ITEM_TYPES.join(', ')}`,
+        });
+      }
+      resolvedItemType = wanted;
+    }
+
+    // Resolve the operator's season input to a real seasons row.
+    //
+    // This used to go straight into artifacts.season as free text, which is
+    // how the same season ended up stored as '001', '1' and '01' at once --
+    // and why _stamps.js has to brute-force those spellings. Now the input is
+    // matched against the seasons table and rejected if it does not resolve,
+    // so a typo fails the mint instead of producing 100 tags in a season that
+    // does not exist. season_id is the FK; artifacts.season is kept as a
+    // canonical mirror of seasons.code for the existing readers.
+    let seasonId = null;
+    let seasonCode = null;
+    if (season !== undefined && season !== null && String(season).trim() !== '') {
+      const wanted = normalizeSeasonCode(season);
+      const { data: seasonRows, error: seasonErr } = await supabase
+        .from('seasons')
+        .select('id, code, title');
+      if (seasonErr) throw seasonErr;
+
+      const match = (seasonRows || []).find(
+        (r) =>
+          normalizeSeasonCode(r.code) === wanted ||
+          normalizeSeasonCode(r.title) === wanted ||
+          r.id === String(season).trim(),
+      );
+
+      if (!match) {
+        const known = (seasonRows || [])
+          .map((r) => r.code || r.title)
+          .filter(Boolean)
+          .join(', ');
+        return res.status(400).json({
+          error: `Unknown season "${season}". Known seasons: ${known || '(none created yet)'}`,
+        });
+      }
+      seasonId = match.id;
+      seasonCode = match.code || match.title;
+    }
+
     const records = [];
     const generatedUrls = [];
     const baseUrl = process.env.BASE_URL || 'https://monarch-passport.vercel.app';
@@ -707,7 +767,10 @@ export default async function handler(req, res) {
         is_activated: false,
         name: product,
         collection: collection || null,
-        season: season || null,
+        item_type: resolvedItemType,
+        season_id: seasonId,
+        // Canonical mirror of seasons.code -- never raw operator input now.
+        season: seasonCode,
         is_season_artifact: !!isSeasonArtifact
       });
 
