@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070612">
+<title>PAPILLON · Artifact Tap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #f6f0dc;
+    --muted: #b7b0c9;
+    --gold: #e0b45a;
+    --gold-hi: #f6d48a;
+    --night: #070612;
+    --panel: rgba(16, 14, 38, 0.78);
+    --edge: rgba(224, 180, 90, 0.35);
+    --cyan: #8ef4ff;
+  }
+  html, body { margin: 0; height: 100%; background: var(--night); overflow: hidden; -webkit-tap-highlight-color: transparent; }
+  body { font-family: Outfit, system-ui, sans-serif; color: var(--ink); }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .veil {
+    position: fixed; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 70% 55% at 50% 38%, transparent 0%, rgba(7,6,18,0.15) 55%, rgba(7,6,18,0.72) 100%),
+      linear-gradient(180deg, rgba(7,6,18,0.35) 0%, transparent 22%, transparent 70%, rgba(7,6,18,0.55) 100%);
+  }
+  .status {
+    position: fixed; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 28px);
+    text-align: center; pointer-events: none;
+    opacity: 0; transform: translateY(-8px);
+    transition: opacity .55s ease, transform .55s cubic-bezier(.2,.8,.2,1);
+  }
+  .status.on { opacity: 1; transform: none; }
+  .status .label {
+    font-size: 12px; letter-spacing: 0.32em; text-transform: uppercase; font-weight: 500;
+    color: #efe7c8; text-shadow: 0 0 24px rgba(142,244,255,0.25);
+  }
+  .status .label.dots::after { content: ''; animation: dots 1.4s steps(4) infinite; }
+  .status small {
+    display: block; margin-top: 8px; font-size: 11px; letter-spacing: 0.22em;
+    color: var(--muted); text-transform: uppercase;
+  }
+  @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+  .card {
+    position: fixed; left: 18px; right: 18px; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+    max-width: 420px; margin: 0 auto; box-sizing: border-box; padding: 22px 22px 18px;
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 22px;
+    backdrop-filter: blur(22px) saturate(1.2);
+    -webkit-backdrop-filter: blur(22px) saturate(1.2);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
+    transform: translateY(130%);
+    opacity: 0;
+    transition: transform .7s cubic-bezier(.16,1,.3,1), opacity .5s ease;
+  }
+  .card.show { transform: none; opacity: 1; }
+  .card h1 {
+    margin: 0 0 6px; font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 30px; font-weight: 600; letter-spacing: 0.02em; color: var(--gold-hi);
+  }
+  .card p { margin: 0 0 4px; font-size: 14px; line-height: 1.55; color: #d8d2c0; }
+  .card .tag { color: var(--cyan); letter-spacing: 0.16em; font-size: 11px; text-transform: uppercase; margin-top: 8px; }
+  .actions { display: flex; gap: 10px; margin-top: 18px; }
+  .btn {
+    flex: 1; min-height: 50px; display: flex; align-items: center; justify-content: center;
+    font: 600 12px Outfit, system-ui, sans-serif; letter-spacing: 0.16em; text-transform: uppercase;
+    text-decoration: none; cursor: pointer; border: 0; border-radius: 14px;
+    color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+    box-shadow: 0 8px 24px rgba(224,180,90,0.28), inset 0 1px 0 rgba(255,255,255,0.45);
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn.ghost {
+    flex: 0 0 auto; padding: 0 16px; color: var(--ink);
+    background: rgba(255,255,255,0.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+  }
+  .btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .status { transition-duration: 0.01ms; }
+  }
+</style>
+</head>
+<body>
+<canvas id="c" aria-hidden="true"></canvas>
+<div class="veil"></div>
+<div class="status" id="status" role="status" aria-live="polite"></div>
+<section class="card" id="card" aria-live="polite">
+  <h1 id="cardTitle">Artifact Verified</h1>
+  <p id="cardBody">Welcome to the Monarch Collective.</p>
+  <p class="tag" id="cardTag"></p>
+  <div class="actions">
+    <a class="btn" id="enter" href="https://passport.papillonbrand.us">Enter Passport</a>
+    <button class="btn ghost" id="replay" type="button" aria-label="Replay animation">Replay</button>
+  </div>
+</section>
+<script>
+(() => {
+'use strict';
+
+const params = new URLSearchParams(location.search);
+const TAG_ID = (params.get('tag') || 'MKT-001').slice(0, 32);
+const NEXT_URL = params.get('next') || (params.get('tag') ? `/v/${encodeURIComponent(TAG_ID)}` : 'https://passport.papillonbrand.us');
+const FORCE_FAIL = params.get('fail') === '1';
+const MIN_WARP = 2.6;
+
+async function verifyTag(tagId) {
+  try {
+    const res = await fetch(`/api/v2/verify?id=${encodeURIComponent(tagId)}`);
+    if (res.ok) {
+      const data = await res.json();
+      return { ok: true, tagId, data };
+    } else if (res.status === 404 || res.status === 400) {
+      return { ok: false, tagId };
+    }
+  } catch (e) {
+    // preview fallback
+  }
+  if (FORCE_FAIL) return { ok: false, tagId };
+  await new Promise(r => setTimeout(r, 700));
+  return { ok: true, tagId };
+}
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const S_BOOT = 0, S_WARP = 1, S_COLLAPSE = 2, S_DONE = 3, S_FIZZLE = 4;
+
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d', { alpha: false });
+let W = 1, H = 1, CX = 0.5, CY = 0.36, SCALE = 1;
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = Math.max(1, Math.round(innerWidth * dpr));
+  H = Math.max(1, Math.round(innerHeight * dpr));
+  cv.width = W; cv.height = H;
+  SCALE = Math.min(W, H) / 900;
+  CX = W * 0.5;
+  CY = H * 0.38;
+}
+addEventListener('resize', resize);
+
+// ---------- particles ----------
+const PN = REDUCED ? 160 : 360;
+const P = Array.from({ length: PN }, () => ({
+  alive: false, x: 0, y: 0, vx: 0, vy: 0, life: 1, age: 0, r: 1, hue: 0, drag: 0.96, glow: 1
+}));
+let pcur = 0;
+function spawn(x, y, vx, vy, life, r, hue, drag, glow) {
+  for (let k = 0; k < PN; k++) {
+    const i = (pcur + k) % PN;
+    if (!P[i].alive) {
+      pcur = (i + 1) % PN;
+      const p = P[i];
+      p.alive = true; p.x = x; p.y = y; p.vx = vx; p.vy = vy;
+      p.life = life; p.age = 0; p.r = r; p.hue = hue; p.drag = drag; p.glow = glow;
+      return;
+    }
+  }
+}
+function updateParticles(dt) {
+  for (let i = 0; i < PN; i++) {
+    const p = P[i];
+    if (!p.alive) continue;
+    p.age += dt;
+    if (p.age >= p.life) { p.alive = false; continue; }
+    p.vx *= p.drag; p.vy *= p.drag;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+  }
+}
+function drawParticles() {
+  for (let i = 0; i < PN; i++) {
+    const p = P[i];
+    if (!p.alive) continue;
+    const t = p.age / p.life;
+    const a = (1 - t) * (t < 0.12 ? t / 0.12 : 1) * p.glow;
+    const rr = p.r * (1 + t * 0.6);
+    ctx.beginPath();
+    ctx.fillStyle = p.hue === 0
+      ? `rgba(246,212,138,${0.85 * a})`
+      : p.hue === 1
+        ? `rgba(142,244,255,${0.8 * a})`
+        : `rgba(255,154,210,${0.75 * a})`;
+    ctx.arc(p.x, p.y, rr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ---------- stars ----------
+const NSTAR = REDUCED ? 70 : 140;
+const stars = Array.from({ length: NSTAR }, () => seedStar({}));
+function seedStar(s, zmin = 0.25, zmax = 4.2) {
+  const a = Math.random() * Math.PI * 2;
+  const r = 0.12 + Math.random() * 1.15;
+  s.x = Math.cos(a) * r;
+  s.y = Math.sin(a) * r * 1.25;
+  s.z = zmin + Math.random() * (zmax - zmin);
+  s.warm = Math.random() < 0.28;
+  return s;
+}
+function updateStars(dt, speed) {
+  for (let i = 0; i < NSTAR; i++) {
+    const s = stars[i];
+    s.z -= speed * dt;
+    if (s.z < 0.08) seedStar(s, 3.4, 4.4);
+    else if (s.z > 5) seedStar(s, 0.12, 0.5);
+  }
+}
+function drawStars(trail) {
+  const F = Math.min(W, H) * 0.42;
+  for (let i = 0; i < NSTAR; i++) {
+    const s = stars[i];
+    const z = s.z, z2 = Math.max(0.08, z + trail);
+    const x1 = CX + s.x / z * F;
+    const y1 = CY + s.y / z * F;
+    const x2 = CX + s.x / z2 * F;
+    const y2 = CY + s.y / z2 * F;
+    const near = Math.max(0, 1 - z / 4.2);
+    ctx.strokeStyle = s.warm
+      ? `rgba(240,180,80,${0.15 + near * 0.7})`
+      : `rgba(190,220,255,${0.12 + near * 0.65})`;
+    ctx.lineWidth = 0.7 + near * 1.8 * SCALE;
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+    if (near > 0.55) {
+      ctx.fillStyle = s.warm ? 'rgba(255,230,170,0.9)' : 'rgba(230,248,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(x1, y1, 0.8 + near * 1.6 * SCALE, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+// ---------- PAPILLON mark: vector path traced from the logo (1 unit wide, centered) ----------
+const LOGO_PATH = new Path2D('M-0.4722 0.3759C-0.4539 0.3659 -0.3320 0.2437 -0.2530 0.1561C-0.1504 0.0425 -0.1033 -0.0361 -0.0850 -0.1238C-0.0802 -0.1467 -0.0795 -0.1916 -0.0835 -0.2148C-0.0910 -0.2579 -0.1092 -0.2942 -0.1378 -0.3229C-0.1639 -0.3491 -0.1906 -0.3641 -0.2263 -0.3724C-0.2400 -0.3756 -0.2451 -0.3761 -0.2679 -0.3761C-0.2967 -0.3762 -0.3054 -0.3750 -0.3278 -0.3677C-0.3546 -0.3590 -0.3754 -0.3463 -0.3960 -0.3261C-0.4145 -0.3078 -0.4276 -0.2876 -0.4359 -0.2644C-0.4549 -0.2115 -0.4427 -0.1615 -0.4051 -0.1379C-0.3768 -0.1202 -0.3346 -0.1264 -0.3114 -0.1516C-0.2809 -0.1849 -0.2919 -0.2362 -0.3325 -0.2496C-0.3463 -0.2542 -0.3639 -0.2505 -0.3766 -0.2404L-0.3819 -0.2361L-0.3811 -0.2422C-0.3806 -0.2455 -0.3778 -0.2534 -0.3748 -0.2596C-0.3672 -0.2753 -0.3536 -0.2883 -0.3352 -0.2973C-0.3163 -0.3066 -0.3072 -0.3087 -0.2862 -0.3087C-0.2655 -0.3086 -0.2543 -0.3061 -0.2379 -0.2980C-0.2063 -0.2822 -0.1872 -0.2578 -0.1770 -0.2201C-0.1735 -0.2073 -0.1731 -0.2040 -0.1732 -0.1821C-0.1733 -0.1634 -0.1740 -0.1550 -0.1764 -0.1435C-0.1885 -0.0846 -0.2193 -0.0207 -0.2738 0.0587C-0.3064 0.1060 -0.3388 0.1491 -0.4156 0.2468C-0.4999 0.3541 -0.5026 0.3581 -0.4981 0.3689C-0.4970 0.3716 -0.4946 0.3748 -0.4928 0.3760C-0.4885 0.3791 -0.4779 0.3790 -0.4722 0.3759ZM0.4958 0.3749C0.4973 0.3734 0.4992 0.3701 0.4999 0.3675C0.5028 0.3570 0.4998 0.3525 0.4233 0.2539C0.4172 0.2459 0.4010 0.2253 0.3874 0.2080C0.3188 0.1206 0.2908 0.0826 0.2591 0.0345C0.2117 -0.0378 0.1859 -0.0956 0.1764 -0.1505C0.1711 -0.1813 0.1742 -0.2147 0.1848 -0.2403C0.2030 -0.2843 0.2462 -0.3116 0.2932 -0.3090C0.3291 -0.3069 0.3596 -0.2898 0.3753 -0.2629C0.3793 -0.2559 0.3832 -0.2445 0.3832 -0.2395C0.3833 -0.2365 0.3828 -0.2367 0.3760 -0.2418C0.3398 -0.2692 0.2887 -0.2342 0.2960 -0.1870C0.3013 -0.1526 0.3319 -0.1280 0.3692 -0.1280C0.4060 -0.1280 0.4365 -0.1544 0.4443 -0.1932C0.4578 -0.2598 0.4091 -0.3381 0.3374 -0.3651C0.3159 -0.3732 0.3013 -0.3758 0.2750 -0.3763C0.2474 -0.3768 0.2366 -0.3754 0.2138 -0.3683C0.1652 -0.3533 0.1261 -0.3188 0.1033 -0.2709C0.0896 -0.2422 0.0839 -0.2174 0.0827 -0.1814C0.0818 -0.1522 0.0833 -0.1363 0.0899 -0.1081C0.1091 -0.0259 0.1600 0.0542 0.2656 0.1688C0.3488 0.2590 0.4568 0.3665 0.4736 0.3760C0.4794 0.3792 0.4916 0.3786 0.4958 0.3749ZM0.0196 -0.0535C0.0406 -0.0614 0.0539 -0.0855 0.0497 -0.1080C0.0477 -0.1191 0.0430 -0.1276 0.0346 -0.1354C0.0241 -0.1453 0.0168 -0.1481 0.0014 -0.1483C-0.0097 -0.1484 -0.0123 -0.1479 -0.0200 -0.1443C-0.0402 -0.1350 -0.0520 -0.1134 -0.0485 -0.0921C-0.0468 -0.0815 -0.0421 -0.0724 -0.0345 -0.0646C-0.0201 -0.0502 -0.0003 -0.0461 0.0196 -0.0535ZM0.0227 -0.1878C0.0374 -0.1950 0.0468 -0.2077 0.0499 -0.2247C0.0528 -0.2410 0.0456 -0.2601 0.0325 -0.2706C0.0024 -0.2946 -0.0403 -0.2789 -0.0484 -0.2407C-0.0510 -0.2282 -0.0471 -0.2128 -0.0382 -0.2008C-0.0343 -0.1955 -0.0222 -0.1874 -0.0146 -0.1849C-0.0047 -0.1816 0.0130 -0.1830 0.0227 -0.1878Z');
+
+function drawLogo(t, open, fail) {
+  if (open <= 0.01) return;
+  const bob = Math.sin(t * 1.6) * 6 * SCALE;
+  const size = Math.min(W, H) * 0.52 * (0.72 + 0.28 * open);   // logo width in canvas px
+
+  // Coin spin around the vertical axis: a 3 s eased turn, then 1.5 s facing front.
+  let s = 1;
+  if (logoT > 1.1) {
+    const cyc = (logoT - 1.1) % 4.5;
+    if (cyc < 3) {
+      const u = cyc / 3, e = u < 0.5 ? 2 * u * u : 1 - 2 * (1 - u) * (1 - u);
+      s = Math.cos(e * Math.PI * 2);
+    }
+  }
+  const as = Math.abs(s), back = s < 0;
+
+  ctx.save();
+  ctx.translate(CX, CY + bob);
+  ctx.globalAlpha = Math.min(1, open);
+
+  // soft halo behind the mark
+  const gr = size * 0.8;
+  const g = ctx.createRadialGradient(0, 0, 4, 0, 0, gr);
+  g.addColorStop(0, fail ? 'rgba(255,80,110,0.2)' : 'rgba(255,220,140,0.24)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, gr, 0, Math.PI * 2); ctx.fill();
+
+  ctx.save();
+  ctx.scale(size * Math.max(as, 0.015) * (back ? -1 : 1), size);
+  const fg = ctx.createLinearGradient(-0.4, -0.38, 0.4, 0.38);
+  if (fail)      { fg.addColorStop(0, '#f6d2d8'); fg.addColorStop(0.5, '#d88a96'); fg.addColorStop(1, '#9a4c5c'); }
+  else if (back) { fg.addColorStop(0, '#d8cfae'); fg.addColorStop(0.5, '#bdb391'); fg.addColorStop(1, '#8f866b'); }
+  else           { fg.addColorStop(0, '#fffaf0'); fg.addColorStop(0.5, '#f6f0dc'); fg.addColorStop(1, '#dccfa8'); }
+  ctx.shadowColor = fail ? 'rgba(255,90,120,0.45)' : 'rgba(246,212,138,0.5)';
+  ctx.shadowBlur = 30 * SCALE;
+  ctx.fillStyle = fg;
+  ctx.fill(LOGO_PATH);
+  ctx.shadowBlur = 0;
+  // light sheen as the mark turns edge-on
+  if (as < 0.98) {
+    ctx.globalAlpha *= (1 - as) * 0.8;
+    ctx.fillStyle = '#ffffff';
+    ctx.fill(LOGO_PATH);
+  }
+  ctx.restore();
+  ctx.restore();
+}
+
+// ---------- state ----------
+let simTime = 0, state = S_BOOT, stateT = 0;
+let warpPos = 0, spinPos = 0, speed = 0, spin = 0, tun = 0, coreR = 0;
+let starSpeed = 0, starTrail = 0.12;
+let verifyDone = false, verifyOk = false;
+let bangOn = false, bangT = 0, logoOn = false, logoT = 0;
+let shakeT = 0, shakeAmp = 0, camX = 0, camY = 0;
+let uiAt = -1, uiShown = false, moteAcc = 0, flash = 0;
+
+function enter(s) {
+  state = s; stateT = 0;
+  if (s === S_WARP) setStatus('Verifying artifact', true);
+  if (s === S_FIZZLE) setStatus('', false);
+}
+
+function bang() {
+  bangOn = true; bangT = 0; logoOn = true; logoT = 0; flash = 1;
+  if (!REDUCED) { shakeT = 0.42; shakeAmp = 7 * SCALE; }
+  const n = REDUCED ? 80 : 180;
+  for (let k = 0; k < n; k++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = (40 + Math.random() * 280) * SCALE;
+    const hue = Math.random() < 0.55 ? 0 : (Math.random() < 0.5 ? 1 : 2);
+    spawn(CX, CY, Math.cos(a) * s, Math.sin(a) * s * 1.05, 0.55 + Math.random() * 1.1,
+          (1.2 + Math.random() * 2.8) * SCALE, hue, 0.94 + Math.random() * 0.04, 1);
+  }
+  stars.forEach(s => seedStar(s, 0.3, 4));
+  uiAt = simTime + 0.85;
+  try { navigator.vibrate && navigator.vibrate([30, 24, 90]); } catch (e) {}
+}
+
+function update(dt) {
+  simTime += dt; stateT += dt;
+
+  if (state === S_BOOT) {
+    tun = 0; speed = 0; coreR = stateT > 0.25 ? 4 * SCALE : 0;
+    starSpeed = 0.18; starTrail = 0.06;
+    if (stateT >= 0.75) enter(S_WARP);
+  } else if (state === S_WARP) {
+    const p = Math.min(1, stateT / MIN_WARP);
+    const e = p * p;
+    tun = Math.min(1, stateT / 0.7);
+    const m = REDUCED ? 0.55 : 1;
+    speed = m * (0.8 + 5.2 * e);
+    spin = 1.2 + 4.6 * e;
+    coreR = (6 + 22 * p) * SCALE;
+    starSpeed = m * (0.7 + 6.2 * e);
+    starTrail = 0.08 + 0.55 * e;
+    if (!REDUCED && p > 0.72) { shakeT = Math.max(shakeT, 0.04); shakeAmp = 2 * SCALE; }
+    if (verifyDone && stateT >= MIN_WARP) enter(verifyOk ? S_COLLAPSE : S_FIZZLE);
+  } else if (state === S_COLLAPSE) {
+    const p = Math.min(1, stateT / 0.48);
+    tun = 1 - p;
+    speed *= 0.88; spin *= 0.92;
+    coreR = Math.max(0, 28 * SCALE * (1 - p * p));
+    starSpeed = -8.5; starTrail = -0.28;
+    if (stateT >= 0.48) { enter(S_DONE); bang(); }
+  } else if (state === S_FIZZLE) {
+    const p = Math.min(1, stateT / 1.15);
+    tun = Math.max(0, 1 - p * 1.35);
+    speed *= 0.94; spin *= 0.94;
+    coreR = (p < 0.55 && ((simTime * 12) | 0) % 2) ? 10 * SCALE : 2 * SCALE;
+    starSpeed = 0.28 * (1 - p); starTrail = 0.05;
+    if (stateT >= 1.15) { state = S_DONE; stateT = 0; logoOn = true; logoT = 0; uiAt = simTime + 0.15; }
+  } else if (state === S_DONE) {
+    starSpeed = logoOn ? 0.32 : 0.1; starTrail = 0.07;
+    moteAcc += dt * 4;
+    while (logoOn && verifyOk && moteAcc >= 1) {
+      moteAcc -= 1;
+      const a = Math.random() * Math.PI * 2;
+      const r = (70 + Math.random() * 70) * SCALE;
+      spawn(CX + Math.cos(a) * r, CY + Math.sin(a) * r * 0.72,
+            Math.cos(a) * 12 * SCALE, Math.sin(a) * 12 * SCALE - 18 * SCALE,
+            0.8 + Math.random() * 0.8, (1 + Math.random() * 1.8) * SCALE,
+            Math.random() < 0.7 ? 0 : 1, 0.99, 0.7);
+    }
+  }
+
+  warpPos += speed * dt;
+  spinPos += spin * dt;
+  updateStars(dt, starSpeed);
+  updateParticles(dt);
+
+  if (bangOn) { bangT += dt; if (bangT > 1.5) bangOn = false; }
+  if (logoOn) logoT += dt;
+  flash = Math.max(0, flash - dt * 3.2);
+
+  if (shakeT > 0) {
+    shakeT -= dt;
+    const amp = shakeT > 0.2 ? shakeAmp : shakeAmp * 0.4;
+    camX = (Math.random() * 2 - 1) * amp;
+    camY = (Math.random() * 2 - 1) * amp * 0.6;
+  } else { camX = 0; camY = 0; }
+
+  if (uiAt > 0 && simTime >= uiAt && !uiShown) {
+    uiShown = true;
+    setStatus('', false);
+    showCard(true);
+  }
+}
+
+function drawBackground() {
+  const bg = ctx.createRadialGradient(CX, CY, 0, CX, CY, Math.max(W, H) * 0.85);
+  bg.addColorStop(0, '#16133a');
+  bg.addColorStop(0.45, '#0c0a22');
+  bg.addColorStop(1, '#05040f');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+}
+
+// ---------- Odyssey corridor: octagonal white tunnel, Mondrian panels, slit-scan streaks ----------
+const OCT = 8, R_V = 1 / Math.cos(Math.PI / 8);
+const SEG_L = 0.9, NSEG = 18, Z0 = 0.18;
+const MOND = [[214, 40, 40], [29, 78, 216], [244, 194, 13], [17, 17, 17]];   // red, blue, yellow, black
+const NEON = ['255,70,70', '70,130,255', '255,214,60', '190,90,255', '60,255,170'];
+const RX = new Float32Array((NSEG + 1) * OCT), RY = new Float32Array((NSEG + 1) * OCT), RZ = new Float32Array(NSEG + 1);
+const CA = new Float32Array(OCT + 1), SA = new Float32Array(OCT + 1);
+let tunF = 1, tunRot = 0;
+function mixW(c, f) {                       // blend an [r,g,b] toward white by f
+  return 'rgb(' + ((c[0] + (255 - c[0]) * f) | 0) + ',' + ((c[1] + (255 - c[1]) * f) | 0) + ',' + ((c[2] + (255 - c[2]) * f) | 0) + ')';
+}
+function tp(j, u, z, out) {                 // point on face j at fraction u across, depth z -> screen
+  const x = CA[j] + (CA[j + 1] - CA[j]) * u, y = SA[j] + (SA[j + 1] - SA[j]) * u;
+  out[0] = CX + x / z * tunF; out[1] = CY + y / z * tunF;
+}
+const P0 = [0, 0], P1 = [0, 0], P2 = [0, 0], P3 = [0, 0];
+function quad(j, u0, u1, zf, zn) {
+  tp(j, u0, zf, P0); tp(j, u1, zf, P1); tp(j, u1, zn, P2); tp(j, u0, zn, P3);
+  ctx.beginPath(); ctx.moveTo(P0[0], P0[1]); ctx.lineTo(P1[0], P1[1]); ctx.lineTo(P2[0], P2[1]); ctx.lineTo(P3[0], P3[1]); ctx.closePath();
+}
+function drawTunnel() {
+  if (tun < 0.01) return;
+  tunF = Math.min(W, H) * 0.95;
+  tunRot = spinPos * 0.045;
+  for (let j = 0; j <= OCT; j++) {
+    const a = tunRot + j * Math.PI / 4 + Math.PI / 8;
+    CA[j] = Math.cos(a) * R_V; SA[j] = Math.sin(a) * R_V;
+  }
+  const off = warpPos % SEG_L, base = Math.floor(warpPos / SEG_L);
+  for (let k = 0; k <= NSEG; k++) RZ[k] = Z0 + k * SEG_L + (SEG_L - off);
+  const zEnd = RZ[NSEG];
+  const e = Math.max(0, Math.min(1, (speed - 1.5) / 4.5));   // warp intensity
+
+  ctx.save();
+  ctx.globalAlpha = tun;
+  // far end of the corridor: a white octagon of light
+  ctx.beginPath();
+  for (let j = 0; j < OCT; j++) { const x = CX + CA[j] / zEnd * tunF, y = CY + SA[j] / zEnd * tunF; j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.closePath(); ctx.fillStyle = '#ffffff'; ctx.fill();
+
+  for (let k = NSEG - 1; k >= 0; k--) {
+    const zn = RZ[k], zf = RZ[k + 1];
+    const fog = Math.pow(Math.max(0, Math.min(1, (zn - 1.2) / (zEnd - 1.2))), 0.7);
+    const id = k + base;
+    const lw = Math.max(0.6, 0.035 / zn * tunF);
+    for (let j = 0; j < OCT; j++) {
+      // wall
+      const shade = 0.93 + 0.05 * SA[j];
+      const wv = (241 * shade) | 0;
+      quad(j, 0, 1, zf, zn);
+      ctx.fillStyle = mixW([wv, wv - 2, wv - 6], fog);
+      ctx.fill();
+      // recessed Mondrian panel with gold trim
+      const ci = ((id * 3 + j * 5) % 4 + 4) % 4;
+      const zp0 = zf - (zf - zn) * 0.18, zp1 = zf - (zf - zn) * 0.8;
+      quad(j, 0.17, 0.83, zp0, zp1);
+      ctx.fillStyle = mixW(MOND[ci], fog * 0.92);
+      ctx.fill();
+      ctx.lineWidth = lw * 0.55;
+      ctx.strokeStyle = 'rgba(214,168,58,' + (1 - fog) + ')';
+      ctx.stroke();
+      // light bar at the near edge of alternating faces
+      if (((id + j) & 1) === 0) {
+        tp(j, 0.12, zn * 1.02, P0); tp(j, 0.88, zn * 1.02, P1);
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'rgba(255,255,255,' + (0.35 * (1 - fog)) + ')';
+        ctx.lineWidth = lw * 3.2;
+        ctx.beginPath(); ctx.moveTo(P0[0], P0[1]); ctx.lineTo(P1[0], P1[1]); ctx.stroke();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = lw * 1.3; ctx.stroke();
+      }
+    }
+  }
+
+  // Stargate slit-scan: neon streaks smear outward from the nearest panels as speed builds
+  if (e > 0.05) {
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'butt';
+    for (let k = 0; k < 7; k++) {
+      const zn = RZ[k], id = k + base;
+      for (let j = 0; j < OCT; j++) {
+        const h = ((id * 7 + j * 3) % 5 + 5) % 5;
+        const zc = zn + SEG_L * 0.5, a = e * 0.6 * tun * (1 - k / 7);
+        ctx.strokeStyle = 'rgba(' + NEON[h] + ',' + a + ')';
+        ctx.lineWidth = Math.max(1, 0.045 / zc * tunF);
+        ctx.beginPath();
+        for (let u = 0.25; u < 0.8; u += 0.25) {          // three thin light-lines per panel
+          tp(j, u, zc, P0); tp(j, u, zc * (1 - 0.8 * e), P1);
+          ctx.moveTo(P0[0], P0[1]); ctx.lineTo(P1[0], P1[1]);
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.restore();
+}
+
+function drawCore() {
+  if (coreR <= 0) return;
+  const g = ctx.createRadialGradient(CX, CY, 0, CX, CY, coreR * 2.4);
+  g.addColorStop(0, 'rgba(255,248,230,0.95)');
+  g.addColorStop(0.18, 'rgba(255,210,120,0.55)');
+  g.addColorStop(0.45, state === S_FIZZLE ? 'rgba(255,80,110,0.18)' : 'rgba(90,180,255,0.16)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(CX, CY, coreR * 2.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff8e8';
+  ctx.beginPath();
+  ctx.arc(CX, CY, Math.max(1.2, coreR * 0.22), 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawShock() {
+  if (!bangOn) return;
+  for (let k = 0; k < 3; k++) {
+    const t = bangT - k * 0.1;
+    if (t <= 0) continue;
+    const r = t * Math.min(W, H) * (0.55 - k * 0.08);
+    const a = Math.max(0, 1 - t / 0.9);
+    ctx.strokeStyle = k === 1 ? `rgba(240,180,80,${a * 0.55})` : `rgba(160,230,255,${a * 0.4})`;
+    ctx.lineWidth = (2.5 - k * 0.6) * SCALE;
+    ctx.beginPath();
+    ctx.arc(CX, CY, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+function render() {
+  ctx.setTransform(1, 0, 0, 1, camX, camY);
+  const smear = (state === S_WARP && !REDUCED) ? 0.5 * Math.max(0, Math.min(1, (speed - 2) / 4)) : 0;
+  ctx.globalAlpha = 1 - smear;
+  drawBackground();
+  ctx.globalAlpha = 1;
+  drawStars(starTrail);
+  drawTunnel();
+  drawCore();
+  drawShock();
+
+  const open = logoOn ? Math.min(1, Math.max(0, (logoT - 0.08) / 0.45)) : 0;
+  if (logoOn) drawLogo(simTime, open, !verifyOk && state === S_DONE);
+
+  drawParticles();
+
+  if (flash > 0) {
+    ctx.fillStyle = `rgba(255,248,230,${flash * 0.72})`;
+    ctx.fillRect(-20, -20, W + 40, H + 40);
+  }
+}
+
+// ---------- UI ----------
+const statusEl = document.getElementById('status');
+const card = document.getElementById('card');
+const cardTitle = document.getElementById('cardTitle');
+const cardBody = document.getElementById('cardBody');
+const cardTag = document.getElementById('cardTag');
+const enterBtn = document.getElementById('enter');
+const replayBtn = document.getElementById('replay');
+enterBtn.href = NEXT_URL;
+
+function setStatus(text, loading) {
+  statusEl.innerHTML = '';
+  if (!text) { statusEl.classList.remove('on'); return; }
+  const t = document.createElement('span');
+  t.className = 'label' + (loading ? ' dots' : '');
+  t.textContent = text;
+  const s = document.createElement('small');
+  s.textContent = 'Tag ' + TAG_ID;
+  statusEl.appendChild(t);
+  statusEl.appendChild(s);
+  statusEl.classList.add('on');
+}
+
+function showCard(on) {
+  if (on) {
+    if (verifyOk) {
+      cardTitle.textContent = 'Artifact Verified';
+      cardBody.textContent = 'Welcome to the Monarch Collective.';
+      enterBtn.style.display = '';
+      replayBtn.textContent = 'Replay';
+    } else {
+      cardTitle.textContent = "Couldn't verify";
+      cardBody.textContent = 'Hold your phone to the tag again, or retry below.';
+      enterBtn.style.display = 'none';
+      replayBtn.textContent = 'Retry';
+    }
+    cardTag.textContent = 'Tag ' + TAG_ID;
+  }
+  card.classList.toggle('show', on);
+}
+
+function start() {
+  P.forEach(p => { p.alive = false; });
+  stars.forEach(s => seedStar(s, 0.2, 4.2));
+  simTime = 0; verifyDone = false; verifyOk = false;
+  bangOn = false; logoOn = false; shakeT = 0; uiAt = -1; uiShown = false;
+  moteAcc = 0; flash = 0; warpPos = 0; spinPos = 0;
+  speed = 0; spin = 0; tun = 0; coreR = 0;
+  showCard(false);
+  setStatus('Signal detected', false);
+  enter(S_BOOT);
+  verifyTag(TAG_ID).then(r => { verifyOk = !!(r && r.ok); verifyDone = true; })
+                   .catch(() => { verifyOk = false; verifyDone = true; });
+}
+replayBtn.addEventListener('click', start);
+
+resize();
+start();
+let acc = 0, last = performance.now();
+const DT = 1 / 60;
+function loop(now) {
+  let d = (now - last) / 1000; last = now;
+  if (d > 0.25) d = 0.25; if (d < 0) d = 0;
+  acc += d;
+  while (acc >= DT) { update(DT); acc -= DT; }
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
