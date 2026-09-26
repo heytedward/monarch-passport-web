@@ -25,7 +25,7 @@ function admin() {
 }
 
 // Warn-level events are also stored in `security_events` so the scheduled
-// alert check (api/v2/security-alert.js) can spot spikes. Bounded and
+// alert check (api/v2/_securityAlert.js) can spot spikes. Bounded and
 // best-effort: a slow or failing insert never blocks or breaks the request.
 async function persist(event, fields) {
   const db = admin();

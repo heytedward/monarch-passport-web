@@ -9,7 +9,7 @@
 // Only the violated directive, the blocked resource's origin and the page path
 // are logged -- never query strings, full URLs or script samples, which can
 // carry tokens or personal data.
-import { securityEvent } from './v2/_audit.js';
+import { securityEvent } from './_audit.js';
 
 const MAX_BODY = 16 * 1024;
 
