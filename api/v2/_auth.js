@@ -2,6 +2,7 @@
 // function. Supabase doesn't validate Privy tokens, so we verify them here and
 // then do all DB work with the service role.
 import { PrivyClient } from '@privy-io/server-auth';
+import { securityEvent } from './_audit.js';
 
 const APP_ID = process.env.PRIVY_APP_ID || process.env.VITE_PRIVY_APP_ID;
 const APP_SECRET = process.env.PRIVY_APP_SECRET;
@@ -19,7 +20,7 @@ export async function verifyPrivyToken(accessToken) {
     const claims = await client().verifyAuthToken(accessToken);
     return claims.userId || null;
   } catch (e) {
-    console.error('PRIVY_VERIFY_FAILED:', e?.message || e);
+    securityEvent('auth.token_rejected', { reason: e?.message || String(e) }, 'warn');
     return null;
   }
 }

@@ -4,8 +4,27 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
-import { randomBytes, randomUUID } from 'crypto';
+import { randomBytes, randomUUID, timingSafeEqual } from 'crypto';
+import { securityEvent } from '../_audit.js';
 import { verifyPrivyToken } from '../_auth.js';
+
+// Constant-time passphrase check. timingSafeEqual needs equal-length buffers,
+// so both sides are zero-padded to the longer length and the real lengths are
+// compared separately -- no hashing (a fast hash over a secret reads as weak
+// password hashing, and isn't needed just to compare). An unset
+// ADMIN_PASSPHRASE never matches.
+function passphraseMatches(given) {
+  const expected = process.env.ADMIN_PASSPHRASE;
+  if (!given || !expected) return false;
+  const a = Buffer.from(String(given), 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  const len = Math.max(a.length, b.length);
+  const pa = Buffer.alloc(len);
+  const pb = Buffer.alloc(len);
+  a.copy(pa);
+  b.copy(pb);
+  return timingSafeEqual(pa, pb) && a.length === b.length;
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -70,8 +89,10 @@ const ADMIN_PRIVY_IDS = (process.env.VITE_ADMIN_PRIVY_ID || 'did:privy:cmphogmw5
 // pattern used by api/v2/claim.js and api/v2/redeem-claim.js.
 async function isAuthorizedAdmin(req, claimedAdminId) {
   const passphrase = req.headers['x-admin-passphrase'];
-  if (passphrase && passphrase === process.env.ADMIN_PASSPHRASE) {
-    return true;
+  if (passphrase) {
+    const ok = passphraseMatches(passphrase);
+    securityEvent(ok ? 'admin.auth_ok' : 'admin.auth_denied', { method: 'passphrase' }, ok ? 'info' : 'warn');
+    if (ok) return true;
   }
 
   const authHeader = req.headers.authorization;
@@ -80,12 +101,15 @@ async function isAuthorizedAdmin(req, claimedAdminId) {
     return false;
   }
   if (!ADMIN_PRIVY_IDS.includes(String(claimedAdminId).toLowerCase())) {
+    securityEvent('admin.auth_denied', { method: 'privy', did: String(claimedAdminId), reason: 'not_admin' }, 'warn');
     return false;
   }
 
   // Verify the Privy token and that it belongs to the claimed admin.
   const verifiedUserId = await verifyPrivyToken(accessToken);
-  return !!verifiedUserId && verifiedUserId === claimedAdminId;
+  const ok = !!verifiedUserId && verifiedUserId === claimedAdminId;
+  securityEvent(ok ? 'admin.auth_ok' : 'admin.auth_denied', { method: 'privy', did: String(claimedAdminId), reason: ok ? undefined : 'token_mismatch' }, ok ? 'info' : 'warn');
+  return ok;
 }
 
 // Digital Store Forge: create a theme or avatar-skin product row. Lives here

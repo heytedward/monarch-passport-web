@@ -4,6 +4,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 import { createClient } from '@supabase/supabase-js';
 import { addSeasonXp, getActiveSeason, setSeasonPremium, XP_ACTIVATION } from './_ascension.js';
+import { securityEvent } from './_audit.js';
 import { verifyPrivyToken } from './_auth.js';
 import { recordQuestAction } from './_quests.js';
 import { clientIpHash, enforceRateLimit, sendRateLimited } from './_ratelimit.js';
@@ -48,6 +49,7 @@ export default async function handler(req, res) {
     // owner (Supabase can't validate Privy tokens).
     const verifiedUserId = await verifyPrivyToken(accessToken);
     if (!verifiedUserId || verifiedUserId !== ownerId) {
+      securityEvent('claim.denied', { tagId, did: ownerId, reason: verifiedUserId ? 'owner_mismatch' : 'unverified' }, 'warn');
       return res.status(401).json({ error: 'ACCESS_DENIED // IDENTITY_VERIFICATION_FAILED' });
     }
 
@@ -80,6 +82,7 @@ export default async function handler(req, res) {
     if (fetchError) throw fetchError;
     if (!artifact) return res.status(404).json({ error: 'ARTIFACT_NOT_FOUND' });
     if (artifact.is_activated) {
+      securityEvent('claim.conflict', { tagId, did: ownerId }, 'warn');
       return res.status(409).json({ error: 'ARTIFACT_ALREADY_CLAIMED' });
     }
 
@@ -95,6 +98,7 @@ export default async function handler(req, res) {
 
     if (updateError) throw updateError;
     if (!updated) {
+      securityEvent('claim.conflict', { tagId, did: ownerId, reason: 'race' }, 'warn');
       return res.status(409).json({ error: 'ARTIFACT_ALREADY_CLAIMED' });
     }
 
@@ -182,6 +186,7 @@ export default async function handler(req, res) {
       console.error('CLAIM_COLLECTION_STAMP_WARN:', stampErr);
     }
 
+    securityEvent('claim.succeeded', { tagId, did: ownerId, awarded: bonus });
     return res.status(200).json({ success: true, artifact: updated, awarded: bonus, premiumUnlocked: isPremiumUnlocked });
   } catch (err) {
     console.error('CLAIM_ERROR:', err);
