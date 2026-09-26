@@ -4,6 +4,46 @@ Audit of the 20-point checklist, covering fixes in `04563ad`, `2968663` and
 `HEAD`. Item 4 was verified directly against the production Supabase project on
 2026-09-03; everything else is grounded in a specific file and line.
 
+## Update — 2026-09-26
+
+Re-checked against production. `db/rls_hardening.sql` **is applied**: none of
+the world-open `claim_links` / `wngs_discounts` / `user_season_progress` /
+`artifact_scans` policies remain.
+
+**Fixed in this pass**
+
+- **Dormant client write policies removed** (`db/lockdown_client_writes.sql`,
+  applied). Edge logs show Supabase never sees an `authenticated` request (it
+  doesn't accept Privy JWTs), so owner-scoped UPDATE/INSERT policies on
+  `profiles`, `transactions`, `user_assets`, `user_quests` and
+  `user_digital_inventory` never matched. But they would have let a user set
+  their own `wngs_balance` the moment anyone enabled Privy as a Supabase auth
+  provider. All those writes already go through service-role routes. The only
+  client-writable policy left is the intentional `waitlist` INSERT.
+- **Trigger functions no longer callable over RPC** (EXECUTE revoked from
+  anon/authenticated; triggers still fire, verified).
+- **Admin passphrase compared in constant time** (`api/v2/admin/mint.js`,
+  closes the note under #10). An unset `ADMIN_PASSPHRASE` never matches.
+- **Audit logging** — `api/v2/_audit.js` emits one-line `SECURITY_EVENT {json}`
+  records for rejected Privy tokens, rate-limit denials and degradation, admin
+  auth success/failure, and claim denied/conflict/succeeded. Credential-like
+  fields are dropped and strings capped, and IPs appear only as a hash prefix.
+- **CI secret scanning + SAST** — `.github/workflows/security.yml`: gitleaks
+  on every PR/push (full history scanned clean on 2026-09-26) and CodeQL
+  `security-extended`, weekly as well as per PR.
+
+**Still open / needs a decision**
+
+1. **Alerts.** Events are now greppable, but nothing pages anyone. Options: a
+   Vercel log drain to a service with alert rules (Better Stack, Axiom,
+   Datadog), or a Vercel Monitoring alert on `SECURITY_EVENT` +
+   `"level":"warn"` volume.
+2. **Environment isolation.** Vercel preview deployments use the *production*
+   Supabase project, so testing on a preview writes real data. A Supabase
+   branch or a separate staging project for Preview env vars would fix this.
+3. **CSP enforcement** (#18) and **NTAG 424 SUN** tag authentication are
+   unchanged from the list below.
+
 ## Summary
 
 | # | Item | Status |

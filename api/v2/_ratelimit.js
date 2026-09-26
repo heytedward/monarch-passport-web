@@ -13,6 +13,7 @@
 // authentication), not the primary control.
 
 import { createHash } from 'crypto';
+import { securityEvent } from './_audit.js';
 
 // Fraction of calls that also sweep elapsed windows, so the table doesn't grow
 // without bound. ~1 in 200 requests pays a cheap indexed DELETE.
@@ -68,6 +69,9 @@ export async function enforceRateLimit(admin, { scope, identifier, limit, window
 
     const hits = Number(data) || 0;
     if (hits > limit) {
+      // DIDs are public identifiers; IP hashes are logged as a short prefix.
+      const who = identifier.startsWith('did:') ? identifier : identifier.slice(0, 12);
+      securityEvent('ratelimit.denied', { scope, who, hits, limit }, 'warn');
       return { allowed: false, retryAfterMs: windowEnd - now };
     }
     return { allowed: true, retryAfterMs: 0 };
@@ -75,6 +79,7 @@ export async function enforceRateLimit(admin, { scope, identifier, limit, window
     // See FAILS OPEN above. Loud, because a persistently degraded limiter means
     // the enumeration guard on /verify and /claim is not actually running.
     console.error(`RATE_LIMIT_DEGRADED [${scope}]:`, err?.message || err);
+    securityEvent('ratelimit.degraded', { scope, reason: err?.message || String(err) }, 'warn');
     return { allowed: true, retryAfterMs: 0 };
   }
 }
