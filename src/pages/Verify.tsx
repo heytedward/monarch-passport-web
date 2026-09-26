@@ -67,6 +67,7 @@ const Verify: React.FC = () => {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         const data = await response.json();
+        if (cancelled) return;
 
         if (!response.ok) {
           setError(data.error || 'INVALID_OR_COUNTERFEIT_TAG');
@@ -74,17 +75,21 @@ const Verify: React.FC = () => {
           setArtifact(data);
         }
       } catch (err) {
-        setError('SYSTEM_OFFLINE // UPLINK_FAILURE');
+        if (!cancelled) setError('SYSTEM_OFFLINE // UPLINK_FAILURE');
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
-    // Wait for Privy to resolve, then (re)fetch — re-running on auth changes so
-    // isOwner is recomputed once the user logs in.
-    if (id && ready) {
+    // Fetch straight away (anonymously if Privy hasn't resolved yet) so a slow
+    // or blocked Privy never strands the tap on the scanning screen; re-run on
+    // auth changes so isOwner is recomputed once the user logs in. `cancelled`
+    // drops a superseded response (e.g. the anon one landing after the authed one).
+    let cancelled = false;
+    if (id) {
       fetchArtifact();
     }
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, ready, authenticated, user?.id]);
 
