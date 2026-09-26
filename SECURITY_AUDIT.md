@@ -41,8 +41,13 @@ the world-open `claim_links` / `wngs_discounts` / `user_season_progress` /
 2. **Environment isolation.** Vercel preview deployments use the *production*
    Supabase project, so testing on a preview writes real data. A Supabase
    branch or a separate staging project for Preview env vars would fix this.
-3. **CSP enforcement** (#18) and **NTAG 424 SUN** tag authentication are
-   unchanged from the list below.
+3. **CSP enforcement** (#18): violation reporting is now wired up. The
+   report-only policy sends `report-uri /api/csp-report`, which logs each
+   violation as `SECURITY_EVENT csp.violation`, with only the directive, the
+   blocked origin and the page path. Let real traffic run for a few days,
+   allow-list anything legitimate that shows up, then switch the header to
+   `Content-Security-Policy` to enforce it.
+4. **NTAG 424 SUN** tag authentication is unchanged from the list below.
 
 ## Summary
 
