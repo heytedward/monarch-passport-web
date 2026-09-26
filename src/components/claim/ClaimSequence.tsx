@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { RARITY_COLORS } from '../../lib/destijlPalette';
 import {
   mountClaimSequence,
@@ -72,7 +73,10 @@ const ClaimSequence: React.FC<ClaimSequenceProps> = ({
     }
   }, [ready, authenticated]);
 
-  return <div ref={rootRef} />;
+  // Portal to <body>: route pages sit inside PageTransition's
+  // `will-change: transform` wrapper, which would otherwise become the
+  // containing block for this position:fixed layer and collapse it to 0px.
+  return createPortal(<div ref={rootRef} />, document.body);
 };
 
 export default ClaimSequence;
