@@ -4,19 +4,26 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
+import { randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import { securityEvent } from '../_audit.js';
 import { verifyPrivyToken } from '../_auth.js';
 
-// Constant-time passphrase check. Both sides are SHA-256'd so the buffers are
-// always 32 bytes (timingSafeEqual throws on a length mismatch, which would
-// itself leak the length). An unset ADMIN_PASSPHRASE never matches.
+// Constant-time passphrase check. timingSafeEqual needs equal-length buffers,
+// so both sides are zero-padded to the longer length and the real lengths are
+// compared separately -- no hashing (a fast hash over a secret reads as weak
+// password hashing, and isn't needed just to compare). An unset
+// ADMIN_PASSPHRASE never matches.
 function passphraseMatches(given) {
   const expected = process.env.ADMIN_PASSPHRASE;
   if (!given || !expected) return false;
-  const a = createHash('sha256').update(String(given)).digest();
-  const b = createHash('sha256').update(expected).digest();
-  return timingSafeEqual(a, b);
+  const a = Buffer.from(String(given), 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  const len = Math.max(a.length, b.length);
+  const pa = Buffer.alloc(len);
+  const pb = Buffer.alloc(len);
+  a.copy(pa);
+  b.copy(pb);
+  return timingSafeEqual(pa, pb) && a.length === b.length;
 }
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
