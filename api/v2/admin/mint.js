@@ -91,7 +91,7 @@ async function isAuthorizedAdmin(req, claimedAdminId) {
   const passphrase = req.headers['x-admin-passphrase'];
   if (passphrase) {
     const ok = passphraseMatches(passphrase);
-    securityEvent(ok ? 'admin.auth_ok' : 'admin.auth_denied', { method: 'passphrase' }, ok ? 'info' : 'warn');
+    await securityEvent(ok ? 'admin.auth_ok' : 'admin.auth_denied', { method: 'passphrase' }, ok ? 'info' : 'warn');
     if (ok) return true;
   }
 
@@ -101,14 +101,14 @@ async function isAuthorizedAdmin(req, claimedAdminId) {
     return false;
   }
   if (!ADMIN_PRIVY_IDS.includes(String(claimedAdminId).toLowerCase())) {
-    securityEvent('admin.auth_denied', { method: 'privy', did: String(claimedAdminId), reason: 'not_admin' }, 'warn');
+    await securityEvent('admin.auth_denied', { method: 'privy', did: String(claimedAdminId), reason: 'not_admin' }, 'warn');
     return false;
   }
 
   // Verify the Privy token and that it belongs to the claimed admin.
   const verifiedUserId = await verifyPrivyToken(accessToken);
   const ok = !!verifiedUserId && verifiedUserId === claimedAdminId;
-  securityEvent(ok ? 'admin.auth_ok' : 'admin.auth_denied', { method: 'privy', did: String(claimedAdminId), reason: ok ? undefined : 'token_mismatch' }, ok ? 'info' : 'warn');
+  await securityEvent(ok ? 'admin.auth_ok' : 'admin.auth_denied', { method: 'privy', did: String(claimedAdminId), reason: ok ? undefined : 'token_mismatch' }, ok ? 'info' : 'warn');
   return ok;
 }
 
