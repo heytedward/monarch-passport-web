@@ -20,7 +20,7 @@ export async function verifyPrivyToken(accessToken) {
     const claims = await client().verifyAuthToken(accessToken);
     return claims.userId || null;
   } catch (e) {
-    securityEvent('auth.token_rejected', { reason: e?.message || String(e) }, 'warn');
+    await securityEvent('auth.token_rejected', { reason: e?.message || String(e) }, 'warn');
     return null;
   }
 }

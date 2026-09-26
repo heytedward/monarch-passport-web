@@ -47,11 +47,11 @@ function normalise(parsed) {
   return out;
 }
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
   const parsed = parseBody(req.body);
   if (parsed) {
-    for (const v of normalise(parsed)) securityEvent('csp.violation', v, 'warn');
+    for (const v of normalise(parsed)) await securityEvent('csp.violation', v, 'warn');
   }
   return res.status(204).end();
 }
