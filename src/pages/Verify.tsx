@@ -13,7 +13,8 @@ import {
   HStack
 } from '@chakra-ui/react';
 import useStore from '../store/useStore';
-import RewardCard from '../components/RewardCard';
+import ClaimSequence from '../components/claim/ClaimSequence';
+import type { ClaimOutcome } from '../components/claim/claimSequenceEngine';
 
 const blink = keyframes`
   0% { opacity: 0.4; }
@@ -47,11 +48,7 @@ const Verify: React.FC = () => {
   const [artifact, setArtifact] = useState<Artifact | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [claimState, setClaimState] = useState<'idle' | 'claiming' | 'error'>('idle');
-  const [claimError, setClaimError] = useState<string | null>(null);
-  const [claimAwarded, setClaimAwarded] = useState<number | null>(null);
   const [justClaimed, setJustClaimed] = useState(false);
-  const [premiumUnlocked, setPremiumUnlocked] = useState(false);
 
   const [tapState, setTapState] = useState<'idle' | 'tapping' | 'rewarded' | 'cooldown' | 'error'>('idle');
   const [tapAwarded, setTapAwarded] = useState<number | null>(null);
@@ -146,22 +143,15 @@ const Verify: React.FC = () => {
     }
   };
 
-  const handleClaimArtifact = async () => {
-    if (!artifact) return;
+  // Runs the claim for the sequence; it rejects with the message to show.
+  const claimArtifact = async (): Promise<ClaimOutcome> => {
+    if (!artifact || !user?.id) throw new Error('ACCESS_DENIED // LOGIN_REQUIRED');
 
-    if (!authenticated) {
-      login();
-      return;
-    }
-
-    if (!user?.id) return;
-
-    setClaimState('claiming');
-    setClaimError(null);
-
+    let response: Response;
+    let result: { error?: string; awarded?: number; premiumUnlocked?: boolean };
     try {
       const accessToken = await getAccessToken();
-      const response = await fetch('/api/v2/claim', {
+      response = await fetch('/api/v2/claim', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -169,28 +159,23 @@ const Verify: React.FC = () => {
         },
         body: JSON.stringify({ tagId: artifact.id, ownerId: user.id }),
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        setClaimState('error');
-        setClaimError(
-          result.error === 'ARTIFACT_ALREADY_CLAIMED'
-            ? 'ARTIFACT_ALREADY_CLAIMED // SOMEONE_GOT_THERE_FIRST'
-            : 'CLAIM_FAILED // SYSTEM_ERROR'
-        );
-        return;
-      }
-
-      setClaimAwarded(result.awarded);
-      setPremiumUnlocked(!!result.premiumUnlocked);
-      setJustClaimed(true);
-      setArtifact({ ...artifact, isActivated: true, isOwner: true });
-      fetchUserProfile(user.id);
-    } catch (err) {
-      setClaimState('error');
-      setClaimError('CLAIM_FAILED // SYSTEM_ERROR');
+      result = await response.json();
+    } catch {
+      throw new Error('CLAIM_FAILED // SYSTEM_ERROR');
     }
+
+    if (!response.ok) {
+      throw new Error(
+        result.error === 'ARTIFACT_ALREADY_CLAIMED'
+          ? 'ARTIFACT_ALREADY_CLAIMED // SOMEONE_GOT_THERE_FIRST'
+          : 'CLAIM_FAILED // SYSTEM_ERROR'
+      );
+    }
+
+    setJustClaimed(true);
+    setArtifact({ ...artifact, isActivated: true, isOwner: true });
+    fetchUserProfile(user.id);
+    return { awarded: result.awarded ?? 0, premiumUnlocked: !!result.premiumUnlocked };
   };
 
   if (isLoading) {
@@ -235,164 +220,90 @@ const Verify: React.FC = () => {
     );
   }
 
+  if (artifact && (!artifact.isActivated || justClaimed)) {
+    return (
+      <ClaimSequence
+        artifact={artifact}
+        ready={ready}
+        authenticated={authenticated}
+        login={login}
+        claim={claimArtifact}
+        onCloset={() => navigate('/closet')}
+        onAscension={() => navigate('/ascension')}
+      />
+    );
+  }
+
   if (artifact) {
     const isMine = !!(authenticated && user?.id && artifact.isOwner);
 
     return (
       <Center h="100vh" bg="black" p={6}>
         <VStack spacing={8} maxW="600px" w="full">
-          {artifact.isActivated && justClaimed ? (
-            // First-time activation: full reward card instead of the plain
-            // owner-verified box (which is what revisits/repeat taps get).
-            <RewardCard
-              variant="artifact"
-              name={artifact.name}
-              tier={artifact.tier}
-              collection={artifact.collection}
-              season={artifact.season}
-              amount={claimAwarded ?? 0}
-              premiumUnlocked={premiumUnlocked}
+          <VStack spacing={6} border="2px solid #00FF00" p={10} bg="rgba(0,255,0,0.05)" w="full">
+            <Heading color="#00FF00" size="xl" fontFamily="monospace" fontWeight="900" textAlign="center">
+              AUTHENTIC MONARCH ARTIFACT // OWNER_VERIFIED
+            </Heading>
+            <Box w="full" h="1px" bg="#00FF00" opacity={0.3} />
+
+            <VStack align="start" w="full" spacing={1}>
+              <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="2xl" lineHeight="1" mb={1}>
+                {artifact.name.toUpperCase()}
+              </Text>
+              <HStack spacing={2}>
+                <Text color="#00FF00" fontFamily="monospace" fontSize="xs" fontWeight="900">
+                  {artifact.collection?.toUpperCase() || 'GENERAL_RELEASE'} // {artifact.season?.toUpperCase() || 'UNSPECIFIED'}
+                </Text>
+                {artifact.isSeasonArtifact && (
+                  <Text color="black" bg="#00FF00" fontSize="10px" px={1} fontWeight="900">SEASON_EXCLUSIVE</Text>
+                )}
+              </HStack>
+              <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="9px" pt={2}>
+                SERIAL_NUM: {artifact.id.toUpperCase()} // REGISTRY_TIER: {artifact.tier.toUpperCase()}
+              </Text>
+            </VStack>
+
+            {isMine && (
+              <Box w="full" border="1px dashed #00FF00" p={4}>
+                {!justClaimed && tapState === 'tapping' && (
+                  <HStack spacing={3}>
+                    <Spinner size="sm" color="#00FF00" />
+                    <Text color="#00FF00" fontFamily="monospace" fontSize="xs" fontWeight="900">
+                      LOGGING_LOYALTY_TAP...
+                    </Text>
+                  </HStack>
+                )}
+                {!justClaimed && tapState === 'rewarded' && (
+                  <Text color="#00FF00" fontFamily="monospace" fontSize="sm" fontWeight="900">
+                    +{tapAwarded} WNGS // LOYALTY_TAP_LOGGED
+                  </Text>
+                )}
+                {!justClaimed && tapState === 'cooldown' && (
+                  <Text color="whiteAlpha.700" fontFamily="monospace" fontSize="xs" fontWeight="900">
+                    NEXT_LOYALTY_TAP_AVAILABLE_IN {tapCooldownMs !== null ? formatCooldown(tapCooldownMs) : 'A WHILE'}
+                  </Text>
+                )}
+                {!justClaimed && tapState === 'error' && (
+                  <Text color="red.300" fontFamily="monospace" fontSize="xs" fontWeight="900">
+                    LOYALTY_TAP_FAILED // TRY_AGAIN_LATER
+                  </Text>
+                )}
+              </Box>
+            )}
+
+            <Button
+              w="full"
+              bg="#00FF00"
+              color="black"
+              borderRadius="0"
+              fontWeight="900"
+              fontFamily="monospace"
+              _hover={{ bg: 'white' }}
+              onClick={() => navigate('/')}
             >
-              <Button
-                w="full"
-                bg="#FFB000"
-                color="black"
-                borderRadius="0"
-                h="56px"
-                fontWeight="900"
-                fontFamily="monospace"
-                _hover={{ bg: 'white' }}
-                onClick={() => navigate('/closet')}
-              >
-                GO_TO_CLOSET
-              </Button>
-              <Button
-                w="full"
-                variant="outline"
-                borderColor="whiteAlpha.400"
-                color="whiteAlpha.800"
-                borderRadius="0"
-                fontWeight="900"
-                fontFamily="monospace"
-                _hover={{ bg: 'whiteAlpha.100' }}
-                onClick={() => navigate('/home')}
-              >
-                PROCEED_TO_OS
-              </Button>
-            </RewardCard>
-          ) : artifact.isActivated ? (
-            <VStack spacing={6} border="2px solid #00FF00" p={10} bg="rgba(0,255,0,0.05)" w="full">
-              <Heading color="#00FF00" size="xl" fontFamily="monospace" fontWeight="900" textAlign="center">
-                AUTHENTIC MONARCH ARTIFACT // OWNER_VERIFIED
-              </Heading>
-              <Box w="full" h="1px" bg="#00FF00" opacity={0.3} />
-
-              <VStack align="start" w="full" spacing={1}>
-                <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="2xl" lineHeight="1" mb={1}>
-                  {artifact.name.toUpperCase()}
-                </Text>
-                <HStack spacing={2}>
-                  <Text color="#00FF00" fontFamily="monospace" fontSize="xs" fontWeight="900">
-                    {artifact.collection?.toUpperCase() || 'GENERAL_RELEASE'} // {artifact.season?.toUpperCase() || 'UNSPECIFIED'}
-                  </Text>
-                  {artifact.isSeasonArtifact && (
-                    <Text color="black" bg="#00FF00" fontSize="10px" px={1} fontWeight="900">SEASON_EXCLUSIVE</Text>
-                  )}
-                </HStack>
-                <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="9px" pt={2}>
-                  SERIAL_NUM: {artifact.id.toUpperCase()} // REGISTRY_TIER: {artifact.tier.toUpperCase()}
-                </Text>
-              </VStack>
-
-              {isMine && (
-                <Box w="full" border="1px dashed #00FF00" p={4}>
-                  {!justClaimed && tapState === 'tapping' && (
-                    <HStack spacing={3}>
-                      <Spinner size="sm" color="#00FF00" />
-                      <Text color="#00FF00" fontFamily="monospace" fontSize="xs" fontWeight="900">
-                        LOGGING_LOYALTY_TAP...
-                      </Text>
-                    </HStack>
-                  )}
-                  {!justClaimed && tapState === 'rewarded' && (
-                    <Text color="#00FF00" fontFamily="monospace" fontSize="sm" fontWeight="900">
-                      +{tapAwarded} WNGS // LOYALTY_TAP_LOGGED
-                    </Text>
-                  )}
-                  {!justClaimed && tapState === 'cooldown' && (
-                    <Text color="whiteAlpha.700" fontFamily="monospace" fontSize="xs" fontWeight="900">
-                      NEXT_LOYALTY_TAP_AVAILABLE_IN {tapCooldownMs !== null ? formatCooldown(tapCooldownMs) : 'A WHILE'}
-                    </Text>
-                  )}
-                  {!justClaimed && tapState === 'error' && (
-                    <Text color="red.300" fontFamily="monospace" fontSize="xs" fontWeight="900">
-                      LOYALTY_TAP_FAILED // TRY_AGAIN_LATER
-                    </Text>
-                  )}
-                </Box>
-              )}
-
-              <Button
-                w="full"
-                bg="#00FF00"
-                color="black"
-                borderRadius="0"
-                fontWeight="900"
-                fontFamily="monospace"
-                _hover={{ bg: 'white' }}
-                onClick={() => navigate('/')}
-              >
-                PROCEED_TO_OS
-              </Button>
-            </VStack>
-          ) : (
-            <VStack spacing={6} border="2px solid #FFB000" p={10} bg="rgba(255,176,0,0.05)" w="full">
-              <Heading color="#FFB000" size="xl" fontFamily="monospace" fontWeight="900" textAlign="center">
-                AUTHENTIC MONARCH ARTIFACT // UNCLAIMED
-              </Heading>
-              <Box w="full" h="1px" bg="#FFB000" opacity={0.3} />
-
-              <VStack align="start" w="full" spacing={1}>
-                <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="2xl" lineHeight="1" mb={1}>
-                  {artifact.name.toUpperCase()}
-                </Text>
-                <HStack spacing={2}>
-                  <Text color="#FFB000" fontFamily="monospace" fontSize="xs" fontWeight="900">
-                    {artifact.collection?.toUpperCase() || 'GENERAL_RELEASE'} // {artifact.season?.toUpperCase() || 'UNSPECIFIED'}
-                  </Text>
-                  {artifact.isSeasonArtifact && (
-                    <Text color="black" bg="#FFB000" fontSize="10px" px={1} fontWeight="900">SEASON_EXCLUSIVE</Text>
-                  )}
-                </HStack>
-                <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="9px" pt={2}>
-                  SERIAL_NUM: {artifact.id.toUpperCase()} // REGISTRY_TIER: {artifact.tier.toUpperCase()}
-                </Text>
-              </VStack>
-
-              {claimError && (
-                <Text color="red.300" fontFamily="monospace" fontSize="xs" fontWeight="900" textAlign="center">
-                  {claimError}
-                </Text>
-              )}
-
-              <Button
-                w="full"
-                bg="#FFB000"
-                color="black"
-                borderRadius="0"
-                fontWeight="900"
-                fontFamily="monospace"
-                size="lg"
-                _hover={{ bg: 'white', transform: 'scale(1.02)' }}
-                transition="all 0.2s"
-                isLoading={!ready || claimState === 'claiming'}
-                loadingText={authenticated ? 'CLAIMING...' : 'CONNECTING...'}
-                onClick={handleClaimArtifact}
-              >
-                {authenticated ? 'CLAIM_ARTIFACT' : 'AUTHENTICATE_TO_CLAIM'}
-              </Button>
-            </VStack>
-          )}
+              PROCEED_TO_OS
+            </Button>
+          </VStack>
         </VStack>
       </Center>
     );
