@@ -105,6 +105,32 @@ const params = new URLSearchParams(location.search);
 const TAG_ID = (params.get('tag') || 'MKT-001').slice(0, 32);
 const NEXT_URL = params.get('next') || (params.get('tag') ? `/v/${encodeURIComponent(TAG_ID)}` : 'https://passport.papillonbrand.us');
 const FORCE_FAIL = params.get('fail') === '1';
+
+// Warm the app while the animation plays. The passport bundle is ~1 MB
+// compressed (mostly Privy), so fetch index.html, pull out its hashed script
+// and style URLs, and preload them now; by the time "Enter Passport" is
+// tapped they are in the HTTP cache. Same-origin only, best effort, and
+// skipped on data-saver connections.
+(function warmApp() {
+  if (!NEXT_URL.startsWith('/')) return;
+  const conn = navigator.connection;
+  if (conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ''))) return;
+  fetch('/', { credentials: 'same-origin' })
+    .then(r => (r.ok ? r.text() : ''))
+    .then(html => {
+      const urls = new Set();
+      for (const m of html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/g)) urls.add(m[1]);
+      for (const url of urls) {
+        const link = document.createElement('link');
+        const isJs = url.endsWith('.js');
+        link.rel = isJs ? 'modulepreload' : 'preload';
+        if (!isJs) link.as = 'style';
+        link.href = url;
+        document.head.appendChild(link);
+      }
+    })
+    .catch(() => {});
+})();
 const MIN_WARP = 2.6;
 
 async function verifyTag(tagId) {
