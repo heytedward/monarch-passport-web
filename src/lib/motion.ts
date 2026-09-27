@@ -54,9 +54,3 @@ export const staggerItem: Variants = {
   initial: { opacity: 0, y: 16, scale: 0.97 },
   enter: { opacity: 1, y: 0, scale: 1, transition: SPRING },
 };
-
-/** Press feedback for tappable controls — scale down, bounce back. */
-export const tap = { scale: 0.92 } as const;
-
-/** Hover lift for pointer devices. */
-export const hoverLift = { scale: 1.04 } as const;

@@ -58,7 +58,3 @@ export async function securityEvent(event, fields = {}, level = 'info') {
   (level === 'warn' ? console.warn : console.log)(line);
   if (level === 'warn') await persist(event, safe);
 }
-
-// Short, non-reversible prefix of an IP hash: enough to correlate repeated
-// attempts from one source in the logs without storing the full digest.
-export const ipTag = (ipHash) => (ipHash ? ipHash.slice(0, 12) : null);
