@@ -1,16 +1,6 @@
-// Shared De Stijl palette + rarity pricing for the Digital Store Forge.
-// The avatar generator rolls a 9-color palette from the canonical set; the
+// Shared rarity tiers + pricing for the Digital Store Forge. The
 // server (api/v2/admin/create-product.js) keeps its own copy of RARITY_PRICES
 // as the source of truth, so keep the two in sync if you change the table.
-
-// Canonical De Stijl colors (mirror of DeStijlAvatar's PALETTE).
-export const DESTIJL_COLORS = [
-  '#FFFFFF', // White
-  '#1A202C', // Black (Monarch)
-  '#E53E3E', // Red
-  '#3182CE', // Blue
-  '#FFB000', // Monarch Gold
-];
 
 export const RARITIES = ['COMMON', 'RARE', 'EPIC', 'MONARCH', 'MYTHIC'] as const;
 export type Rarity = (typeof RARITIES)[number];

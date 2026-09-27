@@ -67,7 +67,7 @@ Server-authority Solana NFT minting of owned avatars is **built and devnet-verif
 - **User identity:** Privy. Every mutating `api/v2` endpoint verifies the Privy access token server-side (`_auth.js` → `verifyPrivyToken`) and confirms it matches the claimed `userId` before doing any work.
 - **Service role:** all writes use a service-role Supabase client that bypasses RLS — trusted only *after* the token check above. The browser anon client is RLS-restricted (reads only).
 - **Value integrity:** WNGS debits use optimistic-concurrency guards with refund-on-failure; the Stripe webhook derives amounts server-side and dedupes on session id; claim-links enforce a global redemption cap.
-- **Admin gating:** `admin/mint.js` accepts a static `x-admin-passphrase` (scripts) *or* a verified Privy token on an admin allowlist. `AdminGuard` is a client-side UI gate only — real protection is server-side.
+- **Admin gating:** `admin/mint.js` accepts a static `x-admin-passphrase` (scripts) *or* a verified Privy token on an admin allowlist. CommandCenter's own allowlist check is a client-side UI gate only — real protection is server-side.
 - **Dev bypass:** every gated surface independently checks `import.meta.env.DEV && localStorage.monarch_dev_bypass === 'true'`.
 
 ### 6. API INTERFACES (`api/`, 12-function cap)
