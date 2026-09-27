@@ -5,7 +5,10 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const agentSecret = process.env.AGENT_SECRET_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// Created on first use: this module is loaded by the shared ops function, so a
+// missing env var must not throw at import and take the other routes down.
+let _supabase = null;
+const db = () => (_supabase ??= createClient(supabaseUrl, supabaseServiceKey));
 
 const MAX_TITLE_LEN = 200;
 const MAX_CONTENT_LEN = 20000;
@@ -87,7 +90,7 @@ export default async function handler(req, res) {
       : 'AUTONOMOUS_AGENT';
 
     // 5. Database Injection (Service Role bypasses RLS)
-    const { data, error } = await supabase
+    const { data, error } = await db()
       .from('monarch_times')
       .insert([
         {

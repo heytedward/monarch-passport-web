@@ -1,6 +1,21 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/csp-report",
+      "destination": "/api/v2/ops?op=csp-report"
+    },
+    {
+      "source": "/api/v2/security-alert",
+      "destination": "/api/v2/ops?op=security-alert"
+    },
+    {
+      "source": "/api/agent/transmit",
+      "destination": "/api/v2/ops?op=agent-transmit"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
