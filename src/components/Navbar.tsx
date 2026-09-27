@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { Logo } from './Logo'
 import { usePrivy } from '@privy-io/react-auth'
 import { SPRING_SNAPPY } from '../lib/motion'
+import { displayName } from '../lib/displayName';
 
 const MotionBox = motion(Box)
 const MotionCenter = motion(Center)
@@ -171,7 +172,7 @@ const NavItem = ({
         fontFamily="mono"
         letterSpacing="0.05em"
       >
-        {item.label}
+        {displayName(item.label)}
       </Text>
     </MotionBox>
     {isActive && (

@@ -71,12 +71,12 @@ const Verify: React.FC = () => {
         if (cancelled) return;
 
         if (!response.ok) {
-          setError(data.error || 'INVALID_OR_COUNTERFEIT_TAG');
+          setError(displayName(data.error) || 'INVALID OR COUNTERFEIT TAG');
         } else {
           setArtifact(data);
         }
       } catch (err) {
-        if (!cancelled) setError('SYSTEM_OFFLINE // UPLINK_FAILURE');
+        if (!cancelled) setError('SYSTEM OFFLINE · UPLINK FAILURE');
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -151,7 +151,7 @@ const Verify: React.FC = () => {
 
   // Runs the claim for the sequence; it rejects with the message to show.
   const claimArtifact = async (): Promise<ClaimOutcome> => {
-    if (!artifact || !user?.id) throw new Error('ACCESS_DENIED // LOGIN_REQUIRED');
+    if (!artifact || !user?.id) throw new Error('ACCESS DENIED · LOGIN REQUIRED');
 
     let response: Response;
     let result: { error?: string; awarded?: number; premiumUnlocked?: boolean };
@@ -167,14 +167,14 @@ const Verify: React.FC = () => {
       });
       result = await response.json();
     } catch {
-      throw new Error('CLAIM_FAILED // SYSTEM_ERROR');
+      throw new Error('CLAIM FAILED · SYSTEM ERROR');
     }
 
     if (!response.ok) {
       throw new Error(
         result.error === 'ARTIFACT_ALREADY_CLAIMED'
-          ? 'ARTIFACT_ALREADY_CLAIMED // SOMEONE_GOT_THERE_FIRST'
-          : 'CLAIM_FAILED // SYSTEM_ERROR'
+          ? 'ARTIFACT ALREADY CLAIMED · SOMEONE GOT THERE FIRST'
+          : 'CLAIM FAILED · SYSTEM ERROR'
       );
     }
 
@@ -210,7 +210,7 @@ const Verify: React.FC = () => {
             404 · INVALID OR COUNTERFEIT TAG
           </Heading>
           <Text color="red.300" fontFamily="mono" fontSize="sm">
-            ERROR CODE: {error}
+            ERROR CODE: {displayName(error)}
           </Text>
           <Button
             variant="outline"

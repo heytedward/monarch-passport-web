@@ -10,6 +10,7 @@ import {
   HStack,
   Image,
 } from '@chakra-ui/react'
+import { displayName } from '../lib/displayName'
 
 const Rewards = () => {
   const rewards = [
@@ -65,7 +66,7 @@ const Rewards = () => {
               />
               
               <VStack align="stretch" spacing={3}>
-                <Heading size="md">{reward.name}</Heading>
+                <Heading size="md">{displayName(reward.name)}</Heading>
                 
                 <HStack justify="space-between">
                   <Badge colorScheme="purple" fontSize="md" px={3} py={1}>

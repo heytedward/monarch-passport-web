@@ -5,6 +5,7 @@ import { MdErrorOutline } from 'react-icons/md'
 import { usePrivy } from '@privy-io/react-auth'
 import useStore from '../store/useStore'
 import RewardCard from '../components/RewardCard'
+import { displayName } from '../lib/displayName'
 
 const Claim = () => {
   const { id } = useParams<{ id: string }>()
@@ -42,7 +43,7 @@ const Claim = () => {
 
     try {
       const accessToken = await getAccessToken();
-      if (!accessToken) throw new Error("IDENTITY_TOKEN_UNAVAILABLE");
+      if (!accessToken) throw new Error("IDENTITY TOKEN UNAVAILABLE");
 
       // Balance crediting happens server-side (see api/v2/redeem-claim.js) so
       // the browser never gets to write wngs_balance/transactions directly.
@@ -60,10 +61,10 @@ const Claim = () => {
       if (!response.ok) {
         setStatus('ERROR')
         setErrorMessage(
-          response.status === 409 ? "CLAIM FAILED // ALREADY SCANNED" :
-          response.status === 404 ? "ARTIFACT_NOT_FOUND: This claim link does not exist." :
-          response.status === 400 ? "CLAIM FAILED // INVALID ARTIFACT" :
-          "CLAIM FAILED // SYSTEM ERROR"
+          response.status === 409 ? "CLAIM FAILED · ALREADY SCANNED" :
+          response.status === 404 ? "ARTIFACT NOT FOUND: This claim link does not exist." :
+          response.status === 400 ? "CLAIM FAILED · INVALID ARTIFACT" :
+          "CLAIM FAILED · SYSTEM ERROR"
         )
         setRawError(result?.error || null)
         return
@@ -77,7 +78,7 @@ const Claim = () => {
     } catch (err: any) {
       console.error('Claim error:', err)
       setStatus('ERROR')
-      setErrorMessage("CLAIM FAILED // SYSTEM ERROR")
+      setErrorMessage("CLAIM FAILED · SYSTEM ERROR")
       setRawError(err?.message || String(err))
     } finally {
       setIsProcessing(false)
@@ -145,7 +146,7 @@ const Claim = () => {
                 {rawError && (
                   <Box p={2} bg="blackAlpha.400" borderRadius="md" mt={2}>
                     <Text fontSize="8px" fontWeight="900" color="white" textAlign="left" wordBreak="break-all">
-                      DIAGNOSTIC DATA: {rawError}
+                      DIAGNOSTIC DATA: {displayName(rawError)}
                     </Text>
                   </Box>
                 )}

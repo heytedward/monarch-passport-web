@@ -28,11 +28,11 @@ const Settings = () => {
   };
 
   const formatAddress = (address: string) => {
-    if (!address) return 'NOT_CONNECTED';
+    if (!address) return 'NOT CONNECTED';
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
 
-  const walletAddress = user?.wallet?.address || user?.id || 'UNKNOWN_IDENTITY';
+  const walletAddress = user?.wallet?.address || user?.id || 'UNKNOWN IDENTITY';
 
   return (
     <Box bg={bgColor} minH="100vh" pb="100px" color={text} fontFamily="mono">

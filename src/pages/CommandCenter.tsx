@@ -29,6 +29,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import DeStijlAvatar from '../components/DeStijlAvatar';
 import { rollPalette, RARITIES, priceForRarity } from '../lib/destijlPalette';
 import { supabase } from '../lib/supabase';
+import { displayName } from '../lib/displayName';
 
 // Entries may be full Privy DIDs, bare Privy IDs ("cmpho..."), or wallet
 // addresses. Bare entries also match as their did:privy: form, so the env var
@@ -148,9 +149,9 @@ const CommandCenter: React.FC = () => {
   const [isAddingReward, setIsAddingReward] = useState(false);
 
   const [systemLogs, setSystemLogs] = useState<string[]>([
-    `[${new Date().toLocaleTimeString()}] SECURE_CONNECTION_ESTABLISHED`,
-    `[${new Date().toLocaleTimeString()}] SYNCING_ECONOMY_DATA...`,
-    `[${new Date().toLocaleTimeString()}] SYSTEM_READY_FOR_COMMANDS`
+    `[${new Date().toLocaleTimeString()}] SECURE CONNECTION ESTABLISHED`,
+    `[${new Date().toLocaleTimeString()}] SYNCING ECONOMY DATA...`,
+    `[${new Date().toLocaleTimeString()}] SYSTEM READY FOR COMMANDS`
   ]);
 
   const addLog = (message: string) => {
@@ -258,7 +259,7 @@ const CommandCenter: React.FC = () => {
 
     const safeShortCode = claimId.trim().replace(/\s+/g, '-').toLowerCase();
     setIsGenerating(true);
-    addLog(`INITIATING_DATABASE_INSERT // ID: ${safeShortCode}`);
+    addLog(`INITIATING DATABASE INSERT · ID: ${safeShortCode}`);
 
     try {
       const token = await getAccessToken();
@@ -283,12 +284,12 @@ const CommandCenter: React.FC = () => {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'CLAIM_LINK_REQUEST_FAILED');
+        throw new Error(displayName(data.error) || 'CLAIM LINK REQUEST FAILED');
       }
 
       const link = `${window.location.origin}/claim/${safeShortCode}`;
       setGeneratedLink(link);
-      addLog(`DATABASE_INSERT_SUCCESS // ID: ${safeShortCode}`);
+      addLog(`DATABASE INSERT SUCCESS · ID: ${safeShortCode}`);
       toast({
         title: "SUCCESS",
         description: "CLAIM LINK GENERATED AND STORED",
@@ -296,7 +297,7 @@ const CommandCenter: React.FC = () => {
       });
     } catch (err: any) {
       console.error(err);
-      addLog(`DATABASE_INSERT_FAILED // ${err.message}`);
+      addLog(`DATABASE INSERT FAILED · ${err.message}`);
       toast({
         title: "ERROR",
         description: err.message,
@@ -323,7 +324,7 @@ const CommandCenter: React.FC = () => {
     setItemType('CLOTHING');
     setMaxRedemptions('');
     setGeneratedLink('');
-    addLog("GENERATOR_STATE_RESET");
+    addLog("GENERATOR STATE RESET");
   };
 
   const generateArtifactBatch = async () => {
@@ -337,7 +338,7 @@ const CommandCenter: React.FC = () => {
     }
 
     setIsMinting(true);
-    addLog(`INITIATING_ARTIFACT_MINT // PREFIX: ${mintPrefix} // COUNT: ${mintCount}`);
+    addLog(`INITIATING ARTIFACT MINT · PREFIX: ${mintPrefix} · COUNT: ${mintCount}`);
 
     try {
       const token = await getAccessToken();
@@ -364,11 +365,11 @@ const CommandCenter: React.FC = () => {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'MINT_REQUEST_FAILED');
+        throw new Error(displayName(data.error) || 'MINT REQUEST FAILED');
       }
 
       setMintedUrls(data.urls);
-      addLog(`MINT_SUCCESS // ${data.urls.length}_ARTIFACTS_GENERATED`);
+      addLog(`MINT SUCCESS · ${data.urls.length} ARTIFACTS GENERATED`);
       toast({
         title: "SUCCESS",
         description: "ARTIFACT BATCH MINTED",
@@ -376,7 +377,7 @@ const CommandCenter: React.FC = () => {
       });
     } catch (err: any) {
       console.error(err);
-      addLog(`MINT_FAILED // ${err.message}`);
+      addLog(`MINT FAILED · ${err.message}`);
       toast({
         title: "ERROR",
         description: err.message,
@@ -407,7 +408,7 @@ const CommandCenter: React.FC = () => {
     setMintSeason('');
     setMintIsSeasonArtifact(false);
     setMintedUrls([]);
-    addLog("MINT_GENERATOR_STATE_RESET");
+    addLog("MINT GENERATOR STATE RESET");
   };
 
   // Shared POST to the admin forge (dispatched by `kind` server-side).
@@ -420,7 +421,7 @@ const CommandCenter: React.FC = () => {
     });
     const data = await response.json();
     if (!response.ok || !data.success) {
-      throw new Error(data.error || 'CREATE_FAILED');
+      throw new Error(displayName(data.error) || 'CREATE FAILED');
     }
     return data.product;
   };
@@ -431,7 +432,7 @@ const CommandCenter: React.FC = () => {
       return;
     }
     setIsCreatingTheme(true);
-    addLog(`FORGING_THEME // ${themeName}`);
+    addLog(`FORGING THEME · ${themeName}`);
     try {
       await createCosmetic({
         kind: 'theme',
@@ -441,13 +442,13 @@ const CommandCenter: React.FC = () => {
         accentColor: themeAccent,
         priceWngsOverride: themePriceOverride,
       });
-      addLog(`THEME_DEPLOYED // ${themeName}`);
+      addLog(`THEME DEPLOYED · ${themeName}`);
       toast({ title: 'THEME DEPLOYED', description: `${themeName} IS LIVE IN THE STORE`, status: 'success' });
       setThemeName('');
       setThemePriceOverride('');
       fetchAdminProducts();
     } catch (err: any) {
-      addLog(`THEME_FORGE_FAILED // ${err.message}`);
+      addLog(`THEME FORGE FAILED · ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
     } finally {
       setIsCreatingTheme(false);
@@ -460,7 +461,7 @@ const CommandCenter: React.FC = () => {
       return;
     }
     setIsCreatingAvatar(true);
-    addLog(`FORGING_AVATAR // ${avatarName}`);
+    addLog(`FORGING AVATAR · ${avatarName}`);
     try {
       await createCosmetic({
         kind: 'avatar',
@@ -472,14 +473,14 @@ const CommandCenter: React.FC = () => {
         season: avatarSeason,
         edition: avatarEdition,
       });
-      addLog(`AVATAR_DEPLOYED // ${avatarName}`);
+      addLog(`AVATAR DEPLOYED · ${avatarName}`);
       toast({ title: 'AVATAR DEPLOYED', description: `${avatarName} IS LIVE IN THE STORE`, status: 'success' });
       setAvatarName('');
       setAvatarPriceOverride('');
       setAvatarPalette(rollPalette());
       fetchAdminProducts();
     } catch (err: any) {
-      addLog(`AVATAR_FORGE_FAILED // ${err.message}`);
+      addLog(`AVATAR FORGE FAILED · ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
     } finally {
       setIsCreatingAvatar(false);
@@ -497,18 +498,18 @@ const CommandCenter: React.FC = () => {
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'INVENTORY_FETCH_FAILED');
+        throw new Error(displayName(data.error) || 'INVENTORY FETCH FAILED');
       }
       setAdminProducts(data.products || []);
     } catch (err: any) {
-      addLog(`INVENTORY_FETCH_FAILED // ${err.message}`);
+      addLog(`INVENTORY FETCH FAILED · ${err.message}`);
     }
   };
 
   const toggleProductStatus = async (product: any) => {
     const nextActive = product.is_active === false; // retired -> restore, live -> retire
     setTogglingProductId(product.id);
-    addLog(`${nextActive ? 'RESTORING' : 'RETIRING'}_PRODUCT // ${product.name}`);
+    addLog(`${nextActive ? 'RESTORING' : 'RETIRING'} PRODUCT · ${product.name}`);
     try {
       const token = await getAccessToken();
       const response = await fetch('/api/v2/admin/mint', {
@@ -518,7 +519,7 @@ const CommandCenter: React.FC = () => {
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'STATUS_UPDATE_FAILED');
+        throw new Error(displayName(data.error) || 'STATUS UPDATE FAILED');
       }
       setAdminProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, is_active: nextActive } : p));
       toast({
@@ -527,7 +528,7 @@ const CommandCenter: React.FC = () => {
         status: 'success',
       });
     } catch (err: any) {
-      addLog(`STATUS_UPDATE_FAILED // ${err.message}`);
+      addLog(`STATUS UPDATE FAILED · ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
     } finally {
       setTogglingProductId(null);
@@ -540,10 +541,10 @@ const CommandCenter: React.FC = () => {
   const downscaleToDataUrl = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onerror = () => reject(new Error('READ_FAILED'));
+      reader.onerror = () => reject(new Error('READ FAILED'));
       reader.onload = () => {
         const img = new window.Image();
-        img.onerror = () => reject(new Error('DECODE_FAILED'));
+        img.onerror = () => reject(new Error('DECODE FAILED'));
         img.onload = () => {
           const maxDim = 1280;
           let { width, height } = img;
@@ -582,7 +583,7 @@ const CommandCenter: React.FC = () => {
       return;
     }
     setIsCreatingProduct(true);
-    addLog(`FORGING_PRODUCT // ${prodName}`);
+    addLog(`FORGING PRODUCT · ${prodName}`);
     try {
       await createCosmetic({
         kind: 'physical_product',
@@ -596,7 +597,7 @@ const CommandCenter: React.FC = () => {
         sizes,
         imagesData: prodImages,
       });
-      addLog(`PRODUCT_DEPLOYED // ${prodName}`);
+      addLog(`PRODUCT DEPLOYED · ${prodName}`);
       toast({ title: 'PRODUCT DEPLOYED', description: `${prodName.toUpperCase()} IS LIVE IN THE STORE`, status: 'success' });
       setProdName(''); setProdPrice(''); setProdDescription('');
       setProdCollection(''); setProdSeason('');
@@ -604,7 +605,7 @@ const CommandCenter: React.FC = () => {
       setProdImages([]);
       fetchAdminProducts();
     } catch (err: any) {
-      addLog(`PRODUCT_FORGE_FAILED // ${err.message}`);
+      addLog(`PRODUCT FORGE FAILED · ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
     } finally {
       setIsCreatingProduct(false);
@@ -637,7 +638,7 @@ const CommandCenter: React.FC = () => {
       return;
     }
     setIsForgingBatch(true);
-    addLog(`FORGING_COLLECTION // ${batchCollection} // ${rows.length} PRODUCTS`);
+    addLog(`FORGING COLLECTION · ${batchCollection} · ${rows.length} PRODUCTS`);
     const failures: string[] = [];
     let forged = 0;
     for (const row of rows) {
@@ -664,7 +665,7 @@ const CommandCenter: React.FC = () => {
         failures.push(`${row.name}: ${err.message}`);
       }
     }
-    addLog(`COLLECTION_FORGED // ${forged}_OK // ${failures.length}_FAILED`);
+    addLog(`COLLECTION FORGED · ${forged} OK · ${failures.length} FAILED`);
     toast({
       title: failures.length === 0 ? 'COLLECTION DEPLOYED' : 'COLLECTION PARTIAL',
       description: failures.length === 0
@@ -685,7 +686,7 @@ const CommandCenter: React.FC = () => {
   const restockProduct = async (product: any) => {
     const current = (product.sizes || []).map((s: any) => `${s.size}:${s.stock}`).join(', ');
     const input = window.prompt(
-      `RESTOCK // ${product.name}\nEnter sizes as SIZE:COUNT pairs, comma-separated:`,
+      `RESTOCK · ${product.name}\nEnter sizes as SIZE:COUNT pairs, comma-separated:`,
       current || 'S:0, M:0, L:0, XL:0'
     );
     if (input == null) return;
@@ -708,7 +709,7 @@ const CommandCenter: React.FC = () => {
         body: JSON.stringify({ kind: 'product_stock', productId: product.id, sizes, adminId: user?.id }),
       });
       const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.error || 'RESTOCK_FAILED');
+      if (!response.ok || !data.success) throw new Error(displayName(data.error) || 'RESTOCK FAILED');
       toast({ title: 'STOCK UPDATED', description: product.name.toUpperCase(), status: 'success' });
       fetchAdminProducts();
     } catch (err: any) {
@@ -733,7 +734,7 @@ const CommandCenter: React.FC = () => {
       body: JSON.stringify({ ...payload, adminId: user?.id }),
     });
     const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'SEASON_OP_FAILED');
+    if (!res.ok || !data.success) throw new Error(displayName(data.error) || 'SEASON OP FAILED');
     return data;
   };
 
@@ -769,7 +770,7 @@ const CommandCenter: React.FC = () => {
       return;
     }
     setIsPosting(true);
-    addLog(`BROADCASTING // ${feedTitle}`);
+    addLog(`BROADCASTING · ${feedTitle}`);
     try {
       // Reuses the admin mint endpoint (kind:'feed_post') -> writes monarch_times.
       // imageData (uploaded photo) wins over imageUrl (pasted link) if both set.
@@ -785,7 +786,7 @@ const CommandCenter: React.FC = () => {
       setFeedTitle(''); setFeedContent(''); setFeedImageUrl(''); setFeedImageData(null);
       fetchFeedPosts();
     } catch (err: any) {
-      addLog(`BROADCAST_FAILED // ${err.message}`);
+      addLog(`BROADCAST FAILED · ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
     } finally { setIsPosting(false); }
   };
@@ -799,9 +800,9 @@ const CommandCenter: React.FC = () => {
   };
 
   const removeFeedPost = async (post: any) => {
-    if (!window.confirm(`DELETE_POST // "${post.title}" — this removes it from every user's feed. Proceed?`)) return;
+    if (!window.confirm(`DELETE POST · "${post.title}" — this removes it from every user's feed. Proceed?`)) return;
     setDeletingPostId(post.id);
-    addLog(`DELETING_POST // ${post.title}`);
+    addLog(`DELETING POST · ${post.title}`);
     try {
       const token = await getAccessToken();
       const response = await fetch('/api/v2/admin/mint', {
@@ -810,11 +811,11 @@ const CommandCenter: React.FC = () => {
         body: JSON.stringify({ kind: 'feed_post_delete', postId: post.id, adminId: user?.id }),
       });
       const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.error || 'DELETE_FAILED');
+      if (!response.ok || !data.success) throw new Error(displayName(data.error) || 'DELETE FAILED');
       setFeedPosts((prev) => prev.filter((p) => p.id !== post.id));
       toast({ title: 'POST DELETED', description: `${post.title} REMOVED FROM THE FEED`, status: 'success' });
     } catch (err: any) {
-      addLog(`DELETE_FAILED // ${err.message}`);
+      addLog(`DELETE FAILED · ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
     } finally {
       setDeletingPostId(null);
@@ -824,7 +825,7 @@ const CommandCenter: React.FC = () => {
   const createSeason = async () => {
     if (!seasonName) { toast({ title: 'MISSING DATA', description: 'SEASON NAME REQUIRED', status: 'error' }); return; }
     setIsSeasonBusy(true);
-    addLog(`CREATING_SEASON // ${seasonName}`);
+    addLog(`CREATING SEASON · ${seasonName}`);
     try {
       await seasonForge({
         kind: 'season_create', name: seasonName, code: seasonCode,
@@ -835,17 +836,17 @@ const CommandCenter: React.FC = () => {
       setSeasonName(''); setSeasonCode(''); setSeasonStart('');
       await fetchSeasons();
     } catch (err: any) {
-      addLog(`SEASON_CREATE_FAILED // ${err.message}`);
+      addLog(`SEASON CREATE FAILED · ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
     } finally { setIsSeasonBusy(false); }
   };
 
   const activateSeason = async (id: string) => {
-    try { await seasonForge({ kind: 'season_activate', seasonId: id }); addLog('SEASON_ACTIVATED'); await fetchSeasons(); }
+    try { await seasonForge({ kind: 'season_activate', seasonId: id }); addLog('SEASON ACTIVATED'); await fetchSeasons(); }
     catch (err: any) { toast({ title: 'ERROR', description: err.message, status: 'error' }); }
   };
   const endSeason = async (id: string) => {
-    try { await seasonForge({ kind: 'season_end', seasonId: id }); addLog('SEASON_ENDED'); await fetchSeasons(); }
+    try { await seasonForge({ kind: 'season_end', seasonId: id }); addLog('SEASON ENDED'); await fetchSeasons(); }
     catch (err: any) { toast({ title: 'ERROR', description: err.message, status: 'error' }); }
   };
 
@@ -902,7 +903,7 @@ const CommandCenter: React.FC = () => {
                 _hover={{ borderColor: monarchYellow }}
                 onClick={() => setActiveSection(s.id)}
               >
-                {s.label}
+                {displayName(s.label)}
               </Button>
             ))}
           </HStack>
@@ -986,7 +987,7 @@ const CommandCenter: React.FC = () => {
                         <Image src={p.image_url} alt="" boxSize="28px" objectFit="cover" flexShrink={0} />
                       )}
                       <Box minW={0}>
-                        <Text fontSize="xs" fontWeight="900" fontFamily="mono" isTruncated>{p.title}</Text>
+                        <Text fontSize="xs" fontWeight="900" fontFamily="mono" isTruncated>{displayName(p.title)}</Text>
                         <Text fontSize="10px" color="gray.500" fontFamily="mono">
                           {p.author || 'PAPILLON'} {p.created_at ? new Date(p.created_at).toLocaleDateString() : ''}{p.status !== 'PUBLISHED' ? `${p.status}` : ''}
                         </Text>
@@ -1071,7 +1072,7 @@ const CommandCenter: React.FC = () => {
                     <Box key={s.id} border="1px solid" borderColor={s.is_active ? monarchYellow : borderColor} p={2}>
                       <HStack justify="space-between">
                         <VStack align="start" spacing={0}>
-                          <Text fontSize="xs" fontWeight="900" color={labelText}>{s.title}{s.is_active ? ' •' : ''}</Text>
+                          <Text fontSize="xs" fontWeight="900" color={labelText}>{displayName(s.title)}{s.is_active ? ' •' : ''}</Text>
                           <Text fontSize="8px" color="gray.500">{s.code || '—'} {s.level_count}L × {s.xp_per_level}XP</Text>
                         </VStack>
                         <HStack spacing={1}>
@@ -1099,7 +1100,7 @@ const CommandCenter: React.FC = () => {
                   <FormControl isRequired>
                     <FormLabel fontSize="xs">SEASON</FormLabel>
                     <Select borderRadius="0" fontSize="sm" placeholder="select" value={rwSeasonId} onChange={(e) => setRwSeasonId(e.target.value)}>
-                      {seasons.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+                      {seasons.map((s) => <option key={s.id} value={s.id}>{displayName(s.title)}</option>)}
                     </Select>
                   </FormControl>
                   <HStack spacing={2}>
@@ -1128,7 +1129,7 @@ const CommandCenter: React.FC = () => {
                     <FormControl>
                       <FormLabel fontSize="xs">PRODUCT</FormLabel>
                       <Select borderRadius="0" fontSize="sm" placeholder="select" value={rwProductId} onChange={(e) => setRwProductId(e.target.value)}>
-                        {adminProducts.filter((p) => p.category === rwType.toUpperCase()).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        {adminProducts.filter((p) => p.category === rwType.toUpperCase()).map((p) => <option key={p.id} value={p.id}>{displayName(p.name)}</option>)}
                       </Select>
                     </FormControl>
                   )}
@@ -1787,7 +1788,7 @@ const CommandCenter: React.FC = () => {
                             <Box w="28px" h="28px" flexShrink={0} bg={p.accent_color || monarchYellow} border="2px solid" borderColor={borderColor} />
                           )}
                           <Box minW={0}>
-                            <Text fontSize="xs" fontWeight="900" fontFamily="mono" isTruncated>{p.name}</Text>
+                            <Text fontSize="xs" fontWeight="900" fontFamily="mono" isTruncated>{displayName(p.name)}</Text>
                             <Text fontSize="10px" color="gray.500" fontFamily="mono" isTruncated>
                               {isPhysical
                                 ? `${p.category} $${p.price_usd} STOCK: ${stockLine || '—'}`
@@ -1796,7 +1797,7 @@ const CommandCenter: React.FC = () => {
                             </Text>
                             {(lineage || forgedOn) && (
                               <Text fontSize="10px" color="gray.600" fontFamily="mono" isTruncated>
-                                {[lineage, forgedOn && `FORGED ${forgedOn}`].filter(Boolean).join(' // ')}
+                                {[lineage, forgedOn && `FORGED ${forgedOn}`].filter(Boolean).join(' · ')}
                               </Text>
                             )}
                           </Box>

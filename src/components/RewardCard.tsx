@@ -96,7 +96,7 @@ const RewardCard: React.FC<RewardCardProps> = ({
                 fontSize="3xl"
                 lineHeight="1"
               >
-                {(name || 'UNKNOWN_ARTIFACT').toUpperCase()}
+                {(name || 'UNKNOWN ARTIFACT').toUpperCase()}
               </Heading>
               <HStack spacing={2}>
                 <Text
@@ -111,7 +111,7 @@ const RewardCard: React.FC<RewardCardProps> = ({
                   {(tier || 'COMMON').toUpperCase()}
                 </Text>
                 <Text color="whiteAlpha.600" fontFamily="mono" fontSize="10px" fontWeight="900">
-                  {(collection || 'GENERAL_RELEASE').toUpperCase()} {(season || 'UNSPECIFIED').toUpperCase()}
+                  {(collection || 'GENERAL RELEASE').toUpperCase()} {(season || 'UNSPECIFIED').toUpperCase()}
                 </Text>
               </HStack>
             </VStack>
