@@ -16,7 +16,25 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Recurring per-tap WNGS reward, keyed by tier. There's no tier->reward
 // column in the DB yet, so this lives in code for now.
 const TAP_REWARD = { default: 5 };
-const TAP_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+// One paid tap per owner, per tag, per calendar day in the brand's timezone
+// (resets at local midnight, so a daily habit isn't pushed later each day
+// the way a rolling 24h timer does). The artifact_daily_taps primary key
+// (user_id, tag_id, tap_day) enforces it atomically, so two simultaneous
+// taps can't both pay out.
+const TAP_DAY_TIMEZONE = 'America/New_York';
+
+// 'YYYY-MM-DD' for `date` in TAP_DAY_TIMEZONE, plus ms until that day ends.
+function tapDay(date = new Date()) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: TAP_DAY_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+    }).formatToParts(date).map((p) => [p.type, p.value])
+  );
+  const elapsed = ((+parts.hour * 60 + +parts.minute) * 60 + +parts.second) * 1000;
+  return { day: `${parts.year}-${parts.month}-${parts.day}`, msUntilNext: Math.max(1000, 86_400_000 - elapsed) };
+}
 
 // The per-tag cooldown above is the real payout gate; this only stops a single
 // account hammering the endpoint across many owned tags. Set well above any
@@ -73,26 +91,17 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'NOT_ARTIFACT_OWNER' });
     }
 
-    const { data: lastTap, error: lastTapError } = await admin
-      .from('transactions')
-      .select('created_at')
-      .eq('user_id', userId)
-      .eq('transaction_type', 'ARTIFACT_TAP')
-      .eq('metadata->>tag_id', tagId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (lastTapError) throw lastTapError;
-
-    if (lastTap) {
-      const elapsed = Date.now() - new Date(lastTap.created_at).getTime();
-      if (elapsed < TAP_COOLDOWN_MS) {
-        return res.status(429).json({
-          error: 'TAP_COOLDOWN_ACTIVE',
-          retryAfterMs: TAP_COOLDOWN_MS - elapsed,
-        });
+    // Record today's tap first; the primary key rejects a second one for the
+    // same owner, tag and day (including a concurrent duplicate request).
+    const today = tapDay();
+    const { error: dayError } = await admin
+      .from('artifact_daily_taps')
+      .insert({ user_id: userId, tag_id: tagId, tap_day: today.day });
+    if (dayError) {
+      if (dayError.code === '23505') {
+        return res.status(429).json({ error: 'TAP_COOLDOWN_ACTIVE', retryAfterMs: today.msUntilNext });
       }
+      throw dayError;
     }
 
     const reward = TAP_REWARD[artifact.tier] ?? TAP_REWARD.default;
@@ -122,7 +131,7 @@ export default async function handler(req, res) {
         user_id: userId,
         amount: reward,
         transaction_type: 'ARTIFACT_TAP',
-        metadata: { tag_id: tagId },
+        metadata: { tag_id: tagId, tap_day: today.day },
       });
 
     if (txError) throw txError;

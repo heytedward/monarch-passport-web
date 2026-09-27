@@ -6,7 +6,7 @@ import { checkAndAwardStamps } from './_stamps.js';
 // Client mirrors the user-facing constants in src/lib/ascension.ts -- keep in sync.
 
 // XP rates
-export const XP_TAP = 40;          // per artifact tap
+export const XP_TAP = 60;          // per daily artifact tap (tapping ~4 days a week reaches level 30 in a 90-day season)
 export const XP_ACTIVATION = 100;  // first-claim activation bonus
 export const XP_SOCIAL_MINE = 10;  // per successful social-link mine (link owner)
 export const WNGS_SOCIAL_MINE = 2; // small WNGS trickle per mine

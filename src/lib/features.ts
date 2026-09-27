@@ -7,3 +7,10 @@
  * api/v2/_stamps.js) that stops awarding; turn both on together.
  */
 export const STAMPS_ENABLED = false;
+
+/**
+ * Quests. Paused for launch: the Profile QUESTS tab and the "quests cleared"
+ * stat are hidden. The server has its own switch (QUESTS_ENABLED in
+ * api/v2/_quests.js) that stops recording progress; turn both on together.
+ */
+export const QUESTS_ENABLED = false;

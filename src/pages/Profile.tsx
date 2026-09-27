@@ -22,7 +22,7 @@ import DeStijlAvatar from '../components/DeStijlAvatar'
 import useStore from '../store/useStore'
 import { staggerContainer, staggerItem } from '../lib/motion'
 import { effectiveStamina, DEFAULT_MAX_STAMINA } from '../lib/ascension'
-import { STAMPS_ENABLED } from '../lib/features'
+import { STAMPS_ENABLED, QUESTS_ENABLED } from '../lib/features'
 import { displayName } from '../lib/displayName'
 
 const MotionSimpleGrid = motion.create(SimpleGrid)
@@ -127,6 +127,7 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchQuests = async () => {
+      if (!QUESTS_ENABLED) return;
       if (!user?.id) return;
       // Service-role read: returns active quests + this user's progress, so the
       // RLS-blocked per-user read of user_quests isn't an issue.
@@ -247,7 +248,7 @@ const Profile = () => {
 
   const stats = [
     { label: 'WNGS BALANCE', value: isLoading ? "..." : wngsBalance.toString() },
-    { label: 'QUESTS CLEARED', value: `${questsCleared}/${activeQuests.length}` },
+    ...(QUESTS_ENABLED ? [{ label: 'QUESTS CLEARED', value: `${questsCleared}/${activeQuests.length}` }] : []),
     { label: 'TOTAL TAPS', value: isLoading ? "..." : totalTaps.toString() },
     { label: 'ARTIFACT LEVEL', value: String(progress?.level ?? 0).padStart(2, '0') },
   ];
@@ -553,7 +554,7 @@ const Profile = () => {
       {/* Tabs */}
       <Box bg={bg} borderY={`4px solid ${text}`}>
         <Flex>
-          {(['STATS', 'WALLET', 'QUESTS', 'STAMPS'] as const).filter((tab) => STAMPS_ENABLED || tab !== 'STAMPS').map((tab) => (
+          {(['STATS', 'WALLET', 'QUESTS', 'STAMPS'] as const).filter((tab) => (STAMPS_ENABLED || tab !== 'STAMPS') && (QUESTS_ENABLED || tab !== 'QUESTS')).map((tab) => (
             <Box 
               key={tab}
               flex={1} 

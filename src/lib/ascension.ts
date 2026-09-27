@@ -5,7 +5,7 @@ export const DEFAULT_MAX_STAMINA = 5;
 export const STAMINA_REGEN_MS = 4 * 60 * 60 * 1000; // +1 every 4h
 export const RECHARGE_COST = 250;                   // WNGS to refill to full
 
-export const XP_TAP = 40;
+export const XP_TAP = 60;
 export const XP_SOCIAL_MINE = 10;
 export const WNGS_SOCIAL_MINE = 2;
 

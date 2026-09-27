@@ -68,10 +68,20 @@ async function grantReward(admin, userId, quest) {
   }
 }
 
+/**
+ * Quests are paused for launch: the core loop is claim, tap daily, level up.
+ * While false, no quest progress or rewards are recorded, get_quests returns
+ * an empty list, and the Profile QUESTS tab is hidden (QUESTS_ENABLED in
+ * src/lib/features.ts). Quest rows stay in the database; flip both to
+ * turn quests back on.
+ */
+export const QUESTS_ENABLED = false;
+
 // Record an action and grant any quest it completes. Best-effort: callers wrap
 // this in try/catch so quest bookkeeping never fails the primary earn action.
 // Returns the quests newly completed by this call.
 export async function recordQuestAction(admin, userId, actionType) {
+  if (!QUESTS_ENABLED) return;
   const { data: quests } = await admin
     .from('quests')
     .select('*')

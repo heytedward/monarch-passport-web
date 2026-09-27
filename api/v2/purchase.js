@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST, getActiveSeason } from './_ascension.js';
 import { avatarSvg } from './_avatarSvg.js';
 import { verifyPrivyToken, getPrivyUserEmails, getPrivyUserWallets } from './_auth.js';
-import { recordQuestAction } from './_quests.js';
+import { recordQuestAction, QUESTS_ENABLED } from './_quests.js';
 import { enforceRateLimit, sendRateLimited } from './_ratelimit.js';
 import { checkAndAwardStamps, isFullCollectionComplete, seasonMatchValues, STAMPS_ENABLED } from './_stamps.js';
 
@@ -586,6 +586,7 @@ export default async function handler(req, res) {
     }
 
     if (action === 'get_quests') {
+      if (!QUESTS_ENABLED) return res.status(200).json({ success: true, quests: [], userQuests: [], disabled: true });
       // Active quests + this user's progress, both via service role so the
       // browser's RLS-blocked per-user read of user_quests isn't an issue.
       const [{ data: quests }, { data: userQuests }] = await Promise.all([
