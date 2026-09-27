@@ -123,7 +123,7 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg }: { index: str
         )}
         {item.rarity && (
           <Text position="absolute" bottom={1} left={1} fontSize="6px" fontWeight="900" color={RARITY_COLORS[item.rarity] || text} fontFamily="mono">
-            {item.rarity}
+            {displayName(item.rarity)}
           </Text>
         )}
         <Center h="full" flexDirection="column" position="relative" zIndex={1}>
@@ -229,7 +229,7 @@ const Shop = () => {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'PURCHASE_FAILED');
+        throw new Error(displayName(data.error) || 'PURCHASE FAILED');
       }
 
       setWngsBalance(data.newBalance);
@@ -288,7 +288,7 @@ const Shop = () => {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        throw new Error(data.error || 'Failed to create checkout session');
+        throw new Error(displayName(data.error) || 'Failed to create checkout session');
       }
     } catch (error: any) {
       toast({
@@ -355,10 +355,10 @@ const Shop = () => {
         setProducts(mappedProducts);
       } else {
         const mockWngs: ShopItemData[] = [
-          { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE // 1000 WNGS', specs: [], wngsAmount: 1000 },
-          { id: 'W02', type: 'digital', category: 'WNGS', price: 45, priceString: '5000 WNGS', name: 'LOOT // 5000 WNGS', specs: [], wngsAmount: 5000 },
-          { id: 'W03', type: 'digital', category: 'WNGS', price: 80, priceString: '10000 WNGS', name: 'VAULT // 10000 WNGS', specs: [], wngsAmount: 10000 },
-          { id: 'W04', type: 'digital', category: 'WNGS', price: 350, priceString: '50000 WNGS', name: 'MAINFRAME // 50000 WNGS', specs: [], wngsAmount: 50000 },
+          { id: 'W01', type: 'digital', category: 'WNGS', price: 10, priceString: '1000 WNGS', name: 'CACHE · 1000 WNGS', specs: [], wngsAmount: 1000 },
+          { id: 'W02', type: 'digital', category: 'WNGS', price: 45, priceString: '5000 WNGS', name: 'LOOT · 5000 WNGS', specs: [], wngsAmount: 5000 },
+          { id: 'W03', type: 'digital', category: 'WNGS', price: 80, priceString: '10000 WNGS', name: 'VAULT · 10000 WNGS', specs: [], wngsAmount: 10000 },
+          { id: 'W04', type: 'digital', category: 'WNGS', price: 350, priceString: '50000 WNGS', name: 'MAINFRAME · 50000 WNGS', specs: [], wngsAmount: 50000 },
         ];
         setProducts(mockWngs);
       }
@@ -582,7 +582,7 @@ const Shop = () => {
                             lineHeight="1.1"
                             textTransform="uppercase"
                           >
-                            {displayName(item.name.includes(' // ') ? item.name.split(' // ')[0] : item.name)}: {item.name.includes(' // ') ? displayName(item.name.split(' // ')[1]) : item.priceString.split(' ')[0]} / ${item.price}
+                            {displayName(/ \/\/ | · /.test(item.name) ? item.name.split(/ \/\/ | · /)[0] : item.name)}: {/ \/\/ | · /.test(item.name) ? displayName(item.name.split(/ \/\/ | · /)[1]) : item.priceString.split(' ')[0]} / ${item.price}
                           </Text>
                           <Button
                             size="xs"
@@ -737,7 +737,7 @@ const Shop = () => {
                           </Text>
                           {selectedItem.rarity && (
                             <Text fontSize="8px" fontWeight="900" color={RARITY_COLORS[selectedItem.rarity] || mutedText} fontFamily="mono">
-                              [ {selectedItem.rarity} ]
+                              [ {displayName(selectedItem.rarity)} ]
                             </Text>
                           )}
                           <HStack color="whiteAlpha.800" pt={1}>
@@ -771,7 +771,7 @@ const Shop = () => {
                             </Text>
                             {selectedItem.rarity && (
                               <Text fontSize="8px" fontWeight="900" color={RARITY_COLORS[selectedItem.rarity] || mutedText} fontFamily="mono">
-                                [ {selectedItem.rarity} ]
+                                [ {displayName(selectedItem.rarity)} ]
                               </Text>
                             )}
                             {isItemFeatured(selectedItem) && (
@@ -839,7 +839,7 @@ const Shop = () => {
 
                         {selectedItem.specs.map((spec, i) => (
                           <Box key={i}>
-                            <Text fontSize="8px" fontWeight="900" color={mutedText}>{spec.label}</Text>
+                            <Text fontSize="8px" fontWeight="900" color={mutedText}>{displayName(spec.label)}</Text>
                             <Text fontSize="xs" fontWeight="700" color={text}>{spec.value}</Text>
                           </Box>
                         ))}

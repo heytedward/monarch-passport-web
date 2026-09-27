@@ -63,7 +63,7 @@ class ErrorBoundary extends React.Component<Props, State> {
             <Box w="full" border="1px solid #FFB000" p={3} textAlign="left">
               <Text fontFamily="mono" fontSize="9px" fontWeight="900" color="#FFB000" mb={1}>ERROR</Text>
               <Text fontFamily="mono" fontSize="xs" color="white" wordBreak="break-word" sx={{ userSelect: 'text' }}>
-                {this.state.error.message}
+                {this.state.error.message.replace(/_+/g, " ").replace(/\s*\/\/\s*/g, " · ")}
               </Text>
             </Box>
           )}

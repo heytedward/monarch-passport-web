@@ -117,7 +117,7 @@ const Ascension = () => {
       body: JSON.stringify({ userId: user?.id, ...body }),
     })
     const data = await res.json()
-    if (!res.ok || !data.success) throw new Error(data.error || 'REQUEST_FAILED')
+    if (!res.ok || !data.success) throw new Error(displayName(data.error) || 'REQUEST FAILED')
     return data
   }
 
@@ -305,7 +305,7 @@ const Ascension = () => {
           <Heading fontSize="5xl" fontWeight="900" fontStyle="italic" color="white" fontFamily="heading" lineHeight="1">
             ASCENSION
           </Heading>
-          <Text fontSize="xs" fontWeight="900" color="whiteAlpha.700" fontFamily="mono" mt={1}>{season.title}</Text>
+          <Text fontSize="xs" fontWeight="900" color="whiteAlpha.700" fontFamily="mono" mt={1}>{displayName(season.title)}</Text>
           {!isAuthed && (
             <Box mt={3} border="1px solid" borderColor="var(--monarch-accent)" px={2} py={1} display="inline-block">
               <Text fontSize="8px" fontWeight="900" color="var(--monarch-accent)" fontFamily="mono" letterSpacing="0.12em">

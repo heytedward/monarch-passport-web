@@ -22,6 +22,7 @@ import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
 import NotificationsBell from '../components/NotificationsBell'
 import { staggerContainer, staggerItem } from '../lib/motion'
+import { displayName } from '../lib/displayName'
 
 const MotionVStack = motion(VStack)
 const MotionBox = motion(Box)
@@ -77,7 +78,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
       body: JSON.stringify({ userId: user?.id, ...body }),
     });
     const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.success) throw new Error(data?.error || 'REQUEST_FAILED');
+    if (!res.ok || !data?.success) throw new Error(displayName(data?.error) || 'REQUEST FAILED');
     return data;
   };
 
@@ -148,7 +149,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
               )}
             </HStack>
             <Heading fontSize="xl" fontWeight="900" color="white" fontFamily="mono" lineHeight="1.1" textTransform="uppercase" noOfLines={2}>
-              {post.title}
+              {displayName(post.title)}
             </Heading>
             <Text fontSize="sm" color="gray.400" fontFamily="mono" lineHeight="1.6" noOfLines={post.image_url ? 3 : 8} flex={1}>
               {post.content}
@@ -237,7 +238,7 @@ const Home = () => {
           title: 'NEO COLLECTION · HANDSHAKE SEQUENCE LOGGED',
           content: 'The first batch of NTAG 424 DNA chips has been successfully integrated into the Neo Hoodie v1. Agents report 100% signal stability during initial phygital stress tests. Protocol Season 01 is now entering the final verification phase.',
           image_url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop',
-          author: 'SYSTEM_ARCHITECT',
+          author: 'SYSTEM ARCHITECT',
           created_at: new Date().toISOString(),
           status: 'PUBLISHED'
         };

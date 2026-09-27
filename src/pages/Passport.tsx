@@ -1,5 +1,6 @@
 import { Box, Heading, SimpleGrid, Text, VStack } from '@chakra-ui/react'
 import useStore from '../store/useStore'
+import { displayName } from '../lib/displayName';
 
 const events = [
   {
@@ -58,7 +59,7 @@ const Passport = () => {
             transition="all 0.2s"
             _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
           >
-            <Text fontSize="lg" fontWeight={700} mb={3} lineHeight="1.2">{event.name}</Text>
+            <Text fontSize="lg" fontWeight={700} mb={3} lineHeight="1.2">{displayName(event.name)}</Text>
             <Box 
               border={`2px solid ${event.labelColor}`} 
               color={event.labelColor} 
@@ -69,7 +70,7 @@ const Passport = () => {
               fontWeight={700} 
               fontSize="sm"
             >
-              {event.label}
+              {displayName(event.label)}
             </Box>
           </Box>
         ))}

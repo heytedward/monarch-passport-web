@@ -67,7 +67,7 @@ const Profile = () => {
       body: JSON.stringify({ userId: user?.id, ...body }),
     });
     const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.success) throw new Error(data?.error || 'REQUEST_FAILED');
+    if (!res.ok || !data?.success) throw new Error(displayName(data?.error) || 'REQUEST FAILED');
     return data;
   };
 
@@ -257,7 +257,7 @@ const Profile = () => {
                 bg={bg}
               >
                 <VStack align="start" spacing={2}>
-                  <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono">{stat.label}</Text>
+                  <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono">{displayName(stat.label)}</Text>
                   <Text fontSize="3xl" fontWeight="900" color={text} fontFamily="mono">{stat.value}</Text>
                 </VStack>
               </MotionBox>
@@ -385,7 +385,7 @@ const Profile = () => {
                   <HStack key={quest.id} p={4} border={`4px solid ${cleared ? 'var(--monarch-accent)' : text}`} justify="space-between" bg={bg} opacity={cleared ? 0.7 : 1}>
                     <VStack align="start" spacing={0}>
                       <Text fontSize="xs" fontWeight="900" color={text}>{displayName(quest.title).toUpperCase()}</Text>
-                      <Text fontSize="9px" color={mutedText}>{quest.description}</Text>
+                      <Text fontSize="9px" color={mutedText}>{displayName(quest.description)}</Text>
                       {!cleared && target > 1 && (
                         <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono" mt={1}>
                           PROGRESS{Math.min(prog, target)}/{target}
@@ -451,7 +451,7 @@ const Profile = () => {
                       </Text>
                       {stamp.description && (
                         <Text fontSize="8px" color={mutedText} fontFamily="mono" lineHeight="1.4">
-                          {stamp.description}
+                          {displayName(stamp.description)}
                         </Text>
                       )}
                       {stamp.earned && stamp.earned_at && (

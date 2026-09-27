@@ -192,7 +192,7 @@ const Closet = () => {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'EQUIP_REQUEST_FAILED');
+        throw new Error(displayName(data.error) || 'EQUIP REQUEST FAILED');
       }
 
       // Immediate local sync
@@ -233,7 +233,7 @@ const Closet = () => {
         body: JSON.stringify({ userId: user.id, action: 'mint_avatar', assetId: selectedItem.assetId, recipient: solanaAddress }),
       });
       const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.error || 'MINT_FAILED');
+      if (!response.ok || !data.success) throw new Error(displayName(data.error) || 'MINT FAILED');
 
       // Reflect minted state locally.
       setOwnedAssets((prev) => prev.map((a) => a.assetId === selectedItem.assetId ? { ...a, mintAddress: data.mintAddress, mintStatus: 'minted' } : a));
@@ -272,48 +272,48 @@ const Closet = () => {
           {
             id: 'SYSTEM_LIGHT',
             type: 'theme',
-            name: 'SYSTEM_LIGHT',
+            name: 'SYSTEM LIGHT',
             themeMode: 'light',
             themeAccent: '#FFB000',
             borderColor: activeTheme === 'SYSTEM_LIGHT' ? brandAccent : border,
             dossier: {
-              collection: 'SYSTEM_PROTOCOLS',
+              collection: 'SYSTEM PROTOCOLS',
               releaseDate: '2024-01-01',
               serialId: 'THM-L-001',
               xpPerTap: '0',
-              composition: 'HIGH_CONTRAST',
+              composition: 'HIGH CONTRAST',
               activeMissions: ['Sync interface to Solar Day']
             }
           },
           {
             id: 'SYSTEM_DARK',
             type: 'theme',
-            name: 'SYSTEM_DARK',
+            name: 'SYSTEM DARK',
             themeMode: 'dark',
             themeAccent: '#FFB000',
             borderColor: (activeTheme === 'SYSTEM_DARK' || !activeTheme) ? brandAccent : border,
             dossier: {
-              collection: 'SYSTEM_PROTOCOLS',
+              collection: 'SYSTEM PROTOCOLS',
               releaseDate: '2024-01-01',
               serialId: 'THM-D-001',
               xpPerTap: '0',
-              composition: 'LOW_LIGHT',
+              composition: 'LOW LIGHT',
               activeMissions: ['Maintain stealth protocols']
             }
           },
           {
             id: 'CRIMSON_OVERRIDE',
             type: 'theme',
-            name: 'CRIMSON_OVERRIDE',
+            name: 'CRIMSON OVERRIDE',
             themeMode: 'dark',
             themeAccent: '#DC143C',
             borderColor: activeTheme === 'CRIMSON_OVERRIDE' ? brandAccent : border,
             dossier: {
-              collection: 'SYSTEM_PROTOCOLS',
+              collection: 'SYSTEM PROTOCOLS',
               releaseDate: '2024-01-01',
               serialId: 'THM-C-001',
               xpPerTap: '0',
-              composition: 'CRIMSON_EMISSION',
+              composition: 'CRIMSON EMISSION',
               activeMissions: ['Override default palette']
             }
           }
@@ -342,7 +342,7 @@ const Closet = () => {
               mintStatus: asset.mint_status || undefined,
               borderColor: (activeTheme === p.id || activeAvatar === p.id) ? brandAccent : border,
               dossier: {
-                collection: p.collection || p.category || 'GENERAL_RELEASE',
+                collection: p.collection || p.category || 'GENERAL RELEASE',
                 releaseDate: new Date(p.created_at || Date.now()).toISOString().split('T')[0],
                 serialId: `SN-${p.id.slice(0, 8).toUpperCase()}`,
                 xpPerTap: '50',
@@ -370,13 +370,13 @@ const Closet = () => {
               collection: a.collection || undefined,
               borderColor: border,
               dossier: {
-                collection: a.collection || 'PHYGITAL_ARTIFACT',
+                collection: a.collection || 'PHYGITAL ARTIFACT',
                 releaseDate: a.is_season_artifact ? `SEASON_${a.season || '—'}` : 'PHYGITAL',
                 serialId: a.tag_id,
                 xpPerTap: '40',
-                composition: a.is_season_artifact ? 'SEASON_ARTIFACT' : 'PHYGITAL_ARTIFACT',
+                composition: a.is_season_artifact ? 'SEASON ARTIFACT' : 'PHYGITAL ARTIFACT',
                 activeMissions: a.is_season_artifact
-                  ? ['Tap to earn // unlocks PREMIUM track']
+                  ? ['Tap to earn · unlocks PREMIUM track']
                   : ['Tap to earn WNGS'],
               },
             }));
@@ -706,10 +706,10 @@ const Closet = () => {
                       </Box>
                       <VStack spacing={2} textAlign="center">
                         <Text color={text} fontFamily="heading" fontSize="xl" lineHeight="1">
-                          {selectedItem.name}
+                          {displayName(selectedItem.name)}
                         </Text>
                         <Text fontSize="9px" fontWeight="900" color="var(--monarch-accent)" fontFamily="mono">
-                          {selectedItem.dossier.collection} {selectedItem.dossier.composition}
+                          {displayName(selectedItem.dossier.collection)} {selectedItem.dossier.composition}
                         </Text>
                         <Box pt={2}>
                           <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono" border="1px solid" borderColor={border} px={2} py={0.5}>
@@ -753,7 +753,7 @@ const Closet = () => {
                     <VStack spacing={10} w="full">
                       <VStack spacing={2}>
                         <Text color={text} fontFamily="heading" fontSize="3xl" lineHeight="1.1">
-                          {selectedItem.name}
+                          {displayName(selectedItem.name)}
                         </Text>
                         <Box h="2px" bg="var(--monarch-accent)" w="40px" />
                       </VStack>
@@ -761,7 +761,7 @@ const Closet = () => {
                       <VStack spacing={4} w="full">
                         <Box>
                           <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono" mb={1}>COLLECTION</Text>
-                          <Text fontSize="sm" fontWeight="900" color={text} letterSpacing="0.05em">{selectedItem.dossier.collection}</Text>
+                          <Text fontSize="sm" fontWeight="900" color={text} letterSpacing="0.05em">{displayName(selectedItem.dossier.collection)}</Text>
                         </Box>
                         
                         <Box>

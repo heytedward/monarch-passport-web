@@ -175,7 +175,7 @@ function AppContent() {
                     ORDER SYNCED{data.granted.length} ITEM{data.granted.length > 1 ? 'S' : ''} ADDED TO YOUR CLOSET
                   </Text>
                   <Text color="whiteAlpha.700" fontFamily="mono" fontSize="10px" mt={1}>
-                    {data.granted.join(' // ').toUpperCase()}
+                    {data.granted.join(' · ').toUpperCase()}
                   </Text>
                   {data.grantedWngs > 0 && (
                     <Text color="#FFB000" fontFamily="mono" fontWeight="900" fontSize="10px" mt={1}>
