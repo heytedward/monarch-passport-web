@@ -22,6 +22,7 @@ import DeStijlAvatar from '../components/DeStijlAvatar'
 import useStore from '../store/useStore'
 import { staggerContainer, staggerItem } from '../lib/motion'
 import { effectiveStamina, DEFAULT_MAX_STAMINA } from '../lib/ascension'
+import { STAMPS_ENABLED } from '../lib/features'
 
 const MotionSimpleGrid = motion.create(SimpleGrid)
 const MotionBox = motion.create(Box)
@@ -185,7 +186,7 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchStamps = async () => {
-      if (!user?.id) return;
+      if (!STAMPS_ENABLED || !user?.id) return;
       setStampsLoading(true);
       try {
         const token = await getAccessToken();
@@ -551,7 +552,7 @@ const Profile = () => {
       {/* Tabs */}
       <Box bg={bg} borderY={`4px solid ${text}`}>
         <Flex>
-          {['STATS', 'WALLET', 'QUESTS', 'STAMPS'].map((tab) => (
+          {(['STATS', 'WALLET', 'QUESTS', 'STAMPS'] as const).filter((tab) => STAMPS_ENABLED || tab !== 'STAMPS').map((tab) => (
             <Box 
               key={tab}
               flex={1} 

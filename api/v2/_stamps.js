@@ -104,6 +104,14 @@ export async function isFullCollectionComplete(admin, userId, seasonId) {
 }
 
 /**
+ * Stamps are paused until after launch. While false, nothing is awarded,
+ * get_stamps returns an empty list and the full-collection checks (which only
+ * exist to award a stamp) are skipped. The tables and earned rows are kept;
+ * flip this (and STAMPS_ENABLED in src/lib/features.ts) to turn them back on.
+ */
+export const STAMPS_ENABLED = false;
+
+/**
  * Check whether any stamps should be awarded for a given trigger and award
  * them. Safe to call best-effort inside a try/catch — never throws.
  *
@@ -114,6 +122,7 @@ export async function isFullCollectionComplete(admin, userId, seasonId) {
  * @returns {Promise<Array>}     Stamps newly awarded this call
  */
 export async function checkAndAwardStamps(admin, userId, triggerType, value = null) {
+  if (!STAMPS_ENABLED) return [];
   try {
     let query = admin
       .from('stamps')

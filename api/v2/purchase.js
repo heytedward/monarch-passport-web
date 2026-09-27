@@ -8,7 +8,7 @@ import { avatarSvg } from './_avatarSvg.js';
 import { verifyPrivyToken, getPrivyUserEmails, getPrivyUserWallets } from './_auth.js';
 import { recordQuestAction } from './_quests.js';
 import { enforceRateLimit, sendRateLimited } from './_ratelimit.js';
-import { checkAndAwardStamps, isFullCollectionComplete, seasonMatchValues } from './_stamps.js';
+import { checkAndAwardStamps, isFullCollectionComplete, seasonMatchValues, STAMPS_ENABLED } from './_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -599,6 +599,7 @@ export default async function handler(req, res) {
     // state merged. Resilient: if the stamps tables don't exist yet, returns
     // an empty list rather than erroring (feature stays dark until seeded).
     if (action === 'get_stamps') {
+      if (!STAMPS_ENABLED) return res.status(200).json({ success: true, stamps: [], season: null, disabled: true });
       const season = await getActiveSeason(admin);
       let q = admin.from('stamps').select('*').order('sort_order', { ascending: true });
       q = season ? q.or(`season_id.eq.${season.id},season_id.is.null`) : q.is('season_id', null);
@@ -675,7 +676,7 @@ export default async function handler(req, res) {
       await admin
         .from('user_collection_items')
         .upsert({ user_id: userId, item_id: item.id }, { onConflict: 'user_id,item_id', ignoreDuplicates: true });
-      try {
+      if (STAMPS_ENABLED) try {
         if (await isFullCollectionComplete(admin, userId, item.season_id)) {
           await checkAndAwardStamps(admin, userId, 'FULL_SEASON_COLLECTION');
         }
