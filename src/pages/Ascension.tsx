@@ -146,8 +146,8 @@ const Ascension = () => {
   if (!season) {
     return (
       <Center h="100vh" bg="black" flexDirection="column" p={6}>
-        <Heading color="white" fontFamily="'Archivo Black', sans-serif" fontStyle="italic">ASCENSION</Heading>
-        <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="xs" mt={4}>[ NO ACTIVE SEASON ]</Text>
+        <Heading color="white" fontFamily="heading" fontStyle="italic">ASCENSION</Heading>
+        <Text color="whiteAlpha.600" fontFamily="mono" fontSize="xs" mt={4}>[ NO ACTIVE SEASON ]</Text>
       </Center>
     )
   }
@@ -213,13 +213,13 @@ const Ascension = () => {
           {isClaimed ? (
             <HStack position="absolute" top={2} right={2} bg={accent} px={2} py={0.5} spacing={1} zIndex={1}>
               <Icon as={MdCheck} color="black" boxSize="10px" />
-              <Text fontSize="8px" fontWeight="900" color="black" fontFamily="monospace">CLAIMED</Text>
+              <Text fontSize="8px" fontWeight="900" color="black" fontFamily="mono">CLAIMED</Text>
             </HStack>
           ) : locked ? (
             <HStack position="absolute" top={2} right={2} border="1px solid" borderColor="whiteAlpha.500"
               bg="blackAlpha.600" px={2} py={0.5} spacing={1} zIndex={1}>
               <Icon as={MdLock} color="whiteAlpha.700" boxSize="10px" />
-              <Text fontSize="8px" fontWeight="900" color="whiteAlpha.700" fontFamily="monospace">
+              <Text fontSize="8px" fontWeight="900" color="whiteAlpha.700" fontFamily="mono">
                 {premiumLocked ? 'PREMIUM' : `LVL ${r.level}`}
               </Text>
             </HStack>
@@ -230,7 +230,7 @@ const Ascension = () => {
             <Center position="absolute" inset={0} bg="blackAlpha.500" zIndex={1}>
               <Button
                 h="40px" px={10} borderRadius="0" bg={accent} color="black"
-                fontFamily="monospace" fontWeight="900" fontSize="12px" letterSpacing="0.15em"
+                fontFamily="mono" fontWeight="900" fontSize="12px" letterSpacing="0.15em"
                 isLoading={busy === r.id} onClick={() => handleClaim(r)}
                 _hover={{ bg: 'white', transform: 'scale(1.04)' }} transition="all 0.15s"
               >
@@ -242,11 +242,11 @@ const Ascension = () => {
 
         {/* Label strip */}
         <Box p={3}>
-          <Text fontSize="7px" fontWeight="900" fontFamily="monospace" letterSpacing="0.15em"
+          <Text fontSize="7px" fontWeight="900" fontFamily="mono" letterSpacing="0.15em"
             color={r.track === 'premium' ? accent : 'whiteAlpha.500'}>
             {r.track.toUpperCase()} TRACK · LVL {r.level}
           </Text>
-          <Heading fontSize="md" fontWeight="900" color="white" fontFamily="monospace" textTransform="uppercase" noOfLines={1} mt={0.5}>
+          <Heading fontSize="md" fontWeight="900" color="white" fontFamily="mono" textTransform="uppercase" noOfLines={1} mt={0.5}>
             {rewardLabel(r)}
           </Heading>
         </Box>
@@ -266,7 +266,7 @@ const Ascension = () => {
         {isCurrent && (
           <Flex align="center" gap={2} ml="40px" mb={1}>
             <Box flex={1} h="2px" bg={accent} />
-            <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="monospace" letterSpacing="0.15em">
+            <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="mono" letterSpacing="0.15em">
               ◀ YOU · LVL {lvl}
             </Text>
           </Flex>
@@ -279,7 +279,7 @@ const Ascension = () => {
             <Center position="absolute" left="50%" top="50%" transform="translate(-50%,-50%)" w="30px" h="22px"
               zIndex={1} border="2px solid" borderColor={isCurrent ? 'white' : reached ? accent : 'whiteAlpha.300'}
               bg={reached ? accent : 'black'}>
-              <Text fontSize="10px" fontWeight="900" fontFamily="monospace" color={reached ? 'black' : 'whiteAlpha.500'}>
+              <Text fontSize="10px" fontWeight="900" fontFamily="mono" color={reached ? 'black' : 'whiteAlpha.500'}>
                 {lvl}
               </Text>
             </Center>
@@ -299,16 +299,16 @@ const Ascension = () => {
       <Container maxW="container.sm" p={0}>
         {/* Header */}
         <Box p={8}>
-          <Text fontSize="9px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace" letterSpacing="0.2em">
+          <Text fontSize="9px" fontWeight="900" color="var(--monarch-accent)" fontFamily="mono" letterSpacing="0.2em">
             SEASON {season.code || ''} {daysLeft} DAYS LEFT
           </Text>
-          <Heading fontSize="5xl" fontWeight="900" fontStyle="italic" color="white" fontFamily="'Archivo Black', sans-serif" lineHeight="1">
+          <Heading fontSize="5xl" fontWeight="900" fontStyle="italic" color="white" fontFamily="heading" lineHeight="1">
             ASCENSION
           </Heading>
-          <Text fontSize="xs" fontWeight="900" color="whiteAlpha.700" fontFamily="monospace" mt={1}>{season.title}</Text>
+          <Text fontSize="xs" fontWeight="900" color="whiteAlpha.700" fontFamily="mono" mt={1}>{season.title}</Text>
           {!isAuthed && (
             <Box mt={3} border="1px solid" borderColor="var(--monarch-accent)" px={2} py={1} display="inline-block">
-              <Text fontSize="8px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace" letterSpacing="0.12em">
+              <Text fontSize="8px" fontWeight="900" color="var(--monarch-accent)" fontFamily="mono" letterSpacing="0.12em">
                 ◇ PREVIEW · CONNECT TO TRACK YOUR PROGRESS
               </Text>
             </Box>
@@ -319,17 +319,17 @@ const Ascension = () => {
         <Box px={8}>
           <Flex justify="space-between" align="end" mb={1}>
             <HStack spacing={2} align="end">
-              <Heading fontSize="3xl" fontWeight="900" color="white" fontFamily="'Archivo Black', sans-serif">LVL {level}</Heading>
-              {isPremium && <Box bg="var(--monarch-accent)" px={2} py={0.5} mb={1}><Text fontSize="8px" fontWeight="900" color="black" fontFamily="monospace">PREMIUM</Text></Box>}
+              <Heading fontSize="3xl" fontWeight="900" color="white" fontFamily="heading">LVL {level}</Heading>
+              {isPremium && <Box bg="var(--monarch-accent)" px={2} py={0.5} mb={1}><Text fontSize="8px" fontWeight="900" color="black" fontFamily="mono">PREMIUM</Text></Box>}
             </HStack>
-            <Text fontSize="9px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace">
+            <Text fontSize="9px" fontWeight="900" color="whiteAlpha.600" fontFamily="mono">
               {maxed ? 'MAX' : `${intoLevel} / ${season.xp_per_level} XP`}
             </Text>
           </Flex>
           <Box w="100%" h="10px" border="1px solid" borderColor="white" p="1px">
             <Box h="100%" bg="var(--monarch-accent)" w={`${pct}%`} transition="width 0.3s" />
           </Box>
-          <Text fontSize="7px" fontWeight="900" color="whiteAlpha.500" fontFamily="monospace" mt={1}>
+          <Text fontSize="7px" fontWeight="900" color="whiteAlpha.500" fontFamily="mono" mt={1}>
             TOTAL XP: {xp} {season.level_count} LEVELS
           </Text>
         </Box>
@@ -337,10 +337,10 @@ const Ascension = () => {
         {/* Tier ladder */}
         <Box p={8}>
           <Flex justify="space-between" align="center" mb={4}>
-            <Heading fontSize="xs" fontWeight="900" color="white" fontFamily="'Archivo Black', sans-serif">
+            <Heading fontSize="xs" fontWeight="900" color="white" fontFamily="heading">
               TIER LADDER
             </Heading>
-            <Text fontSize="8px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace" letterSpacing="0.1em">
+            <Text fontSize="8px" fontWeight="900" color="whiteAlpha.600" fontFamily="mono" letterSpacing="0.1em">
               TIER {level} / {season.level_count}
             </Text>
           </Flex>
@@ -350,7 +350,7 @@ const Ascension = () => {
             <Center w="32px" flexShrink={0}>
               <Icon as={MdMilitaryTech} color={maxed ? accent : 'whiteAlpha.400'} boxSize="20px" />
             </Center>
-            <Text fontSize="8px" fontWeight="900" fontFamily="monospace" letterSpacing="0.15em"
+            <Text fontSize="8px" fontWeight="900" fontFamily="mono" letterSpacing="0.15em"
               color={maxed ? accent : 'whiteAlpha.500'}>
               SUMMIT · TIER {season.level_count}{maxed ? ' REACHED' : ''}
             </Text>
@@ -375,20 +375,20 @@ const Ascension = () => {
           {level === 0 && (
             <Flex align="center" gap={2} ml="40px" mt={1}>
               <Box flex={1} h="2px" bg={accent} />
-              <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="monospace" letterSpacing="0.15em">
+              <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="mono" letterSpacing="0.15em">
                 ◀ YOU · START
               </Text>
             </Flex>
           )}
           <HStack spacing={3} mt={1}>
             <Center w="32px" flexShrink={0}><Box w="10px" h="2px" bg="whiteAlpha.400" /></Center>
-            <Text fontSize="7px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" letterSpacing="0.15em">
+            <Text fontSize="7px" fontWeight="900" color="whiteAlpha.400" fontFamily="mono" letterSpacing="0.15em">
               BASE · TIER 01
             </Text>
           </HStack>
 
           {rewards.length === 0 && (
-            <Text fontSize="9px" fontWeight="900" color="whiteAlpha.500" fontFamily="monospace" mt={4}>
+            <Text fontSize="9px" fontWeight="900" color="whiteAlpha.500" fontFamily="mono" mt={4}>
               [ TIERS LIVE · REWARDS BEING CONFIGURED ]
             </Text>
           )}

@@ -53,16 +53,16 @@ class ErrorBoundary extends React.Component<Props, State> {
     return (
       <Box bg="black" minH="100vh" color="white" display="flex" alignItems="center" justifyContent="center" px={6} py={10}>
         <VStack spacing={5} textAlign="center" maxW="440px" border="2px solid #DC143C" p={8}>
-          <Heading fontFamily="'Archivo Black', sans-serif" fontSize="2xl" letterSpacing="-0.02em" color="#DC143C">
+          <Heading fontFamily="heading" fontSize="2xl" letterSpacing="-0.02em" color="#DC143C">
             SYSTEM FAULT</Heading>
-          <Text fontFamily="monospace" fontSize="xs" color="gray.400">
+          <Text fontFamily="mono" fontSize="xs" color="gray.400">
             A RENDER ERROR INTERRUPTED THIS SCREEN. THE FAULT HAS BEEN LOGGED.
           </Text>
 
           {this.state.error?.message && (
             <Box w="full" border="1px solid #FFB000" p={3} textAlign="left">
-              <Text fontFamily="monospace" fontSize="9px" fontWeight="900" color="#FFB000" mb={1}>ERROR</Text>
-              <Text fontFamily="monospace" fontSize="xs" color="white" wordBreak="break-word" sx={{ userSelect: 'text' }}>
+              <Text fontFamily="mono" fontSize="9px" fontWeight="900" color="#FFB000" mb={1}>ERROR</Text>
+              <Text fontFamily="mono" fontSize="xs" color="white" wordBreak="break-word" sx={{ userSelect: 'text' }}>
                 {this.state.error.message}
               </Text>
             </Box>
@@ -70,15 +70,15 @@ class ErrorBoundary extends React.Component<Props, State> {
 
           {topFrames && (
             <Box w="full" border="1px solid" borderColor="whiteAlpha.300" p={3} textAlign="left">
-              <Text fontFamily="monospace" fontSize="9px" fontWeight="900" color="gray.500" mb={1}>COMPONENT STACK</Text>
-              <Text as="pre" fontFamily="monospace" fontSize="10px" color="gray.300" whiteSpace="pre-wrap" wordBreak="break-word" sx={{ userSelect: 'text' }}>
+              <Text fontFamily="mono" fontSize="9px" fontWeight="900" color="gray.500" mb={1}>COMPONENT STACK</Text>
+              <Text as="pre" fontFamily="mono" fontSize="10px" color="gray.300" whiteSpace="pre-wrap" wordBreak="break-word" sx={{ userSelect: 'text' }}>
                 {topFrames}
               </Text>
             </Box>
           )}
 
           <Button
-            bg="#FFB000" color="black" w="full" h="48px" borderRadius="0" fontWeight="900" fontFamily="monospace" fontSize="sm"
+            bg="#FFB000" color="black" w="full" h="48px" borderRadius="0" fontWeight="900" fontFamily="mono" fontSize="sm"
             _hover={{ bg: '#e69e00' }} _active={{ bg: '#cc8c00' }} onClick={this.handleReload}
           >
             RELOAD SYSTEM

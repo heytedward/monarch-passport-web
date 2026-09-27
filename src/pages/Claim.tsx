@@ -93,7 +93,7 @@ const Claim = () => {
   }
 
   return (
-    <Box bg={bg} minH="100vh" color={yellow} p={6} fontFamily="monospace">
+    <Box bg={bg} minH="100vh" color={yellow} p={6} fontFamily="mono">
       <Center h="100vh">
         <VStack spacing={8} textAlign="center">
           {status === 'LOADING' && (
@@ -127,7 +127,7 @@ const Claim = () => {
                 borderRadius="0"
                 h="56px"
                 fontWeight="900"
-                fontFamily="monospace"
+                fontFamily="mono"
                 _hover={{ bg: 'white' }}
                 onClick={() => navigate('/profile')}
               >

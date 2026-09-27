@@ -55,7 +55,7 @@ const RewardCard: React.FC<RewardCardProps> = ({
       p={8}
     >
       <VStack spacing={6} align="stretch">
-        <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="10px" fontWeight="900" letterSpacing="0.15em">
+        <Text color="whiteAlpha.600" fontFamily="mono" fontSize="10px" fontWeight="900" letterSpacing="0.15em">
           {variant === 'artifact' ? 'ARTIFACT ACTIVATED' : 'TRANSMISSION COMPLETE'}
         </Text>
 
@@ -66,7 +66,7 @@ const RewardCard: React.FC<RewardCardProps> = ({
             </Box>
             <Heading
               color={gold}
-              fontFamily="'Archivo Black', sans-serif"
+              fontFamily="heading"
               fontStyle="italic"
               fontWeight="900"
               fontSize="4xl"
@@ -74,11 +74,11 @@ const RewardCard: React.FC<RewardCardProps> = ({
             >
               +{amount} $WNGS
             </Heading>
-            <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="xs" fontWeight="900">
+            <Text color="whiteAlpha.600" fontFamily="mono" fontSize="xs" fontWeight="900">
               CREDITED TO YOUR BALANCE
             </Text>
             {itemName && (
-              <Text color={gold} fontFamily="monospace" fontSize="xs" fontWeight="900" textAlign="center">
+              <Text color={gold} fontFamily="mono" fontSize="xs" fontWeight="900" textAlign="center">
                 {(itemType || 'ITEM').toUpperCase()} {itemName.toUpperCase()}
               </Text>
             )}
@@ -90,7 +90,7 @@ const RewardCard: React.FC<RewardCardProps> = ({
             <VStack align="start" spacing={2}>
               <Heading
                 color="white"
-                fontFamily="'Archivo Black', sans-serif"
+                fontFamily="heading"
                 fontStyle="italic"
                 fontWeight="900"
                 fontSize="3xl"
@@ -104,13 +104,13 @@ const RewardCard: React.FC<RewardCardProps> = ({
                   border="1px solid"
                   borderColor={tierColor}
                   px={2}
-                  fontFamily="monospace"
+                  fontFamily="mono"
                   fontSize="10px"
                   fontWeight="900"
                 >
                   {(tier || 'COMMON').toUpperCase()}
                 </Text>
-                <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="10px" fontWeight="900">
+                <Text color="whiteAlpha.600" fontFamily="mono" fontSize="10px" fontWeight="900">
                   {(collection || 'GENERAL_RELEASE').toUpperCase()} {(season || 'UNSPECIFIED').toUpperCase()}
                 </Text>
               </HStack>
@@ -125,7 +125,7 @@ const RewardCard: React.FC<RewardCardProps> = ({
               <VStack align="start" spacing={0}>
                 <Heading
                   color={gold}
-                  fontFamily="'Archivo Black', sans-serif"
+                  fontFamily="heading"
                   fontStyle="italic"
                   fontWeight="900"
                   fontSize="2xl"
@@ -133,7 +133,7 @@ const RewardCard: React.FC<RewardCardProps> = ({
                 >
                   +{amount} $WNGS
                 </Heading>
-                <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="9px" fontWeight="900">
+                <Text color="whiteAlpha.600" fontFamily="mono" fontSize="9px" fontWeight="900">
                   ACTIVATION BONUS AWARDED
                 </Text>
               </VStack>
@@ -141,13 +141,13 @@ const RewardCard: React.FC<RewardCardProps> = ({
 
             {premiumUnlocked && (
               <Box bg={gold} p={2}>
-                <Text color="black" fontFamily="monospace" fontSize="xs" fontWeight="900" textAlign="center">
+                <Text color="black" fontFamily="mono" fontSize="xs" fontWeight="900" textAlign="center">
                   PREMIUM TRACK UNLOCKED · ASCENSION ELEVATED
                 </Text>
               </Box>
             )}
 
-            <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="xs" fontWeight="900">
+            <Text color="whiteAlpha.600" fontFamily="mono" fontSize="xs" fontWeight="900">
               THIS PIECE HAS BEEN LOGGED TO YOUR CLOSET.
             </Text>
           </VStack>

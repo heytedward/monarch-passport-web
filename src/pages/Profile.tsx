@@ -257,8 +257,8 @@ const Profile = () => {
                 bg={bg}
               >
                 <VStack align="start" spacing={2}>
-                  <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">{stat.label}</Text>
-                  <Text fontSize="3xl" fontWeight="900" color={text} fontFamily="monospace">{stat.value}</Text>
+                  <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono">{stat.label}</Text>
+                  <Text fontSize="3xl" fontWeight="900" color={text} fontFamily="mono">{stat.value}</Text>
                 </VStack>
               </MotionBox>
             ))}
@@ -269,8 +269,8 @@ const Profile = () => {
           <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
             <Flex justify="space-between" align="center">
               <VStack align="start" spacing={0}>
-                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">AVAILABLE WNGS</Text>
-                <Heading fontSize="4xl" fontWeight="900" fontStyle="italic" color={text} fontFamily="'Archivo Black', sans-serif" lineHeight="1">
+                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono">AVAILABLE WNGS</Text>
+                <Heading fontSize="4xl" fontWeight="900" fontStyle="italic" color={text} fontFamily="heading" lineHeight="1">
                   {isLoading ? 'SYNCING...' : wngsBalance}
                 </Heading>
               </VStack>
@@ -279,7 +279,7 @@ const Profile = () => {
             <Button
               onClick={() => navigate('/shop?filter=WNGS')}
               bg="var(--monarch-accent)" color="black" height="44px" borderRadius="0"
-              fontWeight="900" fontSize="xs" fontFamily="monospace" leftIcon={<MdCreditCard />}
+              fontWeight="900" fontSize="xs" fontFamily="mono" leftIcon={<MdCreditCard />}
               _hover={{ bg: '#e69e00' }}
             >
               BUY WNGS
@@ -288,10 +288,10 @@ const Profile = () => {
             {/* WNGS -> storefront discount code */}
             <Box borderTop={`2px solid ${text}`} pt={4} mt={1}>
               <Flex justify="space-between" align="center" mb={1}>
-                <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">STORE DISCOUNT</Text>
-                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">100 WNGS = $1</Text>
+                <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="mono">STORE DISCOUNT</Text>
+                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono">100 WNGS = $1</Text>
               </Flex>
-              <Text fontSize="9px" color={mutedText} fontFamily="monospace" mb={3} lineHeight="1.5">
+              <Text fontSize="9px" color={mutedText} fontFamily="mono" mb={3} lineHeight="1.5">
                 SPEND WNGS FOR A CODE TO REDEEM AT PAPILLONBRAND.US CHECKOUT (UP TO 30% OFF AN ORDER).
               </Text>
               <HStack spacing={2} mb={3}>
@@ -304,7 +304,7 @@ const Profile = () => {
                       onClick={() => setGenUsd(v)} isDisabled={!affordable}
                       bg={sel ? 'var(--monarch-accent)' : 'transparent'} color={sel ? 'black' : text}
                       border={`3px solid ${sel ? 'var(--monarch-accent)' : text}`} opacity={affordable ? 1 : 0.35}
-                      fontFamily="monospace" fontWeight="900" fontSize="xs"
+                      fontFamily="mono" fontWeight="900" fontSize="xs"
                       _hover={{ bg: sel ? 'var(--monarch-accent)' : cardBg }}
                     >
                       ${v}
@@ -315,7 +315,7 @@ const Profile = () => {
               <Button
                 width="100%" height="44px" borderRadius="0" onClick={handleGenerateDiscount}
                 isLoading={genBusy} isDisabled={wngsBalance < genUsd * 100}
-                bg={text} color={bg} fontFamily="monospace" fontWeight="900" fontSize="xs"
+                bg={text} color={bg} fontFamily="mono" fontWeight="900" fontSize="xs"
                 leftIcon={<MdLocalOffer />} _hover={{ opacity: 0.85 }}
               >
                 GENERATE ${genUsd} CODE{genUsd * 100} WNGS
@@ -326,8 +326,8 @@ const Profile = () => {
                   {discounts.filter((d) => d.status === 'active').map((d) => (
                     <Flex key={d.code} align="center" justify="space-between" p={3} border={`2px solid ${text}`}>
                       <VStack align="start" spacing={0}>
-                        <Text fontWeight="900" fontSize="sm" color={text} fontFamily="monospace" letterSpacing="0.05em">{d.code}</Text>
-                        <Text fontSize="8px" color={mutedText} fontFamily="monospace">${Number(d.discount_usd)} OFF · ACTIVE</Text>
+                        <Text fontWeight="900" fontSize="sm" color={text} fontFamily="mono" letterSpacing="0.05em">{d.code}</Text>
+                        <Text fontSize="8px" color={mutedText} fontFamily="mono">${Number(d.discount_usd)} OFF · ACTIVE</Text>
                       </VStack>
                       <HStack spacing={1}>
                         <Center as="button" onClick={() => copyDiscount(d.code)} w="34px" h="34px" border={`2px solid ${text}`} color={text} _hover={{ bg: cardBg }}>
@@ -339,12 +339,12 @@ const Profile = () => {
                       </HStack>
                     </Flex>
                   ))}
-                  <Text fontSize="8px" color={mutedText} fontFamily="monospace">CANCEL AN UNUSED CODE ANYTIME TO REFUND ITS WNGS.</Text>
+                  <Text fontSize="8px" color={mutedText} fontFamily="mono">CANCEL AN UNUSED CODE ANYTIME TO REFUND ITS WNGS.</Text>
                 </VStack>
               )}
             </Box>
 
-            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace" pt={2}>TRANSACTION HISTORY</Text>
+            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="mono" pt={2}>TRANSACTION HISTORY</Text>
             {transLoading ? (
               <Center py={8}><Spinner color="var(--monarch-accent)" /></Center>
             ) : transactions.length > 0 ? (
@@ -355,10 +355,10 @@ const Profile = () => {
                       <Center bg={cardBg} w="34px" h="34px"><Icon as={MdHistory} color={mutedText} boxSize="16px" /></Center>
                       <VStack align="start" spacing={0}>
                         <Text fontWeight="900" fontSize="xs" color={text} textTransform="uppercase">{item.transaction_type || item.type || 'TRANSACTION'}</Text>
-                        <Text fontSize="8px" color={mutedText} fontFamily="monospace">{item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}</Text>
+                        <Text fontSize="8px" color={mutedText} fontFamily="mono">{item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}</Text>
                       </VStack>
                     </HStack>
-                    <Text fontWeight="900" fontSize="md" color={item.amount > 0 ? 'var(--monarch-accent)' : text} fontFamily="monospace">
+                    <Text fontWeight="900" fontSize="md" color={item.amount > 0 ? 'var(--monarch-accent)' : text} fontFamily="mono">
                       {item.amount > 0 ? `+${item.amount}` : item.amount}
                     </Text>
                   </Flex>
@@ -366,7 +366,7 @@ const Profile = () => {
               </VStack>
             ) : (
               <Center py={8} border="1px dashed" borderColor={mutedText}>
-                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">[ NO TRANSACTIONS LOGGED ]</Text>
+                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono">[ NO TRANSACTIONS LOGGED ]</Text>
               </Center>
             )}
           </VStack>
@@ -374,7 +374,7 @@ const Profile = () => {
       case 'QUESTS':
         return (
           <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
-            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">ACTIVE QUESTS</Text>
+            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="mono">ACTIVE QUESTS</Text>
             {activeQuests.length > 0 ? (
               activeQuests.map((quest) => {
                 const uq = userQuests[quest.id];
@@ -387,15 +387,15 @@ const Profile = () => {
                       <Text fontSize="xs" fontWeight="900" color={text}>{displayName(quest.title).toUpperCase()}</Text>
                       <Text fontSize="9px" color={mutedText}>{quest.description}</Text>
                       {!cleared && target > 1 && (
-                        <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mt={1}>
+                        <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono" mt={1}>
                           PROGRESS{Math.min(prog, target)}/{target}
                         </Text>
                       )}
                     </VStack>
                     {cleared ? (
-                      <Text fontSize="xs" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">CLEARED</Text>
+                      <Text fontSize="xs" fontWeight="900" color="var(--monarch-accent)" fontFamily="mono">CLEARED</Text>
                     ) : (
-                      <Text fontSize="xs" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
+                      <Text fontSize="xs" fontWeight="900" color="var(--monarch-accent)" fontFamily="mono">
                         +{quest.reward_wngs} WNGS
                       </Text>
                     )}
@@ -404,7 +404,7 @@ const Profile = () => {
               })
             ) : (
               <Center p={8}>
-                <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace">
+                <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="mono">
                   [ NO ACTIVE QUESTS FOUND ]
                 </Text>
               </Center>
@@ -414,7 +414,7 @@ const Profile = () => {
       case 'STAMPS':
         return (
           <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
-            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">SEASONAL STAMPS</Text>
+            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="mono">SEASONAL STAMPS</Text>
             {stampsLoading ? (
               <Center p={8}><Spinner color="var(--monarch-accent)" /></Center>
             ) : stamps.length > 0 ? (
@@ -442,20 +442,20 @@ const Profile = () => {
                         fontSize="8px"
                         fontWeight="900"
                         color={stamp.earned ? 'var(--monarch-accent)' : mutedText}
-                        fontFamily="monospace"
+                        fontFamily="mono"
                       >
                         {stamp.earned ? '✓ EARNED' : '[ LOCKED ]'}
                       </Text>
-                      <Text fontSize="xs" fontWeight="900" color={text} fontFamily="monospace" lineHeight="1.2">
+                      <Text fontSize="xs" fontWeight="900" color={text} fontFamily="mono" lineHeight="1.2">
                         {stamp.name.toUpperCase()}
                       </Text>
                       {stamp.description && (
-                        <Text fontSize="8px" color={mutedText} fontFamily="monospace" lineHeight="1.4">
+                        <Text fontSize="8px" color={mutedText} fontFamily="mono" lineHeight="1.4">
                           {stamp.description}
                         </Text>
                       )}
                       {stamp.earned && stamp.earned_at && (
-                        <Text fontSize="7px" color={mutedText} fontFamily="monospace" mt={1}>
+                        <Text fontSize="7px" color={mutedText} fontFamily="mono" mt={1}>
                           {new Date(stamp.earned_at)
                             .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                             .toUpperCase()}
@@ -468,7 +468,7 @@ const Profile = () => {
               </MotionSimpleGrid>
             ) : (
               <Center p={8}>
-                <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace">
+                <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="mono">
                   [ NO STAMPS FOUND ]
                 </Text>
               </Center>
@@ -483,10 +483,10 @@ const Profile = () => {
     <Box bg={bg} minH="100vh" pb="120px">
       {/* Header */}
       <Box p={8} pt={12} bg={bg} color={text}>
-        <Heading fontSize="6xl" fontWeight="900" fontStyle="italic" mb={1} fontFamily="'Archivo Black', sans-serif" letterSpacing="-0.04em">
+        <Heading fontSize="6xl" fontWeight="900" fontStyle="italic" mb={1} fontFamily="heading" letterSpacing="-0.04em">
           PROFILE
         </Heading>
-        <Text fontSize="9px" fontWeight="900" color={mutedText} fontFamily="monospace" letterSpacing="0.1em">
+        <Text fontSize="9px" fontWeight="900" color={mutedText} fontFamily="mono" letterSpacing="0.1em">
           SYSTEM IDENTITY{handle}
         </Text>
       </Box>
@@ -510,21 +510,21 @@ const Profile = () => {
           <DeStijlAvatar seed={user?.id || 'default'} size={200} />
 
           <VStack spacing={2} align="center">
-            <Heading fontSize="3xl" fontWeight="900" color={bg} fontStyle="italic" fontFamily="'Archivo Black', sans-serif" letterSpacing="-0.02em">
+            <Heading fontSize="3xl" fontWeight="900" color={bg} fontStyle="italic" fontFamily="heading" letterSpacing="-0.02em">
               {handle}
             </Heading>
             
             {solanaAddress ? (
               <HStack spacing={1.5} bg={useColorModeValue("blackAlpha.100", "whiteAlpha.200")} px={3} py={1} border="1px solid" borderColor={bg}>
                 <Box w="6px" h="6px" borderRadius="full" bg="#00FF66" boxShadow="0 0 6px #00FF66" />
-                <Text fontSize="10px" fontWeight="900" fontFamily="monospace" color={bg}>
+                <Text fontSize="10px" fontWeight="900" fontFamily="mono" color={bg}>
                   SOL: {solanaAddress.slice(0, 6)}...{solanaAddress.slice(-4)}
                 </Text>
               </HStack>
             ) : (
               <HStack spacing={1.5} bg={useColorModeValue("blackAlpha.100", "whiteAlpha.200")} px={3} py={1} border="1px solid" borderColor={bg}>
                 <Spinner size="xs" color={bg} />
-                <Text fontSize="9px" fontWeight="900" fontFamily="monospace" color={bg} opacity={0.8}>
+                <Text fontSize="9px" fontWeight="900" fontFamily="mono" color={bg} opacity={0.8}>
                   SECURE ENCLAVE GENERATING...
                 </Text>
               </HStack>
@@ -546,7 +546,7 @@ const Profile = () => {
               cursor="pointer"
               onClick={() => setActiveTab(tab as any)}
             >
-              <Text fontSize="12px" fontWeight="900" color={activeTab === tab ? text : mutedText} fontFamily="monospace">
+              <Text fontSize="12px" fontWeight="900" color={activeTab === tab ? text : mutedText} fontFamily="mono">
                 {tab}
               </Text>
             </Box>

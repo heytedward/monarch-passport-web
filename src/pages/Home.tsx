@@ -134,7 +134,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
               <Image src={post.image_url} alt={post.title} w="full" h="180px" objectFit="cover" filter="grayscale(20%)" />
               {isFeatured && (
                 <Box position="absolute" top={2} left={2} bg={accent} px={2} py={0.5}>
-                  <Text fontSize="8px" fontWeight="900" color="black" fontFamily="monospace">★ FEATURED</Text>
+                  <Text fontSize="8px" fontWeight="900" color="black" fontFamily="mono">★ FEATURED</Text>
                 </Box>
               )}
             </Box>
@@ -142,29 +142,29 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
           <VStack align="stretch" spacing={3} p={6} flex={1} overflow="hidden">
             <HStack spacing={2} color={accent}>
               <Icon as={MdAccessTime} boxSize="10px" />
-              <Text fontSize="9px" fontWeight="900" fontFamily="monospace">LOGGED: {dateStr}</Text>
+              <Text fontSize="9px" fontWeight="900" fontFamily="mono">LOGGED: {dateStr}</Text>
               {isFeatured && !post.image_url && (
-                <Text fontSize="9px" fontWeight="900" fontFamily="monospace" color={accent}>★ FEATURED</Text>
+                <Text fontSize="9px" fontWeight="900" fontFamily="mono" color={accent}>★ FEATURED</Text>
               )}
             </HStack>
-            <Heading fontSize="xl" fontWeight="900" color="white" fontFamily="monospace" lineHeight="1.1" textTransform="uppercase" noOfLines={2}>
+            <Heading fontSize="xl" fontWeight="900" color="white" fontFamily="mono" lineHeight="1.1" textTransform="uppercase" noOfLines={2}>
               {post.title}
             </Heading>
-            <Text fontSize="sm" color="gray.400" fontFamily="monospace" lineHeight="1.6" noOfLines={post.image_url ? 3 : 8} flex={1}>
+            <Text fontSize="sm" color="gray.400" fontFamily="mono" lineHeight="1.6" noOfLines={post.image_url ? 3 : 8} flex={1}>
               {post.content}
             </Text>
             <HStack spacing={2}>
               <Icon as={MdPerson} color={accent} boxSize="12px" />
-              <Text fontSize="9px" fontWeight="900" color="white" fontFamily="monospace">{post.author?.toUpperCase() || 'SYSTEM'}</Text>
+              <Text fontSize="9px" fontWeight="900" color="white" fontFamily="mono">{post.author?.toUpperCase() || 'SYSTEM'}</Text>
             </HStack>
           </VStack>
           <HStack spacing={0} borderTop="2px solid white" flexShrink={0}>
-            <Button flex={1} h="48px" borderRadius="0" bg="black" color="white" fontFamily="monospace" fontSize="10px" fontWeight="900"
+            <Button flex={1} h="48px" borderRadius="0" bg="black" color="white" fontFamily="mono" fontSize="10px" fontWeight="900"
               leftIcon={<MdLocalFireDepartment />} isLoading={boosting} onClick={handleBoost} isDisabled={isMock || wngsBalance < BOOST_COST}
               borderRight="2px solid white" _hover={{ bg: accent, color: 'black' }}>
               HYPE{boostCount > 0 ? ` (${boostCount})` : ''} {BOOST_COST}
             </Button>
-            <Button flex={1} h="48px" borderRadius="0" bg="black" color="white" fontFamily="monospace" fontSize="10px" fontWeight="900"
+            <Button flex={1} h="48px" borderRadius="0" bg="black" color="white" fontFamily="mono" fontSize="10px" fontWeight="900"
               leftIcon={<MdChatBubbleOutline />} onClick={openComments} isDisabled={isMock} _hover={{ bg: 'whiteAlpha.200' }}>
               COMMENTS
             </Button>
@@ -177,10 +177,10 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
           <HStack justify="space-between" p={4} borderBottom="2px solid white" flexShrink={0}>
             <HStack spacing={2}>
               <Icon as={MdChatBubbleOutline} color={accent} boxSize="14px" />
-              <Text fontSize="11px" fontWeight="900" color="white" fontFamily="monospace">COMMENTS{comments.length}</Text>
+              <Text fontSize="11px" fontWeight="900" color="white" fontFamily="mono">COMMENTS{comments.length}</Text>
             </HStack>
             <Button size="xs" h="26px" borderRadius="0" bg="transparent" color="white" border="1px solid white"
-              fontFamily="monospace" fontSize="9px" leftIcon={<MdArrowBack />} onClick={() => setFlipped(false)} _hover={{ bg: 'white', color: 'black' }}>
+              fontFamily="mono" fontSize="9px" leftIcon={<MdArrowBack />} onClick={() => setFlipped(false)} _hover={{ bg: 'white', color: 'black' }}>
               BACK
             </Button>
           </HStack>
@@ -188,19 +188,19 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
             {loadingComments ? (
               <Center py={8}><Spinner color={accent} size="sm" /></Center>
             ) : comments.length === 0 ? (
-              <Center py={8}><Text fontSize="9px" fontWeight="900" color="gray.600" fontFamily="monospace">[ NO COMMENTS YET · BE FIRST ]</Text></Center>
+              <Center py={8}><Text fontSize="9px" fontWeight="900" color="gray.600" fontFamily="mono">[ NO COMMENTS YET · BE FIRST ]</Text></Center>
             ) : comments.map((c) => (
               <Box key={c.id} borderLeft={`2px solid ${accent}`} pl={3} py={1}>
-                <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="monospace">{handleFromId(c.user_id)}</Text>
-                <Text fontSize="xs" color="gray.300" fontFamily="monospace" lineHeight="1.4">{c.body}</Text>
+                <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="mono">{handleFromId(c.user_id)}</Text>
+                <Text fontSize="xs" color="gray.300" fontFamily="mono" lineHeight="1.4">{c.body}</Text>
               </Box>
             ))}
           </VStack>
           <VStack align="stretch" spacing={2} p={4} borderTop="2px solid white" flexShrink={0}>
             <Textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="ADD TRANSMISSION..."
-              bg="black" border="1px solid" borderColor="whiteAlpha.400" borderRadius="0" color="white" fontFamily="monospace" fontSize="xs"
+              bg="black" border="1px solid" borderColor="whiteAlpha.400" borderRadius="0" color="white" fontFamily="mono" fontSize="xs"
               rows={2} resize="none" maxLength={500} _placeholder={{ color: 'gray.600' }} _focus={{ borderColor: accent, boxShadow: 'none' }} />
-            <Button h="40px" borderRadius="0" bg={accent} color="black" fontFamily="monospace" fontSize="10px" fontWeight="900"
+            <Button h="40px" borderRadius="0" bg={accent} color="black" fontFamily="mono" fontSize="10px" fontWeight="900"
               rightIcon={<MdSend />} isLoading={posting} isDisabled={!commentText.trim() || wngsBalance < COMMENT_COST} onClick={handleComment} _hover={{ bg: 'white' }}>
               {wngsBalance < COMMENT_COST ? 'INSUFFICIENT WNGS' : `TRANSMIT${COMMENT_COST} WNGS`}
             </Button>
@@ -264,10 +264,10 @@ const Home = () => {
         <Box borderBottom={`4px solid ${text}`} p={6} pt={12}>
           <Flex justify="space-between" align="center">
             <VStack align="start" spacing={0}>
-              <Heading fontSize="4xl" fontWeight="900" fontStyle="italic" color={text} letterSpacing="-0.04em" fontFamily="'Archivo Black', sans-serif">
+              <Heading fontSize="4xl" fontWeight="900" fontStyle="italic" color={text} letterSpacing="-0.04em" fontFamily="heading">
                 MONARCH TIMES
               </Heading>
-              <Text fontSize="9px" fontWeight="900" color={brandAccent} fontFamily="monospace" letterSpacing="0.1em">
+              <Text fontSize="9px" fontWeight="900" color={brandAccent} fontFamily="mono" letterSpacing="0.1em">
                 BALANCE: {wngsBalance} WNGS · SESSION ACTIVE
               </Text>
             </VStack>
@@ -278,7 +278,7 @@ const Home = () => {
         {/* Status Bar */}
         <Box borderBottom={`2px solid ${text}`} py={3} px={6} bg="whiteAlpha.50">
           <HStack justify="space-between">
-            <Text fontSize="10px" fontWeight="900" color={text} fontFamily="monospace" letterSpacing="0.1em">
+            <Text fontSize="10px" fontWeight="900" color={text} fontFamily="mono" letterSpacing="0.1em">
               AUTONOMOUS FEED · V2.0 STABLE
             </Text>
             <Box h="8px" w="8px" bg={brandAccent} borderRadius="full" />
@@ -290,7 +290,7 @@ const Home = () => {
           <Center py={20}>
             <VStack spacing={4}>
               <Spinner color={brandAccent} size="xl" thickness="4px" />
-              <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">
+              <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="mono">
                 CONNECTING TO NEURAL LINK...
               </Text>
             </VStack>
@@ -313,11 +313,11 @@ const Home = () => {
           <Center py={40} px={10} textAlign="center">
             <VStack spacing={6}>
               <Box p={8} border={`2px dashed ${mutedText}`}>
-                <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace" letterSpacing="0.2em">
+                <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="mono" letterSpacing="0.2em">
                   [ WAITING FOR SYSTEM TRANSMISSION ]
                 </Text>
               </Box>
-              <Text fontSize="9px" color={mutedText} fontFamily="monospace" maxW="250px">
+              <Text fontSize="9px" color={mutedText} fontFamily="mono" maxW="250px">
                 THE ARCHIVE IS CURRENTLY SILENT. AGENTS ARE CALCULATING NEXT PROTOCOLS.
               </Text>
             </VStack>

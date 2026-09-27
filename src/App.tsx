@@ -171,14 +171,14 @@ function AppContent() {
               position: 'top',
               render: () => (
                 <Box bg="black" border="2px solid #FFB000" p={3} maxW="430px" mx="auto">
-                  <Text color="#FFB000" fontFamily="monospace" fontWeight="900" fontSize="xs">
+                  <Text color="#FFB000" fontFamily="mono" fontWeight="900" fontSize="xs">
                     ORDER SYNCED{data.granted.length} ITEM{data.granted.length > 1 ? 'S' : ''} ADDED TO YOUR CLOSET
                   </Text>
-                  <Text color="whiteAlpha.700" fontFamily="monospace" fontSize="10px" mt={1}>
+                  <Text color="whiteAlpha.700" fontFamily="mono" fontSize="10px" mt={1}>
                     {data.granted.join(' // ').toUpperCase()}
                   </Text>
                   {data.grantedWngs > 0 && (
-                    <Text color="#FFB000" fontFamily="monospace" fontWeight="900" fontSize="10px" mt={1}>
+                    <Text color="#FFB000" fontFamily="mono" fontWeight="900" fontSize="10px" mt={1}>
                       +{data.grantedWngs} $WNGS CREDITED
                     </Text>
                   )}
@@ -200,8 +200,8 @@ function AppContent() {
           :root {
             --monarch-accent: ${brandAccent};
           }
-          .de-stijl-heading { font-family: 'Archivo Black', sans-serif !important; }
-          .de-stijl-body { font-family: 'Space Mono', monospace !important; }
+          .de-stijl-heading { font-family: var(--brand-font) !important; }
+          .de-stijl-body { font-family: var(--brand-font) !important; }
         `}</style>
         {/* Phone-tight frame for the app; the admin breaks out to full width. */}
         <AppFrame />
@@ -260,9 +260,8 @@ function App() {
     >
       <ChakraProvider theme={theme}>
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Mono:wght@400;700&display=swap');
-          .de-stijl-heading { font-family: 'Archivo Black', sans-serif !important; }
-          .de-stijl-body { font-family: 'Space Mono', monospace !important; }
+          .de-stijl-heading { font-family: var(--brand-font) !important; }
+          .de-stijl-body { font-family: var(--brand-font) !important; }
         `}</style>
         <ErrorBoundary>
           <AppContent />

@@ -189,7 +189,7 @@ const Verify: React.FC = () => {
       <Center h="100vh" bg="black" color="#FFB000">
         <VStack spacing={4}>
           <Text
-            fontFamily="monospace"
+            fontFamily="mono"
             fontSize="xl"
             fontWeight="bold"
             animation={`${blink} 1.5s infinite`}
@@ -206,10 +206,10 @@ const Verify: React.FC = () => {
     return (
       <Center h="100vh" bg="black" p={6}>
         <VStack spacing={6} border="2px solid red" p={10} bg="rgba(255,0,0,0.05)">
-          <Heading color="red" size="2xl" fontFamily="monospace" fontWeight="900" textAlign="center">
+          <Heading color="red" size="2xl" fontFamily="mono" fontWeight="900" textAlign="center">
             404 · INVALID OR COUNTERFEIT TAG
           </Heading>
-          <Text color="red.300" fontFamily="monospace" fontSize="sm">
+          <Text color="red.300" fontFamily="mono" fontSize="sm">
             ERROR CODE: {error}
           </Text>
           <Button
@@ -217,7 +217,7 @@ const Verify: React.FC = () => {
             colorScheme="red"
             borderRadius="0"
             onClick={() => navigate('/')}
-            fontFamily="monospace"
+            fontFamily="mono"
           >
             RETURN TO BASE
           </Button>
@@ -247,24 +247,24 @@ const Verify: React.FC = () => {
       <Center h="100vh" bg="black" p={6}>
         <VStack spacing={8} maxW="600px" w="full">
           <VStack spacing={6} border="2px solid #00FF00" p={10} bg="rgba(0,255,0,0.05)" w="full">
-            <Heading color="#00FF00" size="xl" fontFamily="monospace" fontWeight="900" textAlign="center">
+            <Heading color="#00FF00" size="xl" fontFamily="mono" fontWeight="900" textAlign="center">
               AUTHENTIC MONARCH ARTIFACT · OWNER VERIFIED
             </Heading>
             <Box w="full" h="1px" bg="#00FF00" opacity={0.3} />
 
             <VStack align="start" w="full" spacing={1}>
-              <Text color="white" fontFamily="'Archivo Black', sans-serif" fontSize="2xl" lineHeight="1" mb={1}>
+              <Text color="white" fontFamily="heading" fontSize="2xl" lineHeight="1" mb={1}>
                 {displayName(artifact.name).toUpperCase()}
               </Text>
               <HStack spacing={2}>
-                <Text color="#00FF00" fontFamily="monospace" fontSize="xs" fontWeight="900">
+                <Text color="#00FF00" fontFamily="mono" fontSize="xs" fontWeight="900">
                   {artifact.collection?.toUpperCase() || 'GENERAL RELEASE'} {artifact.season?.toUpperCase() || 'UNSPECIFIED'}
                 </Text>
                 {artifact.isSeasonArtifact && (
                   <Text color="black" bg="#00FF00" fontSize="10px" px={1} fontWeight="900">SEASON EXCLUSIVE</Text>
                 )}
               </HStack>
-              <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="9px" pt={2}>
+              <Text color="whiteAlpha.600" fontFamily="mono" fontSize="9px" pt={2}>
                 SERIAL NUM: {artifact.id.toUpperCase()} REGISTRY TIER: {artifact.tier.toUpperCase()}
               </Text>
             </VStack>
@@ -274,23 +274,23 @@ const Verify: React.FC = () => {
                 {!justClaimed && tapState === 'tapping' && (
                   <HStack spacing={3}>
                     <Spinner size="sm" color="#00FF00" />
-                    <Text color="#00FF00" fontFamily="monospace" fontSize="xs" fontWeight="900">
+                    <Text color="#00FF00" fontFamily="mono" fontSize="xs" fontWeight="900">
                       LOGGING LOYALTY TAP...
                     </Text>
                   </HStack>
                 )}
                 {!justClaimed && tapState === 'rewarded' && (
-                  <Text color="#00FF00" fontFamily="monospace" fontSize="sm" fontWeight="900">
+                  <Text color="#00FF00" fontFamily="mono" fontSize="sm" fontWeight="900">
                     +{tapAwarded} WNGS · LOYALTY TAP LOGGED
                   </Text>
                 )}
                 {!justClaimed && tapState === 'cooldown' && (
-                  <Text color="whiteAlpha.700" fontFamily="monospace" fontSize="xs" fontWeight="900">
+                  <Text color="whiteAlpha.700" fontFamily="mono" fontSize="xs" fontWeight="900">
                     NEXT LOYALTY TAP AVAILABLE IN {tapCooldownMs !== null ? formatCooldown(tapCooldownMs) : 'A WHILE'}
                   </Text>
                 )}
                 {!justClaimed && tapState === 'error' && (
-                  <Text color="red.300" fontFamily="monospace" fontSize="xs" fontWeight="900">
+                  <Text color="red.300" fontFamily="mono" fontSize="xs" fontWeight="900">
                     LOYALTY TAP FAILED · TRY AGAIN LATER
                   </Text>
                 )}
@@ -303,7 +303,7 @@ const Verify: React.FC = () => {
               color="black"
               borderRadius="0"
               fontWeight="900"
-              fontFamily="monospace"
+              fontFamily="mono"
               _hover={{ bg: 'white' }}
               onClick={() => navigate('/')}
             >

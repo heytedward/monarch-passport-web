@@ -210,7 +210,7 @@ const CommandCenter: React.FC = () => {
   if (!ready) {
     return (
       <Center h="100vh" bg="black">
-        <Text color={monarchYellow} fontFamily="monospace">INITIALIZING SECURE UPLINK...</Text>
+        <Text color={monarchYellow} fontFamily="mono">INITIALIZING SECURE UPLINK...</Text>
       </Center>
     );
   }
@@ -223,7 +223,7 @@ const CommandCenter: React.FC = () => {
             color="red.500"
             fontSize="5xl"
             fontWeight="900"
-            fontFamily="monospace"
+            fontFamily="mono"
             lineHeight="1"
           >
             ACCESS DENIED
@@ -233,12 +233,12 @@ const CommandCenter: React.FC = () => {
             color="red.500"
             fontSize="2xl"
             fontWeight="700"
-            fontFamily="monospace"
+            fontFamily="mono"
             letterSpacing="widest"
           >
             LEVEL 5 CLEARANCE REQUIRED
           </Text>
-          <Text color="gray.500" fontSize="xs" fontFamily="monospace">
+          <Text color="gray.500" fontSize="xs" fontFamily="mono">
             UNAUTHORIZED ACCESS ATTEMPT LOGGED · ID: {user?.id || 'ANONYMOUS'}
           </Text>
         </VStack>
@@ -867,7 +867,7 @@ const CommandCenter: React.FC = () => {
   };
 
   return (
-    <Box minH="100vh" bg={bgColor} p={8} fontFamily="monospace">
+    <Box minH="100vh" bg={bgColor} p={8} fontFamily="mono">
       <VStack align="stretch" spacing={8} maxW="1600px" mx="auto">
         {/* Header Section */}
         <VStack align="start" spacing={0} borderLeft={`4px solid ${monarchYellow}`} pl={4}>
@@ -892,7 +892,7 @@ const CommandCenter: React.FC = () => {
                 key={s.id}
                 size="sm"
                 borderRadius="0"
-                fontFamily="monospace"
+                fontFamily="mono"
                 fontWeight="900"
                 letterSpacing="0.08em"
                 bg={activeSection === s.id ? monarchYellow : 'transparent'}
@@ -977,7 +977,7 @@ const CommandCenter: React.FC = () => {
             <CardBody>
               <VStack spacing={2} align="stretch">
                 {feedPosts.length === 0 && (
-                  <Text fontSize="xs" color="gray.500" fontFamily="monospace">FEED EMPTY · NOTHING BROADCAST YET</Text>
+                  <Text fontSize="xs" color="gray.500" fontFamily="mono">FEED EMPTY · NOTHING BROADCAST YET</Text>
                 )}
                 {feedPosts.map((p) => (
                   <HStack key={p.id} justify="space-between" p={2} border="1px solid" borderColor={borderColor}>
@@ -986,8 +986,8 @@ const CommandCenter: React.FC = () => {
                         <Image src={p.image_url} alt="" boxSize="28px" objectFit="cover" flexShrink={0} />
                       )}
                       <Box minW={0}>
-                        <Text fontSize="xs" fontWeight="900" fontFamily="monospace" isTruncated>{p.title}</Text>
-                        <Text fontSize="10px" color="gray.500" fontFamily="monospace">
+                        <Text fontSize="xs" fontWeight="900" fontFamily="mono" isTruncated>{p.title}</Text>
+                        <Text fontSize="10px" color="gray.500" fontFamily="mono">
                           {p.author || 'PAPILLON'} {p.created_at ? new Date(p.created_at).toLocaleDateString() : ''}{p.status !== 'PUBLISHED' ? `${p.status}` : ''}
                         </Text>
                       </Box>
@@ -1441,7 +1441,7 @@ const CommandCenter: React.FC = () => {
                   >
                     <HStack spacing={3}>
                       <Box w="40px" h="40px" bg={themeAccent} border="2px solid" borderColor={themeMode === 'light' ? 'black' : 'white'} />
-                      <Text fontSize="xs" fontWeight="900" color={themeAccent} fontFamily="monospace">
+                      <Text fontSize="xs" fontWeight="900" color={themeAccent} fontFamily="mono">
                         {themeName || 'THEME PREVIEW'}
                       </Text>
                     </HStack>
@@ -1762,7 +1762,7 @@ const CommandCenter: React.FC = () => {
             <CardBody>
               <VStack spacing={2} align="stretch">
                 {adminProducts.length === 0 && (
-                  <Text fontSize="xs" color="gray.500" fontFamily="monospace">NO FORGED PRODUCTS YET</Text>
+                  <Text fontSize="xs" color="gray.500" fontFamily="mono">NO FORGED PRODUCTS YET</Text>
                 )}
                 {adminProducts
                   .filter((p) => productFilter === 'ALL' || (productFilter === 'RETIRED') === (p.is_active === false))
@@ -1787,15 +1787,15 @@ const CommandCenter: React.FC = () => {
                             <Box w="28px" h="28px" flexShrink={0} bg={p.accent_color || monarchYellow} border="2px solid" borderColor={borderColor} />
                           )}
                           <Box minW={0}>
-                            <Text fontSize="xs" fontWeight="900" fontFamily="monospace" isTruncated>{p.name}</Text>
-                            <Text fontSize="10px" color="gray.500" fontFamily="monospace" isTruncated>
+                            <Text fontSize="xs" fontWeight="900" fontFamily="mono" isTruncated>{p.name}</Text>
+                            <Text fontSize="10px" color="gray.500" fontFamily="mono" isTruncated>
                               {isPhysical
                                 ? `${p.category} $${p.price_usd} STOCK: ${stockLine || '—'}`
                                 : `${p.category}${p.rarity || 'COMMON'}${p.price_wngs} WNGS · OWNERS:${p.owners ?? 0}`}
                               {retired ? ' RETIRED' : ''}
                             </Text>
                             {(lineage || forgedOn) && (
-                              <Text fontSize="10px" color="gray.600" fontFamily="monospace" isTruncated>
+                              <Text fontSize="10px" color="gray.600" fontFamily="mono" isTruncated>
                                 {[lineage, forgedOn && `FORGED ${forgedOn}`].filter(Boolean).join(' // ')}
                               </Text>
                             )}

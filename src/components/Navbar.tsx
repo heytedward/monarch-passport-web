@@ -168,7 +168,7 @@ const NavItem = ({
         fontSize="8px"
         fontWeight="900"
         color={isActive ? 'var(--monarch-accent)' : iconColor}
-        fontFamily="monospace"
+        fontFamily="mono"
         letterSpacing="0.05em"
       >
         {item.label}

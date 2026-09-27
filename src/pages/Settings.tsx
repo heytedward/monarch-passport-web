@@ -35,7 +35,7 @@ const Settings = () => {
   const walletAddress = user?.wallet?.address || user?.id || 'UNKNOWN_IDENTITY';
 
   return (
-    <Box bg={bgColor} minH="100vh" pb="100px" color={text} fontFamily="'Space Mono', monospace">
+    <Box bg={bgColor} minH="100vh" pb="100px" color={text} fontFamily="mono">
       {/* Header */}
       <Box p={8} pt={12} borderBottom={`4px solid ${text}`}>
         <HStack spacing={4} mb={4}>
@@ -51,14 +51,14 @@ const Settings = () => {
             fontSize="3xl" 
             fontWeight="900" 
             fontStyle="italic" 
-            fontFamily="'Archivo Black', sans-serif"
+            fontFamily="heading"
             textTransform="uppercase"
             letterSpacing="-0.02em"
           >
             SYSTEM SETTINGS
           </Heading>
         </HStack>
-        <Text fontSize="9px" fontWeight="900" color={mutedText} fontFamily="monospace" letterSpacing="0.1em">
+        <Text fontSize="9px" fontWeight="900" color={mutedText} fontFamily="mono" letterSpacing="0.1em">
           ACCESS LEVEL · AUTHORIZED ADMIN
         </Text>
       </Box>
@@ -66,7 +66,7 @@ const Settings = () => {
       <VStack spacing={0} align="stretch">
         {/* Identity Matrix Section */}
         <Box p={8} borderBottom={`1px solid ${border}`}>
-          <Text fontSize="xs" fontWeight="900" color={monarchYellow} fontFamily="monospace" mb={6}>
+          <Text fontSize="xs" fontWeight="900" color={monarchYellow} fontFamily="mono" mb={6}>
             [ IDENTITY MATRIX ]
           </Text>
           <Box 
@@ -89,7 +89,7 @@ const Settings = () => {
 
         {/* Session Control Section */}
         <Box p={8} borderBottom={`1px solid ${border}`}>
-          <Text fontSize="xs" fontWeight="900" color={monarchYellow} fontFamily="monospace" mb={6}>
+          <Text fontSize="xs" fontWeight="900" color={monarchYellow} fontFamily="mono" mb={6}>
             [ SESSION CONTROL ]
           </Text>
           <VStack spacing={4}>
@@ -131,7 +131,7 @@ const Settings = () => {
 
         {/* Admin Override Section */}
         <Box p={8} borderBottom={`1px solid ${border}`}>
-          <Text fontSize="xs" fontWeight="900" color={monarchYellow} fontFamily="monospace" mb={6}>
+          <Text fontSize="xs" fontWeight="900" color={monarchYellow} fontFamily="mono" mb={6}>
             ADMIN OVERRIDE
           </Text>
           <Button 
@@ -156,10 +156,10 @@ const Settings = () => {
       {/* Footer */}
       <Box p={8} mt={10}>
         <VStack spacing={2}>
-          <Text fontSize="8px" color={mutedText} textAlign="center" fontFamily="monospace">
+          <Text fontSize="8px" color={mutedText} textAlign="center" fontFamily="mono">
             MONARCH OS · V1.2.4
           </Text>
-          <Text fontSize="8px" color={mutedText} textAlign="center" fontFamily="monospace">
+          <Text fontSize="8px" color={mutedText} textAlign="center" fontFamily="mono">
             ENCRYPTION STATUS · ACTIVE
           </Text>
         </VStack>
