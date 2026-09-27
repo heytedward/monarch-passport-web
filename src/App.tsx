@@ -7,23 +7,28 @@ import { PrivyProvider, usePrivy } from '@privy-io/react-auth'
 import Navbar from './components/Navbar'
 import PageTransition from './components/PageTransition'
 import ErrorBoundary from './components/ErrorBoundary'
-import Home from './pages/Home'
-import Passport from './pages/Passport'
-import Rewards from './pages/Rewards'
-import Scanner from './pages/Scanner'
-import Closet from './pages/Closet'
-import Profile from './pages/Profile'
-import Settings from './pages/Settings'
 import Landing from './pages/Landing'
-import Claim from './pages/Claim'
-import Shop from './pages/Shop'
-import Recruit from './pages/Recruit'
-import CommandCenter from './pages/CommandCenter'
 import Verify from './pages/Verify'
-import Social from './pages/Social'
-import Ascension from './pages/Ascension'
-import Collect from './pages/Collect'
+import { lazyPage } from './lib/lazyPage'
 import useStore from './store/useStore'
+
+// The NFC tap flow (/ and /v/:id) ships in the first bundle; every other page
+// is fetched when first visited, so a tap doesn't download the admin panel,
+// the shop or the closet before the artifact can render.
+const Home = lazyPage(() => import('./pages/Home'))
+const Passport = lazyPage(() => import('./pages/Passport'))
+const Rewards = lazyPage(() => import('./pages/Rewards'))
+const Scanner = lazyPage(() => import('./pages/Scanner'))
+const Closet = lazyPage(() => import('./pages/Closet'))
+const Profile = lazyPage(() => import('./pages/Profile'))
+const Settings = lazyPage(() => import('./pages/Settings'))
+const Claim = lazyPage(() => import('./pages/Claim'))
+const Shop = lazyPage(() => import('./pages/Shop'))
+const Recruit = lazyPage(() => import('./pages/Recruit'))
+const CommandCenter = lazyPage(() => import('./pages/CommandCenter'))
+const Social = lazyPage(() => import('./pages/Social'))
+const Ascension = lazyPage(() => import('./pages/Ascension'))
+const Collect = lazyPage(() => import('./pages/Collect'))
 
 import { PRIVY_APP_ID } from './config'
 
@@ -77,6 +82,7 @@ function AppRoutes() {
     <AnimatePresence mode="wait" initial={false}>
       <PageTransition key={location.pathname}>
         <ErrorBoundary>
+          <React.Suspense fallback={<Box minH="100vh" bg="black" />}>
           <Routes location={location}>
             <Route path="/" element={<Landing />} />
         <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
@@ -98,6 +104,7 @@ function AppRoutes() {
             {/* Unknown paths redirect home instead of rendering an empty page. */}
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
+          </React.Suspense>
         </ErrorBoundary>
       </PageTransition>
     </AnimatePresence>
