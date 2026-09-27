@@ -112,7 +112,7 @@ const Claim = () => {
                   onClick={login}
                   _hover={{ bg: "white" }}
                 >
-                  AUTHENTICATE_IDENTITY
+                  AUTHENTICATE IDENTITY
                 </Button>
               )}
             </>
@@ -131,7 +131,7 @@ const Claim = () => {
                 _hover={{ bg: 'white' }}
                 onClick={() => navigate('/profile')}
               >
-                RETURN_TO_PROFILE
+                RETURN TO PROFILE
               </Button>
             </RewardCard>
           )}
@@ -145,7 +145,7 @@ const Claim = () => {
                 {rawError && (
                   <Box p={2} bg="blackAlpha.400" borderRadius="md" mt={2}>
                     <Text fontSize="8px" fontWeight="900" color="white" textAlign="left" wordBreak="break-all">
-                      DIAGNOSTIC_DATA: {rawError}
+                      DIAGNOSTIC DATA: {rawError}
                     </Text>
                   </Box>
                 )}

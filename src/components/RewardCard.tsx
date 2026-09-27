@@ -56,7 +56,7 @@ const RewardCard: React.FC<RewardCardProps> = ({
     >
       <VStack spacing={6} align="stretch">
         <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="10px" fontWeight="900" letterSpacing="0.15em">
-          {variant === 'artifact' ? 'ARTIFACT_ACTIVATED //' : 'TRANSMISSION_COMPLETE //'}
+          {variant === 'artifact' ? 'ARTIFACT ACTIVATED' : 'TRANSMISSION COMPLETE'}
         </Text>
 
         {variant === 'wngs' && (
@@ -75,11 +75,11 @@ const RewardCard: React.FC<RewardCardProps> = ({
               +{amount} $WNGS
             </Heading>
             <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="xs" fontWeight="900">
-              CREDITED_TO_YOUR_BALANCE
+              CREDITED TO YOUR BALANCE
             </Text>
             {itemName && (
               <Text color={gold} fontFamily="monospace" fontSize="xs" fontWeight="900" textAlign="center">
-                {(itemType || 'ITEM').toUpperCase()} // {itemName.toUpperCase()}
+                {(itemType || 'ITEM').toUpperCase()} {itemName.toUpperCase()}
               </Text>
             )}
           </VStack>
@@ -111,7 +111,7 @@ const RewardCard: React.FC<RewardCardProps> = ({
                   {(tier || 'COMMON').toUpperCase()}
                 </Text>
                 <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="10px" fontWeight="900">
-                  {(collection || 'GENERAL_RELEASE').toUpperCase()} // {(season || 'UNSPECIFIED').toUpperCase()}
+                  {(collection || 'GENERAL_RELEASE').toUpperCase()} {(season || 'UNSPECIFIED').toUpperCase()}
                 </Text>
               </HStack>
             </VStack>
@@ -134,7 +134,7 @@ const RewardCard: React.FC<RewardCardProps> = ({
                   +{amount} $WNGS
                 </Heading>
                 <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="9px" fontWeight="900">
-                  ACTIVATION_BONUS_AWARDED
+                  ACTIVATION BONUS AWARDED
                 </Text>
               </VStack>
             </HStack>
@@ -142,7 +142,7 @@ const RewardCard: React.FC<RewardCardProps> = ({
             {premiumUnlocked && (
               <Box bg={gold} p={2}>
                 <Text color="black" fontFamily="monospace" fontSize="xs" fontWeight="900" textAlign="center">
-                  PREMIUM_TRACK_UNLOCKED // ASCENSION_ELEVATED
+                  PREMIUM TRACK UNLOCKED · ASCENSION ELEVATED
                 </Text>
               </Box>
             )}

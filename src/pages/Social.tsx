@@ -59,7 +59,7 @@ const Social = () => {
               letterSpacing="0.2em"
               color="#FFB000"
             >
-              // NETWORK CONNECTION ESTABLISHED
+              NETWORK CONNECTION ESTABLISHED
             </Heading>
             <Text 
               fontSize="xs" 

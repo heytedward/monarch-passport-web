@@ -76,7 +76,7 @@ const Collect = () => {
           <VStack spacing={6}>
             <Spinner color={accent} size="xl" thickness="2px" />
             <Text fontSize="xs" fontFamily="monospace" fontWeight="900" color="gray.500" letterSpacing="0.1em">
-              AUTHENTICATING_ITEM...
+              AUTHENTICATING ITEM...
             </Text>
           </VStack>
         )
@@ -87,8 +87,7 @@ const Collect = () => {
             <Icon as={MdCheckCircleOutline} color={accent} w={16} h={16} />
             <VStack spacing={2} textAlign="center">
               <Text fontSize="9px" fontFamily="monospace" fontWeight="900" color={accent} letterSpacing="0.15em">
-                ITEM_REGISTERED //
-              </Text>
+                ITEM REGISTERED</Text>
               <Heading
                 fontSize="3xl"
                 fontWeight="900"
@@ -96,7 +95,7 @@ const Collect = () => {
                 color="white"
                 lineHeight="1"
               >
-                {itemName ? itemName.toUpperCase() : 'ITEM_AUTHENTICATED'}
+                {itemName ? itemName.toUpperCase() : 'ITEM AUTHENTICATED'}
               </Heading>
               <Text fontSize="xs" fontFamily="monospace" color="gray.500" pt={2}>
                 THIS PIECE HAS BEEN LOGGED TO YOUR CLOSET.
@@ -114,7 +113,7 @@ const Collect = () => {
               onClick={() => navigate('/closet')}
               _hover={{ bg: '#e69e00' }}
             >
-              VIEW_CLOSET →
+              VIEW CLOSET →
             </Button>
           </VStack>
         )
@@ -125,10 +124,9 @@ const Collect = () => {
             <Icon as={MdInventory2} color={accent} w={16} h={16} />
             <VStack spacing={2} textAlign="center">
               <Text fontSize="9px" fontFamily="monospace" fontWeight="900" color={accent} letterSpacing="0.15em">
-                ALREADY_REGISTERED //
-              </Text>
+                ALREADY REGISTERED</Text>
               <Heading fontSize="2xl" fontWeight="900" fontFamily="'Archivo Black', sans-serif" color="white" lineHeight="1">
-                ITEM_ON_FILE
+                ITEM ON FILE
               </Heading>
               <Text fontSize="xs" fontFamily="monospace" color="gray.500" pt={2}>
                 THIS PIECE IS ALREADY IN YOUR CLOSET.
@@ -147,7 +145,7 @@ const Collect = () => {
               onClick={() => navigate('/closet')}
               _hover={{ bg: accent, color: 'black' }}
             >
-              VIEW_CLOSET →
+              VIEW CLOSET →
             </Button>
           </VStack>
         )
@@ -158,10 +156,9 @@ const Collect = () => {
             <Icon as={MdErrorOutline} color="#DC143C" w={16} h={16} />
             <VStack spacing={2} textAlign="center">
               <Text fontSize="9px" fontFamily="monospace" fontWeight="900" color="#DC143C" letterSpacing="0.15em">
-                VERIFICATION_FAILED //
-              </Text>
+                VERIFICATION FAILED</Text>
               <Heading fontSize="2xl" fontWeight="900" fontFamily="'Archivo Black', sans-serif" color="white" lineHeight="1">
-                INVALID_CODE
+                INVALID CODE
               </Heading>
               <Text fontSize="xs" fontFamily="monospace" color="gray.500" pt={2}>
                 THIS CODE DOES NOT MATCH ANY REGISTERED ITEM.
@@ -181,7 +178,7 @@ const Collect = () => {
               onClick={() => navigate('/home')}
               _hover={{ color: 'white', borderColor: 'white' }}
             >
-              RETURN_HOME
+              RETURN HOME
             </Button>
           </VStack>
         )
@@ -193,10 +190,9 @@ const Collect = () => {
             <Icon as={MdErrorOutline} color="#DC143C" w={16} h={16} />
             <VStack spacing={2} textAlign="center">
               <Text fontSize="9px" fontFamily="monospace" fontWeight="900" color="#DC143C" letterSpacing="0.15em">
-                SYSTEM_ERROR //
-              </Text>
+                SYSTEM ERROR</Text>
               <Heading fontSize="2xl" fontWeight="900" fontFamily="'Archivo Black', sans-serif" color="white" lineHeight="1">
-                REQUEST_FAILED
+                REQUEST FAILED
               </Heading>
               <Text fontSize="xs" fontFamily="monospace" color="gray.500" pt={2}>
                 UNABLE TO REGISTER ITEM. TRY AGAIN.
@@ -227,7 +223,7 @@ const Collect = () => {
         <VStack spacing={12}>
           <VStack spacing={1} textAlign="center">
             <Text fontSize="8px" fontFamily="monospace" fontWeight="900" color="gray.600" letterSpacing="0.2em">
-              MONARCH_PASSPORT // ITEM_REGISTRY
+              MONARCH PASSPORT · ITEM REGISTRY
             </Text>
             <Box w="40px" h="2px" bg={accent} />
           </VStack>
@@ -237,7 +233,7 @@ const Collect = () => {
           </Center>
 
           <Text fontSize="7px" fontFamily="monospace" color="gray.700" textAlign="center">
-            PHYGITAL_VERIFICATION_PROTOCOL // SEASON_01
+            PHYGITAL VERIFICATION PROTOCOL · SEASON 01
           </Text>
         </VStack>
       </Box>

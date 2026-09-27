@@ -16,13 +16,13 @@ export default function Recruit() {
             RECRUITMENT<br />PROTOCOL
           </Heading>
           <Text className="de-stijl-body" fontWeight="black" fontSize="xs" mt={2} color="#FFB000">
-            INVITATION_FROM: {refId?.slice(0, 12).toUpperCase() || 'UNKNOWN_AGENT'}
+            INVITATION FROM: {refId?.slice(0, 12).toUpperCase() || 'UNKNOWN AGENT'}
           </Text>
         </Box>
 
         <Box bg="whiteAlpha.100" border="4px solid white" p={8}>
           <VStack align="start" spacing={4}>
-            <Heading fontSize="xl" className="de-stijl-heading">NEW_AGENT_DETECTED</Heading>
+            <Heading fontSize="xl" className="de-stijl-heading">NEW AGENT DETECTED</Heading>
             <Text className="de-stijl-body" fontSize="sm" opacity={0.8} lineHeight="1.6">
               You have scanned a Monarch artifact tagged: <Text as="span" color="#FFB000" fontWeight="bold">[{tagId || 'UNIDENTIFIED'}]</Text>. 
               This item is currently linked to another agent.
@@ -45,11 +45,11 @@ export default function Recruit() {
           leftIcon={<Icon as={MdPersonAdd} />}
           onClick={() => navigate('/')}
         >
-          INITIALIZE_PASSPORT
+          INITIALIZE PASSPORT
         </Button>
 
         <Text fontSize="9px" fontFamily="monospace" color="whiteAlpha.400" textAlign="center">
-          SYSTEM_RECRUITMENT_V1.0 // MULTI_LEVEL_UPLINK
+          SYSTEM RECRUITMENT V1.0 · MULTI LEVEL UPLINK
         </Text>
       </VStack>
     </Box>

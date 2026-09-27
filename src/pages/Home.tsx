@@ -101,9 +101,9 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
       setBoostCount(data.boostCount);
       setIsFeatured(data.isFeatured);
       setWngsBalance(data.newBalance);
-      toast({ title: data.isFeatured ? 'POST_FEATURED //' : 'HYPE_SENT //', status: 'success', duration: 1500 });
+      toast({ title: data.isFeatured ? 'POST FEATURED' : 'HYPE SENT', status: 'success', duration: 1500 });
     } catch (e: any) {
-      toast({ title: 'BOOST_FAILED', description: e.message, status: 'error', duration: 2500 });
+      toast({ title: 'BOOST FAILED', description: e.message, status: 'error', duration: 2500 });
     } finally { setBoosting(false); }
   };
 
@@ -116,7 +116,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
       setWngsBalance(data.newBalance);
       setCommentText('');
     } catch (e: any) {
-      toast({ title: 'COMMENT_FAILED', description: e.message, status: 'error', duration: 2500 });
+      toast({ title: 'COMMENT FAILED', description: e.message, status: 'error', duration: 2500 });
     } finally { setPosting(false); }
   };
 
@@ -144,7 +144,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
               <Icon as={MdAccessTime} boxSize="10px" />
               <Text fontSize="9px" fontWeight="900" fontFamily="monospace">LOGGED: {dateStr}</Text>
               {isFeatured && !post.image_url && (
-                <Text fontSize="9px" fontWeight="900" fontFamily="monospace" color={accent}>// ★ FEATURED</Text>
+                <Text fontSize="9px" fontWeight="900" fontFamily="monospace" color={accent}>★ FEATURED</Text>
               )}
             </HStack>
             <Heading fontSize="xl" fontWeight="900" color="white" fontFamily="monospace" lineHeight="1.1" textTransform="uppercase" noOfLines={2}>
@@ -155,14 +155,14 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
             </Text>
             <HStack spacing={2}>
               <Icon as={MdPerson} color={accent} boxSize="12px" />
-              <Text fontSize="9px" fontWeight="900" color="white" fontFamily="monospace">// {post.author?.toUpperCase() || 'SYSTEM'}</Text>
+              <Text fontSize="9px" fontWeight="900" color="white" fontFamily="monospace">{post.author?.toUpperCase() || 'SYSTEM'}</Text>
             </HStack>
           </VStack>
           <HStack spacing={0} borderTop="2px solid white" flexShrink={0}>
             <Button flex={1} h="48px" borderRadius="0" bg="black" color="white" fontFamily="monospace" fontSize="10px" fontWeight="900"
               leftIcon={<MdLocalFireDepartment />} isLoading={boosting} onClick={handleBoost} isDisabled={isMock || wngsBalance < BOOST_COST}
               borderRight="2px solid white" _hover={{ bg: accent, color: 'black' }}>
-              HYPE{boostCount > 0 ? ` (${boostCount})` : ''} // {BOOST_COST}
+              HYPE{boostCount > 0 ? ` (${boostCount})` : ''} {BOOST_COST}
             </Button>
             <Button flex={1} h="48px" borderRadius="0" bg="black" color="white" fontFamily="monospace" fontSize="10px" fontWeight="900"
               leftIcon={<MdChatBubbleOutline />} onClick={openComments} isDisabled={isMock} _hover={{ bg: 'whiteAlpha.200' }}>
@@ -177,7 +177,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
           <HStack justify="space-between" p={4} borderBottom="2px solid white" flexShrink={0}>
             <HStack spacing={2}>
               <Icon as={MdChatBubbleOutline} color={accent} boxSize="14px" />
-              <Text fontSize="11px" fontWeight="900" color="white" fontFamily="monospace">COMMENTS // {comments.length}</Text>
+              <Text fontSize="11px" fontWeight="900" color="white" fontFamily="monospace">COMMENTS{comments.length}</Text>
             </HStack>
             <Button size="xs" h="26px" borderRadius="0" bg="transparent" color="white" border="1px solid white"
               fontFamily="monospace" fontSize="9px" leftIcon={<MdArrowBack />} onClick={() => setFlipped(false)} _hover={{ bg: 'white', color: 'black' }}>
@@ -188,7 +188,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
             {loadingComments ? (
               <Center py={8}><Spinner color={accent} size="sm" /></Center>
             ) : comments.length === 0 ? (
-              <Center py={8}><Text fontSize="9px" fontWeight="900" color="gray.600" fontFamily="monospace">[ NO_COMMENTS_YET // BE_FIRST ]</Text></Center>
+              <Center py={8}><Text fontSize="9px" fontWeight="900" color="gray.600" fontFamily="monospace">[ NO COMMENTS YET · BE FIRST ]</Text></Center>
             ) : comments.map((c) => (
               <Box key={c.id} borderLeft={`2px solid ${accent}`} pl={3} py={1}>
                 <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="monospace">{handleFromId(c.user_id)}</Text>
@@ -197,12 +197,12 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
             ))}
           </VStack>
           <VStack align="stretch" spacing={2} p={4} borderTop="2px solid white" flexShrink={0}>
-            <Textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="ADD_TRANSMISSION..."
+            <Textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="ADD TRANSMISSION..."
               bg="black" border="1px solid" borderColor="whiteAlpha.400" borderRadius="0" color="white" fontFamily="monospace" fontSize="xs"
               rows={2} resize="none" maxLength={500} _placeholder={{ color: 'gray.600' }} _focus={{ borderColor: accent, boxShadow: 'none' }} />
             <Button h="40px" borderRadius="0" bg={accent} color="black" fontFamily="monospace" fontSize="10px" fontWeight="900"
               rightIcon={<MdSend />} isLoading={posting} isDisabled={!commentText.trim() || wngsBalance < COMMENT_COST} onClick={handleComment} _hover={{ bg: 'white' }}>
-              {wngsBalance < COMMENT_COST ? 'INSUFFICIENT_WNGS' : `TRANSMIT // ${COMMENT_COST} WNGS`}
+              {wngsBalance < COMMENT_COST ? 'INSUFFICIENT WNGS' : `TRANSMIT${COMMENT_COST} WNGS`}
             </Button>
           </VStack>
         </Box>
@@ -234,7 +234,7 @@ const Home = () => {
 
         const mockPost: MonarchTimesPost = {
           id: 'mock-01',
-          title: 'NEO_COLLECTION // HANDSHAKE_SEQUENCE_LOGGED',
+          title: 'NEO COLLECTION · HANDSHAKE SEQUENCE LOGGED',
           content: 'The first batch of NTAG 424 DNA chips has been successfully integrated into the Neo Hoodie v1. Agents report 100% signal stability during initial phygital stress tests. Protocol Season 01 is now entering the final verification phase.',
           image_url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop',
           author: 'SYSTEM_ARCHITECT',
@@ -265,10 +265,10 @@ const Home = () => {
           <Flex justify="space-between" align="center">
             <VStack align="start" spacing={0}>
               <Heading fontSize="4xl" fontWeight="900" fontStyle="italic" color={text} letterSpacing="-0.04em" fontFamily="'Archivo Black', sans-serif">
-                MONARCH_TIMES
+                MONARCH TIMES
               </Heading>
               <Text fontSize="9px" fontWeight="900" color={brandAccent} fontFamily="monospace" letterSpacing="0.1em">
-                BALANCE: {wngsBalance} WNGS // SESSION_ACTIVE
+                BALANCE: {wngsBalance} WNGS · SESSION ACTIVE
               </Text>
             </VStack>
             <NotificationsBell />
@@ -279,7 +279,7 @@ const Home = () => {
         <Box borderBottom={`2px solid ${text}`} py={3} px={6} bg="whiteAlpha.50">
           <HStack justify="space-between">
             <Text fontSize="10px" fontWeight="900" color={text} fontFamily="monospace" letterSpacing="0.1em">
-              AUTONOMOUS_FEED // V2.0_STABLE
+              AUTONOMOUS FEED · V2.0 STABLE
             </Text>
             <Box h="8px" w="8px" bg={brandAccent} borderRadius="full" />
           </HStack>
@@ -291,7 +291,7 @@ const Home = () => {
             <VStack spacing={4}>
               <Spinner color={brandAccent} size="xl" thickness="4px" />
               <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">
-                CONNECTING_TO_NEURAL_LINK...
+                CONNECTING TO NEURAL LINK...
               </Text>
             </VStack>
           </Center>
@@ -314,7 +314,7 @@ const Home = () => {
             <VStack spacing={6}>
               <Box p={8} border={`2px dashed ${mutedText}`}>
                 <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace" letterSpacing="0.2em">
-                  [ WAITING_FOR_SYSTEM_TRANSMISSION ]
+                  [ WAITING FOR SYSTEM TRANSMISSION ]
                 </Text>
               </Box>
               <Text fontSize="9px" color={mutedText} fontFamily="monospace" maxW="250px">

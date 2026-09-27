@@ -37,6 +37,7 @@ import { usePrivy } from '@privy-io/react-auth'
 import useStore from '../store/useStore'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import ThemeSwatch from '../components/ThemeSwatch'
+import { displayName } from '../lib/displayName'
 
 const MotionBox = motion.create(Box)
 const MotionSimpleGrid = motion.create(SimpleGrid)
@@ -206,21 +207,21 @@ const Closet = () => {
       }
 
       toast({
-        title: `PROTOCOL_EQUIPPED: ${selectedItem.name.toUpperCase()}`,
+        title: `PROTOCOL EQUIPPED: ${selectedItem.name.toUpperCase()}`,
         status: 'success',
         duration: 2000
       });
       onClose();
     } catch (err) {
       console.error("Equip Failed:", err);
-      toast({ title: 'EQUIP_FAILED', status: 'error', duration: 2000 });
+      toast({ title: 'EQUIP FAILED', status: 'error', duration: 2000 });
     }
   };
 
   const handleMint = async () => {
     if (!selectedItem?.assetId || !user?.id) return;
     if (!solanaAddress) {
-      toast({ title: 'NO_SOLANA_WALLET', description: 'NO EMBEDDED SOLANA WALLET FOUND.', status: 'error', duration: 3000 });
+      toast({ title: 'NO SOLANA WALLET', description: 'NO EMBEDDED SOLANA WALLET FOUND.', status: 'error', duration: 3000 });
       return;
     }
     setIsMinting(true);
@@ -237,10 +238,10 @@ const Closet = () => {
       // Reflect minted state locally.
       setOwnedAssets((prev) => prev.map((a) => a.assetId === selectedItem.assetId ? { ...a, mintAddress: data.mintAddress, mintStatus: 'minted' } : a));
       setSelectedItem((prev) => prev ? { ...prev, mintAddress: data.mintAddress, mintStatus: 'minted' } : prev);
-      toast({ title: 'MINTED_ON_CHAIN', description: `${selectedItem.name} IS NOW AN NFT.`, status: 'success', duration: 4000 });
+      toast({ title: 'MINTED ON CHAIN', description: `${selectedItem.name} IS NOW AN NFT.`, status: 'success', duration: 4000 });
     } catch (err: any) {
       console.error('Mint Failed:', err);
-      toast({ title: 'MINT_FAILED', description: err.message, status: 'error', duration: 4000 });
+      toast({ title: 'MINT FAILED', description: err.message, status: 'error', duration: 4000 });
     } finally {
       setIsMinting(false);
     }
@@ -328,7 +329,7 @@ const Closet = () => {
             return {
               id: p.id,
               type: itemType,
-              name: p.name.toUpperCase(),
+              name: displayName(p.name).toUpperCase(),
               palette: p.palette || undefined,
               themeMode: p.theme_mode || undefined,
               themeAccent: p.accent_color || undefined,
@@ -364,7 +365,7 @@ const Closet = () => {
             artifactItems = (aData?.artifacts || []).map((a: any): ClosetItemData => ({
               id: `artifact:${a.tag_id}`,
               type: 'physical',
-              name: (a.name || a.tag_id).toUpperCase(),
+              name: displayName(a.name || a.tag_id).toUpperCase(),
               season: a.season || undefined,
               collection: a.collection || undefined,
               borderColor: border,
@@ -450,7 +451,7 @@ const Closet = () => {
               CLOSET
             </Heading>
             <Text fontSize="9px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace" letterSpacing="0.1em">
-              {isCurrentLoading ? 'SYNCING_REGISTRY...' : `ASSETS_VERIFIED // ${verifiedCount}`}
+              {isCurrentLoading ? 'SYNCING REGISTRY...' : `ASSETS VERIFIED${verifiedCount}`}
             </Text>
           </VStack>
           <Box h="12px" bg="var(--monarch-accent)" w="100%" mt={6} />
@@ -509,7 +510,7 @@ const Closet = () => {
                 <Icon as={MdSearch} color={mutedText} boxSize="16px" mr={2} />
                 <Input
                   variant="unstyled"
-                  placeholder={mode === 'physical' ? 'SEARCH_VAULT' : 'SEARCH_DIGITAL'}
+                  placeholder={mode === 'physical' ? 'SEARCH VAULT' : 'SEARCH DIGITAL'}
                   fontSize="10px"
                   fontWeight="900"
                   fontFamily="monospace"
@@ -603,8 +604,8 @@ const Closet = () => {
         {/* Info Bar */}
         <Box borderY="1px solid" borderColor={border} px={6} py={2}>
           <Flex justify="space-between" align="center">
-            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">PROTOCOL: {mode === 'physical' ? 'VAULT' : 'DIGITAL'}_STORAGE</Text>
-            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">VAULT_SYNC: {isCurrentLoading ? 'PENDING' : 'ONLINE'}</Text>
+            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">PROTOCOL: {mode === 'physical' ? 'VAULT' : 'DIGITAL'} STORAGE</Text>
+            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">VAULT SYNC: {isCurrentLoading ? 'PENDING' : 'ONLINE'}</Text>
           </Flex>
         </Box>
 
@@ -615,7 +616,7 @@ const Closet = () => {
             <Flex justify="space-between" align="center">
               <VStack align="start" spacing={1}>
                 <Heading fontSize="xs" fontWeight="900" color={text} fontFamily="'Archivo Black', sans-serif">
-                  STORAGE_SLOTS // {isCurrentLoading ? "..." : verifiedCount}
+                  STORAGE SLOTS{isCurrentLoading ? "..." : verifiedCount}
                 </Heading>
               </VStack>
             </Flex>
@@ -624,8 +625,8 @@ const Closet = () => {
           {/* Asset Grid */}
           <Box border="1px solid" borderColor={text} p={4}>
             <Flex justify="space-between" mb={4} borderBottom="1px solid" borderColor={border} pb={1}>
-              <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">SLOT_ID</Text>
-              <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">PROTOCOL_TAG</Text>
+              <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">SLOT ID</Text>
+              <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">PROTOCOL TAG</Text>
             </Flex>
             
             {isLoading ? (
@@ -658,7 +659,7 @@ const Closet = () => {
             {/* Grid Footer Info */}
             <Flex justify="end" mt={4}>
               <Text fontSize="6px" fontWeight="900" color={mutedText} opacity={0.4} fontFamily="monospace">
-                SYSTEM_STABILITY: 100% // {isCurrentLoading ? "LOADING..." : "LOAD_COMPLETE"}
+                SYSTEM STABILITY: 100%{isCurrentLoading ? "LOADING..." : "LOAD COMPLETE"}
               </Text>
             </Flex>
           </Box>
@@ -708,7 +709,7 @@ const Closet = () => {
                           {selectedItem.name}
                         </Text>
                         <Text fontSize="9px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
-                          {selectedItem.dossier.collection} // {selectedItem.dossier.composition}
+                          {selectedItem.dossier.collection} {selectedItem.dossier.composition}
                         </Text>
                         <Box pt={2}>
                           <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" border="1px solid" borderColor={border} px={2} py={0.5}>
@@ -769,12 +770,12 @@ const Closet = () => {
                         </Box>
 
                         <Box>
-                          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mb={1}>SERIAL_IDENTIFIER</Text>
+                          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mb={1}>SERIAL IDENTIFIER</Text>
                           <Text fontSize="sm" fontWeight="900" color={text} letterSpacing="0.05em">{selectedItem.dossier.serialId}</Text>
                         </Box>
 
                         <Box>
-                          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mb={1}>REGISTRY_DATE</Text>
+                          <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mb={1}>REGISTRY DATE</Text>
                           <Text fontSize="sm" fontWeight="900" color={text} letterSpacing="0.05em">{selectedItem.dossier.releaseDate}</Text>
                         </Box>
                       </VStack>
@@ -843,7 +844,7 @@ const Closet = () => {
                             onClick={(e) => { e.stopPropagation(); handleMint(); }}
                             _hover={{ bg: 'var(--monarch-accent)', color: 'black' }}
                           >
-                            {solanaAddress ? 'MINT TO CHAIN' : 'NO_SOLANA_WALLET'}
+                            {solanaAddress ? 'MINT TO CHAIN' : 'NO SOLANA WALLET'}
                           </Button>
                         )
                       )}
@@ -854,7 +855,7 @@ const Closet = () => {
                       <Center cursor="pointer" onClick={() => setIsFlipped(false)}>
                         <HStack color={mutedText} spacing={1}>
                           <Icon as={MdRefresh} boxSize="10px" />
-                          <Text fontSize="8px" fontWeight="900">TAP_TO_FLIP_BACK</Text>
+                          <Text fontSize="8px" fontWeight="900">TAP TO FLIP BACK</Text>
                         </HStack>
                       </Center>
                     </Box>

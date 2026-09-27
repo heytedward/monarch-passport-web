@@ -178,7 +178,7 @@ function AppContent() {
               render: () => (
                 <Box bg="black" border="2px solid #FFB000" p={3} maxW="430px" mx="auto">
                   <Text color="#FFB000" fontFamily="monospace" fontWeight="900" fontSize="xs">
-                    ORDER_SYNCED // {data.granted.length} ITEM{data.granted.length > 1 ? 'S' : ''} ADDED TO YOUR CLOSET
+                    ORDER SYNCED{data.granted.length} ITEM{data.granted.length > 1 ? 'S' : ''} ADDED TO YOUR CLOSET
                   </Text>
                   <Text color="whiteAlpha.700" fontFamily="monospace" fontSize="10px" mt={1}>
                     {data.granted.join(' // ').toUpperCase()}

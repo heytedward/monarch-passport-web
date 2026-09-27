@@ -13,6 +13,7 @@ import { WngsCoin } from '../components/WngsCoin'
 import useStore from '../store/useStore'
 import { SPRING_SNAPPY } from '../lib/motion'
 import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST } from '../lib/ascension'
+import { displayName } from '../lib/displayName'
 
 const MotionVStack = motion.create(VStack)
 const MotionBox = motion.create(Box)
@@ -143,9 +144,9 @@ const Ascension = () => {
       setWngsBalance(data.newBalance)
       setStamina(data.stamina ?? maxStamina)
       setStaminaRaw((prev) => prev ? { ...prev, s: data.stamina ?? maxStamina, at: new Date().toISOString() } : prev)
-      toast({ title: 'STAMINA_RECHARGED', status: 'success', duration: 2000 })
+      toast({ title: 'STAMINA RECHARGED', status: 'success', duration: 2000 })
     } catch (e: any) {
-      toast({ title: 'RECHARGE_FAILED', description: e.message, status: 'error', duration: 3000 })
+      toast({ title: 'RECHARGE FAILED', description: e.message, status: 'error', duration: 3000 })
     } finally { setBusy(null) }
   }
 
@@ -153,17 +154,17 @@ const Ascension = () => {
     setBusy(reward.id)
     try {
       await post({ action: 'claim_reward', rewardId: reward.id })
-      toast({ title: 'REWARD_CLAIMED', status: 'success', duration: 2000 })
+      toast({ title: 'REWARD CLAIMED', status: 'success', duration: 2000 })
       await loadAll()
     } catch (e: any) {
-      toast({ title: 'CLAIM_FAILED', description: e.message, status: 'error', duration: 3000 })
+      toast({ title: 'CLAIM FAILED', description: e.message, status: 'error', duration: 3000 })
     } finally { setBusy(null) }
   }
 
   const rewardLabel = (r: Reward) => {
-    if (r.label) return r.label
+    if (r.label) return displayName(r.label)
     if (r.reward_type === 'wngs') return `${r.wngs_amount || 0} WNGS`
-    if (r.product_id && productMap[r.product_id]) return productMap[r.product_id].name
+    if (r.product_id && productMap[r.product_id]) return displayName(productMap[r.product_id].name)
     return r.reward_type.toUpperCase()
   }
 
@@ -175,7 +176,7 @@ const Ascension = () => {
     return (
       <Center h="100vh" bg="black" flexDirection="column" p={6}>
         <Heading color="white" fontFamily="'Archivo Black', sans-serif" fontStyle="italic">ASCENSION</Heading>
-        <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="xs" mt={4}>[ NO_ACTIVE_SEASON ]</Text>
+        <Text color="whiteAlpha.600" fontFamily="monospace" fontSize="xs" mt={4}>[ NO ACTIVE SEASON ]</Text>
       </Center>
     )
   }
@@ -272,7 +273,7 @@ const Ascension = () => {
         <Box p={3}>
           <Text fontSize="7px" fontWeight="900" fontFamily="monospace" letterSpacing="0.15em"
             color={r.track === 'premium' ? accent : 'whiteAlpha.500'}>
-            {r.track.toUpperCase()}_TRACK // LVL {r.level}
+            {r.track.toUpperCase()} TRACK · LVL {r.level}
           </Text>
           <Heading fontSize="md" fontWeight="900" color="white" fontFamily="monospace" textTransform="uppercase" noOfLines={1} mt={0.5}>
             {rewardLabel(r)}
@@ -295,7 +296,7 @@ const Ascension = () => {
           <Flex align="center" gap={2} ml="40px" mb={1}>
             <Box flex={1} h="2px" bg={accent} />
             <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="monospace" letterSpacing="0.15em">
-              ◀ YOU // LVL {lvl}
+              ◀ YOU · LVL {lvl}
             </Text>
           </Flex>
         )}
@@ -328,7 +329,7 @@ const Ascension = () => {
         {/* Header */}
         <Box p={8}>
           <Text fontSize="9px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace" letterSpacing="0.2em">
-            SEASON {season.code || ''} // {daysLeft} DAYS LEFT
+            SEASON {season.code || ''} {daysLeft} DAYS LEFT
           </Text>
           <Heading fontSize="5xl" fontWeight="900" fontStyle="italic" color="white" fontFamily="'Archivo Black', sans-serif" lineHeight="1">
             ASCENSION
@@ -337,7 +338,7 @@ const Ascension = () => {
           {!isAuthed && (
             <Box mt={3} border="1px solid" borderColor="var(--monarch-accent)" px={2} py={1} display="inline-block">
               <Text fontSize="8px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace" letterSpacing="0.12em">
-                ◇ PREVIEW // CONNECT TO TRACK YOUR PROGRESS
+                ◇ PREVIEW · CONNECT TO TRACK YOUR PROGRESS
               </Text>
             </Box>
           )}
@@ -358,7 +359,7 @@ const Ascension = () => {
             <Box h="100%" bg="var(--monarch-accent)" w={`${pct}%`} transition="width 0.3s" />
           </Box>
           <Text fontSize="7px" fontWeight="900" color="whiteAlpha.500" fontFamily="monospace" mt={1}>
-            TOTAL_XP: {xp} // {season.level_count} LEVELS
+            TOTAL XP: {xp} {season.level_count} LEVELS
           </Text>
         </Box>
 
@@ -372,7 +373,7 @@ const Ascension = () => {
                   <Box key={i} w="14px" h="20px" border="1px solid" borderColor="white" bg={i < stamina ? 'var(--monarch-accent)' : 'transparent'} />
                 ))}
               </HStack>
-              <Text fontSize="8px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace">SOCIAL_STAMINA {stamina}/{maxStamina}</Text>
+              <Text fontSize="8px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace">SOCIAL STAMINA {stamina}/{maxStamina}</Text>
             </HStack>
             <Button
               size="xs" borderRadius="0" h="28px" fontSize="8px" fontFamily="monospace"
@@ -384,7 +385,7 @@ const Ascension = () => {
               onClick={handleRecharge}
               _hover={{ bg: 'white' }}
             >
-              RECHARGE // {RECHARGE_COST}
+              RECHARGE{RECHARGE_COST}
             </Button>
           </Flex>
           <Text fontSize="7px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" mt={1}>
@@ -396,7 +397,7 @@ const Ascension = () => {
         <Box p={8}>
           <Flex justify="space-between" align="center" mb={4}>
             <Heading fontSize="xs" fontWeight="900" color="white" fontFamily="'Archivo Black', sans-serif">
-              TIER_LADDER
+              TIER LADDER
             </Heading>
             <Text fontSize="8px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace" letterSpacing="0.1em">
               TIER {level} / {season.level_count}
@@ -410,7 +411,7 @@ const Ascension = () => {
             </Center>
             <Text fontSize="8px" fontWeight="900" fontFamily="monospace" letterSpacing="0.15em"
               color={maxed ? accent : 'whiteAlpha.500'}>
-              SUMMIT // TIER {season.level_count}{maxed ? ' // REACHED' : ''}
+              SUMMIT · TIER {season.level_count}{maxed ? ' REACHED' : ''}
             </Text>
           </HStack>
 
@@ -434,20 +435,20 @@ const Ascension = () => {
             <Flex align="center" gap={2} ml="40px" mt={1}>
               <Box flex={1} h="2px" bg={accent} />
               <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="monospace" letterSpacing="0.15em">
-                ◀ YOU // START
+                ◀ YOU · START
               </Text>
             </Flex>
           )}
           <HStack spacing={3} mt={1}>
             <Center w="32px" flexShrink={0}><Box w="10px" h="2px" bg="whiteAlpha.400" /></Center>
             <Text fontSize="7px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" letterSpacing="0.15em">
-              BASE // TIER 01
+              BASE · TIER 01
             </Text>
           </HStack>
 
           {rewards.length === 0 && (
             <Text fontSize="9px" fontWeight="900" color="whiteAlpha.500" fontFamily="monospace" mt={4}>
-              [ TIERS LIVE // REWARDS BEING CONFIGURED ]
+              [ TIERS LIVE · REWARDS BEING CONFIGURED ]
             </Text>
           )}
         </Box>

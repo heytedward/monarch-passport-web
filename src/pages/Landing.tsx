@@ -43,7 +43,7 @@ function Landing() {
               letterSpacing="0.25em"
               textTransform="uppercase"
             >
-              SEASON 001 // PROTOCOL ONLINE
+              SEASON 001 · PROTOCOL ONLINE
             </Text>
             <Heading
               fontSize={{ base: "3xl", sm: "4xl" }}

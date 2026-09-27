@@ -210,7 +210,7 @@ const CommandCenter: React.FC = () => {
   if (!ready) {
     return (
       <Center h="100vh" bg="black">
-        <Text color={monarchYellow} fontFamily="monospace">INITIALIZING_SECURE_UPLINK...</Text>
+        <Text color={monarchYellow} fontFamily="monospace">INITIALIZING SECURE UPLINK...</Text>
       </Center>
     );
   }
@@ -239,7 +239,7 @@ const CommandCenter: React.FC = () => {
             LEVEL 5 CLEARANCE REQUIRED
           </Text>
           <Text color="gray.500" fontSize="xs" fontFamily="monospace">
-            UNAUTHORIZED ACCESS ATTEMPT LOGGED // ID: {user?.id || 'ANONYMOUS'}
+            UNAUTHORIZED ACCESS ATTEMPT LOGGED · ID: {user?.id || 'ANONYMOUS'}
           </Text>
         </VStack>
       </Center>
@@ -249,8 +249,8 @@ const CommandCenter: React.FC = () => {
   const generateClaimLink = async () => {
     if (!claimId || !wngsValue) {
       toast({
-        title: "MISSING_DATA",
-        description: "CLAIM_ID AND WNGS_VALUE ARE REQUIRED",
+        title: "MISSING DATA",
+        description: "CLAIM ID AND WNGS VALUE ARE REQUIRED",
         status: "error",
       });
       return;
@@ -329,8 +329,8 @@ const CommandCenter: React.FC = () => {
   const generateArtifactBatch = async () => {
     if (!mintPrefix || !mintStartNum || !mintCount || !mintTier) {
       toast({
-        title: "MISSING_DATA",
-        description: "TAG_PREFIX, START_NUM, COUNT AND TIER ARE REQUIRED",
+        title: "MISSING DATA",
+        description: "TAG PREFIX, START NUM, COUNT AND TIER ARE REQUIRED",
         status: "error",
       });
       return;
@@ -427,7 +427,7 @@ const CommandCenter: React.FC = () => {
 
   const createTheme = async () => {
     if (!themeName || !themeAccent) {
-      toast({ title: 'MISSING_DATA', description: 'THEME_NAME AND ACCENT ARE REQUIRED', status: 'error' });
+      toast({ title: 'MISSING DATA', description: 'THEME NAME AND ACCENT ARE REQUIRED', status: 'error' });
       return;
     }
     setIsCreatingTheme(true);
@@ -442,7 +442,7 @@ const CommandCenter: React.FC = () => {
         priceWngsOverride: themePriceOverride,
       });
       addLog(`THEME_DEPLOYED // ${themeName}`);
-      toast({ title: 'THEME_DEPLOYED', description: `${themeName} IS LIVE IN THE STORE`, status: 'success' });
+      toast({ title: 'THEME DEPLOYED', description: `${themeName} IS LIVE IN THE STORE`, status: 'success' });
       setThemeName('');
       setThemePriceOverride('');
       fetchAdminProducts();
@@ -456,7 +456,7 @@ const CommandCenter: React.FC = () => {
 
   const createAvatar = async () => {
     if (!avatarName || avatarPalette.length !== 9) {
-      toast({ title: 'MISSING_DATA', description: 'AVATAR_NAME AND A 9-COLOR PALETTE ARE REQUIRED', status: 'error' });
+      toast({ title: 'MISSING DATA', description: 'AVATAR NAME AND A 9-COLOR PALETTE ARE REQUIRED', status: 'error' });
       return;
     }
     setIsCreatingAvatar(true);
@@ -473,7 +473,7 @@ const CommandCenter: React.FC = () => {
         edition: avatarEdition,
       });
       addLog(`AVATAR_DEPLOYED // ${avatarName}`);
-      toast({ title: 'AVATAR_DEPLOYED', description: `${avatarName} IS LIVE IN THE STORE`, status: 'success' });
+      toast({ title: 'AVATAR DEPLOYED', description: `${avatarName} IS LIVE IN THE STORE`, status: 'success' });
       setAvatarName('');
       setAvatarPriceOverride('');
       setAvatarPalette(rollPalette());
@@ -522,7 +522,7 @@ const CommandCenter: React.FC = () => {
       }
       setAdminProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, is_active: nextActive } : p));
       toast({
-        title: nextActive ? 'PRODUCT_RESTORED' : 'PRODUCT_RETIRED',
+        title: nextActive ? 'PRODUCT RESTORED' : 'PRODUCT RETIRED',
         description: `${product.name} IS ${nextActive ? 'BACK IN' : 'REMOVED FROM'} THE STORE`,
         status: 'success',
       });
@@ -569,7 +569,7 @@ const CommandCenter: React.FC = () => {
       const picked = await Promise.all(Array.from(files).slice(0, 6).map(downscaleToDataUrl));
       setProdImages((prev) => [...prev, ...picked].slice(0, 6));
     } catch {
-      toast({ title: 'IMAGE_READ_FAILED', status: 'error' });
+      toast({ title: 'IMAGE READ FAILED', status: 'error' });
     }
   };
 
@@ -578,7 +578,7 @@ const CommandCenter: React.FC = () => {
       .filter((s) => s.size.trim() && s.stock !== '')
       .map((s) => ({ size: s.size.trim().toUpperCase(), stock: parseInt(s.stock, 10) }));
     if (!prodName.trim() || !prodPrice || sizes.length === 0) {
-      toast({ title: 'MISSING_DATA', description: 'NAME, PRICE_USD AND AT LEAST ONE SIZE/STOCK REQUIRED', status: 'error' });
+      toast({ title: 'MISSING DATA', description: 'NAME, PRICE USD AND AT LEAST ONE SIZE/STOCK REQUIRED', status: 'error' });
       return;
     }
     setIsCreatingProduct(true);
@@ -597,7 +597,7 @@ const CommandCenter: React.FC = () => {
         imagesData: prodImages,
       });
       addLog(`PRODUCT_DEPLOYED // ${prodName}`);
-      toast({ title: 'PRODUCT_DEPLOYED', description: `${prodName.toUpperCase()} IS LIVE IN THE STORE`, status: 'success' });
+      toast({ title: 'PRODUCT DEPLOYED', description: `${prodName.toUpperCase()} IS LIVE IN THE STORE`, status: 'success' });
       setProdName(''); setProdPrice(''); setProdDescription('');
       setProdCollection(''); setProdSeason('');
       setProdSizes(['S', 'M', 'L', 'XL'].map((s) => ({ size: s, stock: '' })));
@@ -626,14 +626,14 @@ const CommandCenter: React.FC = () => {
       const dataUrl = await downscaleToDataUrl(files[0]);
       setBatchRows((prev) => prev.map((r, i) => (i === rowIndex ? { ...r, image: dataUrl } : r)));
     } catch {
-      toast({ title: 'IMAGE_READ_FAILED', status: 'error' });
+      toast({ title: 'IMAGE READ FAILED', status: 'error' });
     }
   };
 
   const forgeCollection = async () => {
     const rows = batchRows.filter((r) => r.name.trim());
     if (!batchCollection.trim() || rows.length === 0) {
-      toast({ title: 'MISSING_DATA', description: 'COLLECTION_NAME AND AT LEAST ONE PRODUCT ROW REQUIRED', status: 'error' });
+      toast({ title: 'MISSING DATA', description: 'COLLECTION NAME AND AT LEAST ONE PRODUCT ROW REQUIRED', status: 'error' });
       return;
     }
     setIsForgingBatch(true);
@@ -666,10 +666,10 @@ const CommandCenter: React.FC = () => {
     }
     addLog(`COLLECTION_FORGED // ${forged}_OK // ${failures.length}_FAILED`);
     toast({
-      title: failures.length === 0 ? 'COLLECTION_DEPLOYED' : 'COLLECTION_PARTIAL',
+      title: failures.length === 0 ? 'COLLECTION DEPLOYED' : 'COLLECTION PARTIAL',
       description: failures.length === 0
-        ? `${batchCollection.toUpperCase()} // ${forged} PRODUCTS LIVE`
-        : `${forged} OK // FAILED: ${failures.join(' | ')}`,
+        ? `${batchCollection.toUpperCase()}${forged} PRODUCTS LIVE`
+        : `${forged} OK · FAILED: ${failures.join(' | ')}`,
       status: failures.length === 0 ? 'success' : 'warning',
       duration: 8000,
     });
@@ -696,7 +696,7 @@ const CommandCenter: React.FC = () => {
       })
       .filter((s) => s.size && Number.isInteger(s.stock) && s.stock >= 0);
     if (!sizes.length) {
-      toast({ title: 'INVALID_FORMAT', description: 'USE SIZE:COUNT PAIRS, e.g. S:10, M:5', status: 'error' });
+      toast({ title: 'INVALID FORMAT', description: 'USE SIZE:COUNT PAIRS, e.g. S:10, M:5', status: 'error' });
       return;
     }
     setRestockingId(product.id);
@@ -709,7 +709,7 @@ const CommandCenter: React.FC = () => {
       });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'RESTOCK_FAILED');
-      toast({ title: 'STOCK_UPDATED', description: product.name.toUpperCase(), status: 'success' });
+      toast({ title: 'STOCK UPDATED', description: product.name.toUpperCase(), status: 'success' });
       fetchAdminProducts();
     } catch (err: any) {
       toast({ title: 'ERROR', description: err.message, status: 'error' });
@@ -765,7 +765,7 @@ const CommandCenter: React.FC = () => {
 
   const postToFeed = async () => {
     if (!feedTitle.trim() || !feedContent.trim()) {
-      toast({ title: 'MISSING_DATA', description: 'TITLE + CONTENT REQUIRED', status: 'error' });
+      toast({ title: 'MISSING DATA', description: 'TITLE + CONTENT REQUIRED', status: 'error' });
       return;
     }
     setIsPosting(true);
@@ -781,7 +781,7 @@ const CommandCenter: React.FC = () => {
         imageData: feedImageData || undefined,
         author: feedAuthor.trim() || undefined,
       });
-      toast({ title: 'BROADCAST_LIVE', description: 'Posted to MONARCH_TIMES', status: 'success' });
+      toast({ title: 'BROADCAST LIVE', description: 'Posted to MONARCH TIMES', status: 'success' });
       setFeedTitle(''); setFeedContent(''); setFeedImageUrl(''); setFeedImageData(null);
       fetchFeedPosts();
     } catch (err: any) {
@@ -812,7 +812,7 @@ const CommandCenter: React.FC = () => {
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'DELETE_FAILED');
       setFeedPosts((prev) => prev.filter((p) => p.id !== post.id));
-      toast({ title: 'POST_DELETED', description: `${post.title} REMOVED FROM THE FEED`, status: 'success' });
+      toast({ title: 'POST DELETED', description: `${post.title} REMOVED FROM THE FEED`, status: 'success' });
     } catch (err: any) {
       addLog(`DELETE_FAILED // ${err.message}`);
       toast({ title: 'ERROR', description: err.message, status: 'error' });
@@ -822,7 +822,7 @@ const CommandCenter: React.FC = () => {
   };
 
   const createSeason = async () => {
-    if (!seasonName) { toast({ title: 'MISSING_DATA', description: 'SEASON_NAME REQUIRED', status: 'error' }); return; }
+    if (!seasonName) { toast({ title: 'MISSING DATA', description: 'SEASON NAME REQUIRED', status: 'error' }); return; }
     setIsSeasonBusy(true);
     addLog(`CREATING_SEASON // ${seasonName}`);
     try {
@@ -831,7 +831,7 @@ const CommandCenter: React.FC = () => {
         levelCount: seasonLevels, xpPerLevel: seasonXp,
         startsAt: seasonStart || undefined,
       });
-      toast({ title: 'SEASON_CREATED', description: `${seasonName} (inactive — activate it below)`, status: 'success' });
+      toast({ title: 'SEASON CREATED', description: `${seasonName} (inactive — activate it below)`, status: 'success' });
       setSeasonName(''); setSeasonCode(''); setSeasonStart('');
       await fetchSeasons();
     } catch (err: any) {
@@ -850,7 +850,7 @@ const CommandCenter: React.FC = () => {
   };
 
   const addReward = async () => {
-    if (!rwSeasonId || rwLevel === '') { toast({ title: 'MISSING_DATA', description: 'SEASON AND LEVEL REQUIRED', status: 'error' }); return; }
+    if (!rwSeasonId || rwLevel === '') { toast({ title: 'MISSING DATA', description: 'SEASON AND LEVEL REQUIRED', status: 'error' }); return; }
     setIsAddingReward(true);
     try {
       await seasonForge({
@@ -859,7 +859,7 @@ const CommandCenter: React.FC = () => {
         wngsAmount: rwType === 'wngs' ? rwWngs : undefined,
         label: rwLabel || undefined,
       });
-      toast({ title: 'REWARD_ADDED', description: `LVL ${rwLevel} ${rwTrack.toUpperCase()}`, status: 'success' });
+      toast({ title: 'REWARD ADDED', description: `LVL ${rwLevel} ${rwTrack.toUpperCase()}`, status: 'success' });
       setRwLevel(''); setRwWngs(''); setRwLabel(''); setRwProductId('');
     } catch (err: any) {
       toast({ title: 'ERROR', description: err.message, status: 'error' });
@@ -879,7 +879,7 @@ const CommandCenter: React.FC = () => {
               OPERATOR: {userWallet?.slice(0, 6)}...{userWallet?.slice(-4)}
             </Text>
             <Text color={monarchYellow} fontSize="sm" fontWeight="bold">
-              [SYSTEM_STATUS: ACTIVE]
+              [SYSTEM STATUS: ACTIVE]
             </Text>
           </HStack>
         </VStack>
@@ -911,7 +911,7 @@ const CommandCenter: React.FC = () => {
         {activeSection === 'FEED' && (
         <VStack align="stretch" spacing={6}>
           <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
-            // MONARCH_TIMES Broadcast
+            MONARCH TIMES Broadcast
           </Heading>
           <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
             <CardHeader pb={0}>
@@ -922,7 +922,7 @@ const CommandCenter: React.FC = () => {
                 <HStack spacing={2}>
                   <FormControl isRequired>
                     <FormLabel fontSize="xs">TITLE</FormLabel>
-                    <Input borderRadius="0" placeholder="SEASON_01 // DROP_LIVE" fontSize="sm" value={feedTitle} onChange={(e) => setFeedTitle(e.target.value)} />
+                    <Input borderRadius="0" placeholder="SEASON 01 · DROP LIVE" fontSize="sm" value={feedTitle} onChange={(e) => setFeedTitle(e.target.value)} />
                   </FormControl>
                   <FormControl maxW="160px">
                     <FormLabel fontSize="xs">AUTHOR</FormLabel>
@@ -956,7 +956,7 @@ const CommandCenter: React.FC = () => {
                   </Text>
                 </FormControl>
                 <FormControl>
-                  <FormLabel fontSize="xs">IMAGE_URL (alternative to photo)</FormLabel>
+                  <FormLabel fontSize="xs">IMAGE URL (alternative to photo)</FormLabel>
                   <Input borderRadius="0" placeholder="https://..." fontSize="sm" value={feedImageUrl} onChange={(e) => setFeedImageUrl(e.target.value)} isDisabled={!!feedImageData} />
                 </FormControl>
                 <Button w="full" bg={monarchYellow} color="black" borderRadius="0" fontWeight="bold" _hover={{ opacity: 0.8 }} onClick={postToFeed} isLoading={isPosting} loadingText="BROADCASTING...">
@@ -970,14 +970,14 @@ const CommandCenter: React.FC = () => {
           <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
             <CardHeader pb={0}>
               <HStack justify="space-between">
-                <Heading size="sm" color={monarchYellow}>FEED_LOG</Heading>
+                <Heading size="sm" color={monarchYellow}>FEED LOG</Heading>
                 <IconButton aria-label="Refresh feed" icon={<MdRefresh />} size="xs" variant="outline" borderRadius="0" borderColor={borderColor} onClick={fetchFeedPosts} _hover={{ bg: 'whiteAlpha.100' }} />
               </HStack>
             </CardHeader>
             <CardBody>
               <VStack spacing={2} align="stretch">
                 {feedPosts.length === 0 && (
-                  <Text fontSize="xs" color="gray.500" fontFamily="monospace">FEED_EMPTY // NOTHING_BROADCAST_YET</Text>
+                  <Text fontSize="xs" color="gray.500" fontFamily="monospace">FEED EMPTY · NOTHING BROADCAST YET</Text>
                 )}
                 {feedPosts.map((p) => (
                   <HStack key={p.id} justify="space-between" p={2} border="1px solid" borderColor={borderColor}>
@@ -988,7 +988,7 @@ const CommandCenter: React.FC = () => {
                       <Box minW={0}>
                         <Text fontSize="xs" fontWeight="900" fontFamily="monospace" isTruncated>{p.title}</Text>
                         <Text fontSize="10px" color="gray.500" fontFamily="monospace">
-                          {p.author || 'PAPILLON'} // {p.created_at ? new Date(p.created_at).toLocaleDateString() : ''}{p.status !== 'PUBLISHED' ? ` // ${p.status}` : ''}
+                          {p.author || 'PAPILLON'} {p.created_at ? new Date(p.created_at).toLocaleDateString() : ''}{p.status !== 'PUBLISHED' ? `${p.status}` : ''}
                         </Text>
                       </Box>
                     </HStack>
@@ -1016,7 +1016,7 @@ const CommandCenter: React.FC = () => {
         {activeSection === 'ASCENSION' && (
         <VStack align="stretch" spacing={6}>
           <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
-            // ASCENSION Season Control
+            ASCENSION Season Control
           </Heading>
 
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
@@ -1028,7 +1028,7 @@ const CommandCenter: React.FC = () => {
               <CardBody>
                 <VStack spacing={3}>
                   <FormControl isRequired>
-                    <FormLabel fontSize="xs">SEASON_NAME</FormLabel>
+                    <FormLabel fontSize="xs">SEASON NAME</FormLabel>
                     <Input borderRadius="0" placeholder="SPRING 2026" fontSize="sm" value={seasonName} onChange={(e) => setSeasonName(e.target.value)} />
                   </FormControl>
                   <HStack spacing={2}>
@@ -1072,7 +1072,7 @@ const CommandCenter: React.FC = () => {
                       <HStack justify="space-between">
                         <VStack align="start" spacing={0}>
                           <Text fontSize="xs" fontWeight="900" color={labelText}>{s.title}{s.is_active ? ' •' : ''}</Text>
-                          <Text fontSize="8px" color="gray.500">{s.code || '—'} // {s.level_count}L × {s.xp_per_level}XP</Text>
+                          <Text fontSize="8px" color="gray.500">{s.code || '—'} {s.level_count}L × {s.xp_per_level}XP</Text>
                         </VStack>
                         <HStack spacing={1}>
                           {!s.is_active && (
@@ -1134,7 +1134,7 @@ const CommandCenter: React.FC = () => {
                   )}
                   {rwType === 'wngs' && (
                     <FormControl>
-                      <FormLabel fontSize="xs">WNGS_AMOUNT</FormLabel>
+                      <FormLabel fontSize="xs">WNGS AMOUNT</FormLabel>
                       <Input type="number" borderRadius="0" fontSize="sm" placeholder="500" value={rwWngs} onChange={(e) => setRwWngs(e.target.value)} />
                     </FormControl>
                   )}
@@ -1156,7 +1156,7 @@ const CommandCenter: React.FC = () => {
         {activeSection === 'ARTIFACTS' && (
         <VStack align="stretch" spacing={6}>
           <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
-            // Artifact & Link Forge
+            Artifact & Link Forge
           </Heading>
 
           <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
@@ -1166,7 +1166,7 @@ const CommandCenter: React.FC = () => {
             <CardBody>
               {generatedLink ? (
                 <VStack spacing={6} p={4} bg="blackAlpha.200" border="1px dashed" borderColor={monarchYellow}>
-                  <Text color={monarchYellow} fontWeight="bold" fontSize="sm">LINK_GENERATED_SUCCESSFULLY</Text>
+                  <Text color={monarchYellow} fontWeight="bold" fontSize="sm">LINK GENERATED SUCCESSFULLY</Text>
                   <HStack w="full" bg="black" p={4} border="1px solid" borderColor={monarchYellow} justify="space-between">
                     <Code colorScheme="yellow" bg="transparent" color={monarchYellow} fontSize="xs" wordBreak="break-all">
                       {generatedLink}
@@ -1198,10 +1198,10 @@ const CommandCenter: React.FC = () => {
                   <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
                     <VStack spacing={4}>
                       <FormControl isRequired>
-                        <FormLabel fontSize="xs">CLAIM_ID (SHORT_CODE)</FormLabel>
+                        <FormLabel fontSize="xs">CLAIM ID (SHORT CODE)</FormLabel>
                         <Input 
                           borderRadius="0" 
-                          placeholder="e.g. S01_GOLD_001" 
+                          placeholder="e.g. S01 GOLD 001" 
                           fontSize="sm" 
                           value={claimId}
                           onChange={(e) => setClaimId(e.target.value)}
@@ -1220,13 +1220,13 @@ const CommandCenter: React.FC = () => {
                           <option value="ARTIFACT">ARTIFACT</option>
                           <option value="THEME">THEME</option>
                           <option value="AVATAR">AVATAR</option>
-                          <option value="EVENT_LINK">EVENT_LINK</option>
+                          <option value="EVENT_LINK">EVENT LINK</option>
                         </Select>
                       </FormControl>
                     </VStack>
                     <VStack spacing={4}>
                       <FormControl isRequired>
-                        <FormLabel fontSize="xs">WNGS_VALUE</FormLabel>
+                        <FormLabel fontSize="xs">WNGS VALUE</FormLabel>
                         <Input 
                           borderRadius="0" 
                           type="number" 
@@ -1276,7 +1276,7 @@ const CommandCenter: React.FC = () => {
               {mintedUrls.length > 0 ? (
                 <VStack spacing={6} p={4} bg="blackAlpha.200" border="1px dashed" borderColor={monarchYellow}>
                   <Text color={monarchYellow} fontWeight="bold" fontSize="sm">
-                    {mintedUrls.length}_ARTIFACTS_MINTED_SUCCESSFULLY
+                    {mintedUrls.length} ARTIFACTS MINTED SUCCESSFULLY
                   </Text>
                   <HStack w="full" bg="black" p={4} border="1px solid" borderColor={monarchYellow} justify="space-between" align="start">
                     <VStack align="start" spacing={1} maxH="240px" overflowY="auto" w="full">
@@ -1313,7 +1313,7 @@ const CommandCenter: React.FC = () => {
                   <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
                     <VStack spacing={4}>
                       <FormControl isRequired>
-                        <FormLabel fontSize="xs">TAG_PREFIX</FormLabel>
+                        <FormLabel fontSize="xs">TAG PREFIX</FormLabel>
                         <Input
                           borderRadius="0"
                           placeholder="e.g. S01-"
@@ -1323,7 +1323,7 @@ const CommandCenter: React.FC = () => {
                         />
                       </FormControl>
                       <FormControl isRequired>
-                        <FormLabel fontSize="xs">START_NUM</FormLabel>
+                        <FormLabel fontSize="xs">START NUM</FormLabel>
                         <Input
                           borderRadius="0"
                           type="number"
@@ -1387,7 +1387,7 @@ const CommandCenter: React.FC = () => {
                         />
                       </FormControl>
                       <FormControl display="flex" alignItems="center" justifyContent="space-between">
-                        <FormLabel fontSize="xs" mb={0}>IS_SEASON_ARTIFACT</FormLabel>
+                        <FormLabel fontSize="xs" mb={0}>IS SEASON ARTIFACT</FormLabel>
                         <Switch
                           colorScheme="yellow"
                           isChecked={mintIsSeasonArtifact}
@@ -1421,7 +1421,7 @@ const CommandCenter: React.FC = () => {
         {activeSection === 'COSMETICS' && (
         <VStack align="stretch" spacing={6}>
           <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
-            // Cosmetics Forge
+            Cosmetics Forge
           </Heading>
 
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
@@ -1442,14 +1442,14 @@ const CommandCenter: React.FC = () => {
                     <HStack spacing={3}>
                       <Box w="40px" h="40px" bg={themeAccent} border="2px solid" borderColor={themeMode === 'light' ? 'black' : 'white'} />
                       <Text fontSize="xs" fontWeight="900" color={themeAccent} fontFamily="monospace">
-                        {themeName || 'THEME_PREVIEW'}
+                        {themeName || 'THEME PREVIEW'}
                       </Text>
                     </HStack>
                   </Center>
 
                   <FormControl isRequired>
-                    <FormLabel fontSize="xs">THEME_NAME</FormLabel>
-                    <Input borderRadius="0" placeholder="e.g. NEON_OVERRIDE" fontSize="sm" value={themeName} onChange={(e) => setThemeName(e.target.value)} />
+                    <FormLabel fontSize="xs">THEME NAME</FormLabel>
+                    <Input borderRadius="0" placeholder="e.g. NEON OVERRIDE" fontSize="sm" value={themeName} onChange={(e) => setThemeName(e.target.value)} />
                   </FormControl>
 
                   <HStack spacing={4}>
@@ -1474,7 +1474,7 @@ const CommandCenter: React.FC = () => {
                       </Select>
                     </FormControl>
                     <FormControl>
-                      <FormLabel fontSize="xs">PRICE_WNGS (AUTO: {priceForRarity(themeRarity)})</FormLabel>
+                      <FormLabel fontSize="xs">PRICE WNGS (AUTO: {priceForRarity(themeRarity)})</FormLabel>
                       <Input borderRadius="0" type="number" placeholder={String(priceForRarity(themeRarity))} fontSize="sm" value={themePriceOverride} onChange={(e) => setThemePriceOverride(e.target.value)} />
                     </FormControl>
                   </HStack>
@@ -1523,8 +1523,8 @@ const CommandCenter: React.FC = () => {
                   </SimpleGrid>
 
                   <FormControl isRequired>
-                    <FormLabel fontSize="xs">AVATAR_NAME</FormLabel>
-                    <Input borderRadius="0" placeholder="e.g. GHOST_OPERATOR" fontSize="sm" value={avatarName} onChange={(e) => setAvatarName(e.target.value)} />
+                    <FormLabel fontSize="xs">AVATAR NAME</FormLabel>
+                    <Input borderRadius="0" placeholder="e.g. GHOST OPERATOR" fontSize="sm" value={avatarName} onChange={(e) => setAvatarName(e.target.value)} />
                   </FormControl>
 
                   <HStack spacing={4}>
@@ -1535,7 +1535,7 @@ const CommandCenter: React.FC = () => {
                       </Select>
                     </FormControl>
                     <FormControl>
-                      <FormLabel fontSize="xs">PRICE_WNGS (AUTO: {priceForRarity(avatarRarity)})</FormLabel>
+                      <FormLabel fontSize="xs">PRICE WNGS (AUTO: {priceForRarity(avatarRarity)})</FormLabel>
                       <Input borderRadius="0" type="number" placeholder={String(priceForRarity(avatarRarity))} fontSize="sm" value={avatarPriceOverride} onChange={(e) => setAvatarPriceOverride(e.target.value)} />
                     </FormControl>
                   </HStack>
@@ -1543,7 +1543,7 @@ const CommandCenter: React.FC = () => {
                   <SimpleGrid columns={3} spacing={2}>
                     <FormControl>
                       <FormLabel fontSize="xs">COLLECTION</FormLabel>
-                      <Input borderRadius="0" placeholder="S01_CORE" fontSize="sm" value={avatarCollection} onChange={(e) => setAvatarCollection(e.target.value)} />
+                      <Input borderRadius="0" placeholder="S01 CORE" fontSize="sm" value={avatarCollection} onChange={(e) => setAvatarCollection(e.target.value)} />
                     </FormControl>
                     <FormControl>
                       <FormLabel fontSize="xs">SEASON</FormLabel>
@@ -1568,7 +1568,7 @@ const CommandCenter: React.FC = () => {
         {activeSection === 'PHYSICAL' && (
         <VStack align="stretch" spacing={6}>
           <Heading size="md" textTransform="uppercase" letterSpacing="0.1em">
-            // Physical Products
+            Physical Products
           </Heading>
           {/* PRODUCT FORGE: physical garments — the in-house Shopify replacement */}
           <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
@@ -1599,11 +1599,11 @@ const CommandCenter: React.FC = () => {
 
                 <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4}>
                   <FormControl isRequired>
-                    <FormLabel fontSize="xs">PRODUCT_NAME</FormLabel>
+                    <FormLabel fontSize="xs">PRODUCT NAME</FormLabel>
                     <Input borderRadius="0" placeholder="GENESIS HOODIE" fontSize="sm" value={prodName} onChange={(e) => setProdName(e.target.value)} />
                   </FormControl>
                   <FormControl isRequired>
-                    <FormLabel fontSize="xs">PRICE_USD</FormLabel>
+                    <FormLabel fontSize="xs">PRICE USD</FormLabel>
                     <Input borderRadius="0" type="number" placeholder="120" fontSize="sm" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} />
                   </FormControl>
                   <FormControl>
@@ -1637,7 +1637,7 @@ const CommandCenter: React.FC = () => {
                 </HStack>
 
                 <FormControl>
-                  <FormLabel fontSize="xs">SIZES // STOCK</FormLabel>
+                  <FormLabel fontSize="xs">SIZES · STOCK</FormLabel>
                   <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={2}>
                     {prodSizes.map((row, i) => (
                       <HStack key={i} spacing={2}>
@@ -1670,7 +1670,7 @@ const CommandCenter: React.FC = () => {
               <VStack spacing={4} align="stretch">
                 <HStack spacing={4}>
                   <FormControl isRequired>
-                    <FormLabel fontSize="xs">COLLECTION_NAME</FormLabel>
+                    <FormLabel fontSize="xs">COLLECTION NAME</FormLabel>
                     <Input borderRadius="0" placeholder="GENESIS" fontSize="sm" value={batchCollection} onChange={(e) => setBatchCollection(e.target.value)} />
                   </FormControl>
                   <FormControl>
@@ -1683,13 +1683,13 @@ const CommandCenter: React.FC = () => {
                   {batchRows.map((row, i) => (
                     <Box key={i} border="1px solid" borderColor={borderColor} p={3}>
                       <SimpleGrid columns={{ base: 1, md: 5 }} spacing={2} mb={2}>
-                        <Input borderRadius="0" fontSize="xs" placeholder="PRODUCT_NAME" value={row.name}
+                        <Input borderRadius="0" fontSize="xs" placeholder="PRODUCT NAME" value={row.name}
                           onChange={(e) => setBatchRows((prev) => prev.map((r, ri) => ri === i ? { ...r, name: e.target.value } : r))} />
                         <Select borderRadius="0" fontSize="xs" value={row.category}
                           onChange={(e) => setBatchRows((prev) => prev.map((r, ri) => ri === i ? { ...r, category: e.target.value } : r))}>
                           {['HOODIE', 'TEE', 'CAP', 'SWEATS', 'ACCESSORY'].map((c) => <option key={c} value={c}>{c}</option>)}
                         </Select>
-                        <Input borderRadius="0" fontSize="xs" type="number" placeholder="PRICE_USD" value={row.price}
+                        <Input borderRadius="0" fontSize="xs" type="number" placeholder="PRICE USD" value={row.price}
                           onChange={(e) => setBatchRows((prev) => prev.map((r, ri) => ri === i ? { ...r, price: e.target.value } : r))} />
                         <Select borderRadius="0" fontSize="xs" value={row.rarity}
                           onChange={(e) => setBatchRows((prev) => prev.map((r, ri) => ri === i ? { ...r, rarity: e.target.value } : r))}>
@@ -1719,7 +1719,7 @@ const CommandCenter: React.FC = () => {
                 </HStack>
 
                 <Button bg={monarchYellow} color="black" borderRadius="0" fontWeight="bold" _hover={{ opacity: 0.8 }}
-                  onClick={forgeCollection} isLoading={isForgingBatch} loadingText="FORGING_COLLECTION...">
+                  onClick={forgeCollection} isLoading={isForgingBatch} loadingText="FORGING COLLECTION...">
                   FORGE COLLECTION
                 </Button>
               </VStack>
@@ -1731,7 +1731,7 @@ const CommandCenter: React.FC = () => {
           <Card variant="outline" bg={cardBg} borderColor={borderColor} borderRadius="0" border="1px solid">
             <CardHeader pb={0}>
               <HStack justify="space-between">
-                <Heading size="sm" color={monarchYellow}>STORE_INVENTORY</Heading>
+                <Heading size="sm" color={monarchYellow}>STORE INVENTORY</Heading>
                 <HStack spacing={1}>
                   {(['ALL', 'LIVE', 'RETIRED'] as const).map((f) => {
                     const count = f === 'ALL'
@@ -1762,7 +1762,7 @@ const CommandCenter: React.FC = () => {
             <CardBody>
               <VStack spacing={2} align="stretch">
                 {adminProducts.length === 0 && (
-                  <Text fontSize="xs" color="gray.500" fontFamily="monospace">NO_FORGED_PRODUCTS_YET</Text>
+                  <Text fontSize="xs" color="gray.500" fontFamily="monospace">NO FORGED PRODUCTS YET</Text>
                 )}
                 {adminProducts
                   .filter((p) => productFilter === 'ALL' || (productFilter === 'RETIRED') === (p.is_active === false))
@@ -1790,9 +1790,9 @@ const CommandCenter: React.FC = () => {
                             <Text fontSize="xs" fontWeight="900" fontFamily="monospace" isTruncated>{p.name}</Text>
                             <Text fontSize="10px" color="gray.500" fontFamily="monospace" isTruncated>
                               {isPhysical
-                                ? `${p.category} // $${p.price_usd} // STOCK: ${stockLine || '—'}`
-                                : `${p.category} // ${p.rarity || 'COMMON'} // ${p.price_wngs} WNGS // OWNERS:${p.owners ?? 0}`}
-                              {retired ? ' // RETIRED' : ''}
+                                ? `${p.category} $${p.price_usd} STOCK: ${stockLine || '—'}`
+                                : `${p.category}${p.rarity || 'COMMON'}${p.price_wngs} WNGS · OWNERS:${p.owners ?? 0}`}
+                              {retired ? ' RETIRED' : ''}
                             </Text>
                             {(lineage || forgedOn) && (
                               <Text fontSize="10px" color="gray.600" fontFamily="monospace" isTruncated>

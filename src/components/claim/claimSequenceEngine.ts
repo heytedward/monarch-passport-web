@@ -111,13 +111,13 @@ const TEMPLATE = `
 <canvas aria-hidden="true"></canvas>
 <div class="mcs-hud">
   <section class="mcs-panel" data-el="unclaimed" hidden>
-    <div class="mcs-kicker">AUTHENTIC<br>MONARCH ARTIFACT<br>// UNCLAIMED</div>
+    <div class="mcs-kicker">AUTHENTIC<br>MONARCH ARTIFACT<br>UNCLAIMED</div>
     <div class="mcs-line"></div>
     <div class="mcs-title" data-el="titleA"></div>
-    <div class="mcs-meta"><span data-el="metaA"></span><span class="mcs-badge" data-el="seasonBadge">SEASON_EXCLUSIVE</span></div>
+    <div class="mcs-meta"><span data-el="metaA"></span><span class="mcs-badge" data-el="seasonBadge">SEASON EXCLUSIVE</span></div>
     <div class="mcs-serial" data-el="serial"></div>
     <div class="mcs-term" data-el="term" aria-live="polite" hidden></div>
-    <button class="mcs-btn" data-el="claim" type="button">CLAIM_ARTIFACT</button>
+    <button class="mcs-btn" data-el="claim" type="button">CLAIM ARTIFACT</button>
   </section>
   <section class="mcs-panel live" data-el="claimed" hidden>
     <div class="mcs-kicker"><span data-el="kick"></span><i class="mcs-caret"></i></div>
@@ -126,12 +126,12 @@ const TEMPLATE = `
     <div class="mcs-line rv" data-at="340"></div>
     <div class="mcs-bonus rv" data-at="440">
       <div class="mcs-coin" data-el="coin">P</div>
-      <div><b data-el="wngsB">+<span data-el="wngs">0</span> $WNGS</b><span class="mcs-lbl">ACTIVATION_BONUS_AWARDED</span></div>
+      <div><b data-el="wngsB">+<span data-el="wngs">0</span> $WNGS</b><span class="mcs-lbl">ACTIVATION BONUS AWARDED</span></div>
     </div>
-    <div class="mcs-banner" data-el="banner">PREMIUM_TRACK_UNLOCKED //<br>ASCENSION_ELEVATED</div>
+    <div class="mcs-banner" data-el="banner">PREMIUM TRACK UNLOCKED<br>ASCENSION ELEVATED</div>
     <p class="mcs-note" data-el="note"></p>
-    <button class="mcs-btn white rv" data-el="closet" type="button">GO_TO_CLOSET</button>
-    <button class="mcs-btn pass rv" data-el="pass" type="button">VIEW_ASCENSION_PASS <span class="arrow" aria-hidden="true">&#8594;</span></button>
+    <button class="mcs-btn white rv" data-el="closet" type="button">GO TO CLOSET</button>
+    <button class="mcs-btn pass rv" data-el="pass" type="button">VIEW ASCENSION PASS <span class="arrow" aria-hidden="true">&#8594;</span></button>
   </section>
 </div>
 `;
@@ -168,7 +168,7 @@ export function mountClaimSequence(root: HTMLElement, opts: ClaimEngineOptions):
   const TAG_ID = artifact.id.trim().toUpperCase().slice(0, 32);
   const NAME = artifact.name.toUpperCase();
   const TIER = artifact.tier.toUpperCase();
-  const SET_LINE = `${(artifact.collection || 'GENERAL_RELEASE').toUpperCase()} // ${(artifact.season || 'UNSPECIFIED').toUpperCase()}`;
+  const SET_LINE = `${(artifact.collection || 'GENERAL RELEASE').toUpperCase()} · ${(artifact.season || 'UNSPECIFIED').toUpperCase()}`;
   const RARITY = opts.rarityColor;
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -194,7 +194,7 @@ export function mountClaimSequence(root: HTMLElement, opts: ClaimEngineOptions):
   q<HTMLElement>('metaA').textContent = SET_LINE;
   q<HTMLElement>('metaB').textContent = SET_LINE;
   q<HTMLElement>('tierBadge').textContent = TIER;
-  q<HTMLElement>('serial').textContent = `SERIAL_NUM: ${TAG_ID} // REGISTRY_TIER: ${TIER}`;
+  q<HTMLElement>('serial').textContent = `SERIAL NUM: ${TAG_ID} · REGISTRY TIER: ${TIER}`;
   q<HTMLElement>('seasonBadge').hidden = !artifact.isSeasonArtifact;
 
   const cv = root.querySelector('canvas') as HTMLCanvasElement;
@@ -613,7 +613,7 @@ export function mountClaimSequence(root: HTMLElement, opts: ClaimEngineOptions):
     if (state !== SEALED) return;
     const b = el.claim;
     b.disabled = !authReady;
-    b.textContent = !authReady ? 'CONNECTING...' : !authed ? 'AUTHENTICATE_TO_CLAIM' : retry ? 'RETRY_CLAIM' : 'CLAIM_ARTIFACT';
+    b.textContent = !authReady ? 'CONNECTING...' : !authed ? 'AUTHENTICATE TO CLAIM' : retry ? 'RETRY CLAIM' : 'CLAIM ARTIFACT';
   }
   type Line = [string, string, string?];
   const termLines = (): Line[] => [

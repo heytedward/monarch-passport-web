@@ -7,6 +7,7 @@ import {
   PiGiftFill, PiRankingFill, PiArrowBendUpLeftFill, PiSparkleFill, PiXBold,
 } from 'react-icons/pi';
 import { usePrivy } from '@privy-io/react-auth';
+import { displayName } from '../lib/displayName'
 
 interface Notification {
   id: string;
@@ -184,7 +185,7 @@ const NotificationsBell = () => {
               <Center py={10} px={6} textAlign="center">
                 <VStack spacing={2}>
                   <Text fontSize="10px" fontWeight="900" fontFamily="monospace" color={muted} letterSpacing="0.1em">
-                    [ NO_SIGNAL_YET ]
+                    [ NO SIGNAL YET ]
                   </Text>
                   <Text fontSize="9px" fontFamily="monospace" color={muted}>
                     tap an artifact or scan a link to see rewards land here.
@@ -215,7 +216,7 @@ const NotificationsBell = () => {
                       </Center>
                       <Box flex={1} minW={0}>
                         <Text fontSize="11px" fontWeight="900" fontFamily="monospace" color={iconColor} noOfLines={1} textTransform="uppercase">
-                          {n.title}
+                          {displayName(n.title)}
                         </Text>
                         <Text fontSize="9px" fontFamily="monospace" color={muted}>
                           {timeAgo(n.created_at)}

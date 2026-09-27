@@ -23,6 +23,7 @@ import useStore from '../store/useStore'
 import { staggerContainer, staggerItem } from '../lib/motion'
 import { effectiveStamina, DEFAULT_MAX_STAMINA } from '../lib/ascension'
 import { STAMPS_ENABLED } from '../lib/features'
+import { displayName } from '../lib/displayName'
 
 const MotionSimpleGrid = motion.create(SimpleGrid)
 const MotionBox = motion.create(Box)
@@ -84,17 +85,17 @@ const Profile = () => {
 
   const handleGenerateDiscount = async () => {
     if (wngsBalance < genUsd * 100) {
-      toast({ title: 'NOT_ENOUGH_WNGS', status: 'error', duration: 3000 });
+      toast({ title: 'NOT ENOUGH WNGS', status: 'error', duration: 3000 });
       return;
     }
     setGenBusy(true);
     try {
       const d = await discountApi({ action: 'create_discount', discountUsd: genUsd });
       setWngsBalance(d.balance);
-      toast({ title: `$${genUsd}_DISCOUNT_CREATED`, description: `CODE: ${d.code}`, status: 'success', duration: 5000 });
+      toast({ title: `$${genUsd}_DISCOUNT CREATED`, description: `CODE: ${d.code}`, status: 'success', duration: 5000 });
       loadDiscounts();
     } catch (e: any) {
-      toast({ title: 'COULD_NOT_CREATE', description: String(e?.message || ''), status: 'error', duration: 3000 });
+      toast({ title: 'COULD NOT CREATE', description: String(e?.message || ''), status: 'error', duration: 3000 });
     } finally {
       setGenBusy(false);
     }
@@ -104,10 +105,10 @@ const Profile = () => {
     try {
       const d = await discountApi({ action: 'cancel_discount', code });
       setWngsBalance(d.balance);
-      toast({ title: 'CODE_CANCELLED', description: `+${d.refunded} WNGS REFUNDED`, status: 'success', duration: 3000 });
+      toast({ title: 'CODE CANCELLED', description: `+${d.refunded} WNGS REFUNDED`, status: 'success', duration: 3000 });
       loadDiscounts();
     } catch {
-      toast({ title: 'COULD_NOT_CANCEL', status: 'error', duration: 3000 });
+      toast({ title: 'COULD NOT CANCEL', status: 'error', duration: 3000 });
     }
   };
 
@@ -245,10 +246,10 @@ const Profile = () => {
   const questsCleared = activeQuests.filter((q) => userQuests[q.id]?.status === 'COMPLETED').length;
 
   const stats = [
-    { label: 'WNGS_BALANCE', value: isLoading ? "..." : wngsBalance.toString() },
-    { label: 'QUESTS_CLEARED', value: `${questsCleared}/${activeQuests.length}` },
-    { label: 'TOTAL_TAPS', value: isLoading ? "..." : totalTaps.toString() },
-    { label: 'ARTIFACT_LEVEL', value: String(progress?.level ?? 0).padStart(2, '0') },
+    { label: 'WNGS BALANCE', value: isLoading ? "..." : wngsBalance.toString() },
+    { label: 'QUESTS CLEARED', value: `${questsCleared}/${activeQuests.length}` },
+    { label: 'TOTAL TAPS', value: isLoading ? "..." : totalTaps.toString() },
+    { label: 'ARTIFACT LEVEL', value: String(progress?.level ?? 0).padStart(2, '0') },
   ];
 
   const renderTabContent = () => {
@@ -285,7 +286,7 @@ const Profile = () => {
           <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
             <Flex justify="space-between" align="center">
               <VStack align="start" spacing={0}>
-                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">AVAILABLE_WNGS</Text>
+                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">AVAILABLE WNGS</Text>
                 <Heading fontSize="4xl" fontWeight="900" fontStyle="italic" color={text} fontFamily="'Archivo Black', sans-serif" lineHeight="1">
                   {isLoading ? 'SYNCING...' : wngsBalance}
                 </Heading>
@@ -298,13 +299,13 @@ const Profile = () => {
               fontWeight="900" fontSize="xs" fontFamily="monospace" leftIcon={<MdCreditCard />}
               _hover={{ bg: '#e69e00' }}
             >
-              BUY_WNGS
+              BUY WNGS
             </Button>
 
             {/* WNGS -> storefront discount code */}
             <Box borderTop={`2px solid ${text}`} pt={4} mt={1}>
               <Flex justify="space-between" align="center" mb={1}>
-                <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">STORE_DISCOUNT</Text>
+                <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">STORE DISCOUNT</Text>
                 <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">100 WNGS = $1</Text>
               </Flex>
               <Text fontSize="9px" color={mutedText} fontFamily="monospace" mb={3} lineHeight="1.5">
@@ -334,7 +335,7 @@ const Profile = () => {
                 bg={text} color={bg} fontFamily="monospace" fontWeight="900" fontSize="xs"
                 leftIcon={<MdLocalOffer />} _hover={{ opacity: 0.85 }}
               >
-                GENERATE ${genUsd} CODE // {genUsd * 100} WNGS
+                GENERATE ${genUsd} CODE{genUsd * 100} WNGS
               </Button>
 
               {discounts.filter((d) => d.status === 'active').length > 0 && (
@@ -343,7 +344,7 @@ const Profile = () => {
                     <Flex key={d.code} align="center" justify="space-between" p={3} border={`2px solid ${text}`}>
                       <VStack align="start" spacing={0}>
                         <Text fontWeight="900" fontSize="sm" color={text} fontFamily="monospace" letterSpacing="0.05em">{d.code}</Text>
-                        <Text fontSize="8px" color={mutedText} fontFamily="monospace">${Number(d.discount_usd)} OFF // ACTIVE</Text>
+                        <Text fontSize="8px" color={mutedText} fontFamily="monospace">${Number(d.discount_usd)} OFF · ACTIVE</Text>
                       </VStack>
                       <HStack spacing={1}>
                         <Center as="button" onClick={() => copyDiscount(d.code)} w="34px" h="34px" border={`2px solid ${text}`} color={text} _hover={{ bg: cardBg }}>
@@ -360,7 +361,7 @@ const Profile = () => {
               )}
             </Box>
 
-            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace" pt={2}>TRANSACTION_HISTORY</Text>
+            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace" pt={2}>TRANSACTION HISTORY</Text>
             {transLoading ? (
               <Center py={8}><Spinner color="var(--monarch-accent)" /></Center>
             ) : transactions.length > 0 ? (
@@ -382,7 +383,7 @@ const Profile = () => {
               </VStack>
             ) : (
               <Center py={8} border="1px dashed" borderColor={mutedText}>
-                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">[ NO_TRANSACTIONS_LOGGED ]</Text>
+                <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">[ NO TRANSACTIONS LOGGED ]</Text>
               </Center>
             )}
           </VStack>
@@ -390,7 +391,7 @@ const Profile = () => {
       case 'QUESTS':
         return (
           <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
-            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">ACTIVE_QUESTS</Text>
+            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">ACTIVE QUESTS</Text>
             {activeQuests.length > 0 ? (
               activeQuests.map((quest) => {
                 const uq = userQuests[quest.id];
@@ -400,11 +401,11 @@ const Profile = () => {
                 return (
                   <HStack key={quest.id} p={4} border={`4px solid ${cleared ? 'var(--monarch-accent)' : text}`} justify="space-between" bg={bg} opacity={cleared ? 0.7 : 1}>
                     <VStack align="start" spacing={0}>
-                      <Text fontSize="xs" fontWeight="900" color={text}>// {quest.title.toUpperCase()}</Text>
+                      <Text fontSize="xs" fontWeight="900" color={text}>{displayName(quest.title).toUpperCase()}</Text>
                       <Text fontSize="9px" color={mutedText}>{quest.description}</Text>
                       {!cleared && target > 1 && (
                         <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace" mt={1}>
-                          PROGRESS // {Math.min(prog, target)}/{target}
+                          PROGRESS{Math.min(prog, target)}/{target}
                         </Text>
                       )}
                     </VStack>
@@ -421,7 +422,7 @@ const Profile = () => {
             ) : (
               <Center p={8}>
                 <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace">
-                  [ NO_ACTIVE_QUESTS_FOUND ]
+                  [ NO ACTIVE QUESTS FOUND ]
                 </Text>
               </Center>
             )}
@@ -430,7 +431,7 @@ const Profile = () => {
       case 'STAMPS':
         return (
           <VStack p={6} spacing={4} align="stretch" bg={bg} borderBottom={`4px solid ${text}`}>
-            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">SEASONAL_STAMPS</Text>
+            <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">SEASONAL STAMPS</Text>
             {stampsLoading ? (
               <Center p={8}><Spinner color="var(--monarch-accent)" /></Center>
             ) : stamps.length > 0 ? (
@@ -485,7 +486,7 @@ const Profile = () => {
             ) : (
               <Center p={8}>
                 <Text fontSize="xs" fontWeight="900" color={mutedText} fontFamily="monospace">
-                  [ NO_STAMPS_FOUND ]
+                  [ NO STAMPS FOUND ]
                 </Text>
               </Center>
             )}
@@ -503,7 +504,7 @@ const Profile = () => {
           PROFILE
         </Heading>
         <Text fontSize="9px" fontWeight="900" color={mutedText} fontFamily="monospace" letterSpacing="0.1em">
-          SYSTEM IDENTITY // {handle}
+          SYSTEM IDENTITY{handle}
         </Text>
       </Box>
 
@@ -541,7 +542,7 @@ const Profile = () => {
               <HStack spacing={1.5} bg={useColorModeValue("blackAlpha.100", "whiteAlpha.200")} px={3} py={1} border="1px solid" borderColor={bg}>
                 <Spinner size="xs" color={bg} />
                 <Text fontSize="9px" fontWeight="900" fontFamily="monospace" color={bg} opacity={0.8}>
-                  SECURE_ENCLAVE_GENERATING...
+                  SECURE ENCLAVE GENERATING...
                 </Text>
               </HStack>
             )}
@@ -576,7 +577,7 @@ const Profile = () => {
       {/* Social Miner Hub Footer */}
       <Box p={6} borderTop={`4px solid ${text}`}>
         <Text fontSize="9px" fontWeight="900" color={text} fontFamily="monospace" mb={4}>
-          SOCIAL_MINER_HUB // SEASON_01
+          SOCIAL MINER HUB · SEASON 01
         </Text>
         
         <VStack align="stretch" spacing={4}>
@@ -597,7 +598,7 @@ const Profile = () => {
             _active={{ bg: "#cc8c00" }}
             width="full"
           >
-            {linkCopied ? '[ SIGNAL_COPIED_TO_CLIPBOARD ]' : 'GENERATE_SOCIAL_LINK'}
+            {linkCopied ? '[ SIGNAL COPIED TO CLIPBOARD ]' : 'GENERATE SOCIAL LINK'}
           </Button>
 
           <HStack spacing={4} pt={2}>
@@ -606,7 +607,7 @@ const Profile = () => {
               <Text fontSize="12px" fontWeight="900" color={text} fontFamily="monospace">{stamina}/{maxStamina}</Text>
             </VStack>
             <VStack align="start" spacing={0} flex={1} borderLeft="2px solid" borderColor="gray.600" pl={3}>
-              <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">AGENT_BANDWIDTH</Text>
+              <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">AGENT BANDWIDTH</Text>
               <Text fontSize="12px" fontWeight="900" color={text} fontFamily="monospace">100/100</Text>
             </VStack>
           </HStack>
