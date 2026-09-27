@@ -3,12 +3,12 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
 }
 import { createClient } from '@supabase/supabase-js';
-import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST, getActiveSeason } from './_ascension.js';
+import { getActiveSeason } from './_ascension.js';
 import { avatarSvg } from './_avatarSvg.js';
 import { verifyPrivyToken, getPrivyUserEmails, getPrivyUserWallets } from './_auth.js';
 import { recordQuestAction, QUESTS_ENABLED } from './_quests.js';
 import { enforceRateLimit, sendRateLimited } from './_ratelimit.js';
-import { checkAndAwardStamps, isFullCollectionComplete, seasonMatchValues, STAMPS_ENABLED } from './_stamps.js';
+import { checkAndAwardStamps, seasonMatchValues, STAMPS_ENABLED } from './_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -57,8 +57,8 @@ const MAX_DISCOUNT_USD = 500;
 // Actions that move WNGS, create redeemable value, or mint. Rate-limited
 // together per user so spend can't be spread across actions to dodge a cap.
 const SPEND_ACTIONS = new Set([
-  'collect', 'create_discount', 'cancel_discount', 'boost_post', 'add_comment',
-  'recharge_stamina', 'claim_reward', 'mint_avatar',
+  'create_discount', 'cancel_discount', 'boost_post', 'add_comment',
+  'claim_reward', 'mint_avatar',
 ]);
 const SPEND_LIMIT = 60;
 const SPEND_WINDOW_MS = 60 * 60 * 1000;
@@ -69,52 +69,6 @@ function genDiscountCode() {
   let s = '';
   for (let i = 0; i < 8; i++) s += abc[Math.floor(Math.random() * abc.length)];
   return 'WNGS-' + s;
-}
-
-// Spend WNGS to refill social-mining stamina to full (a net WNGS sink).
-async function rechargeStamina(admin, userId, res) {
-  const { data: profile, error } = await admin
-    .from('profiles')
-    .select('wngs_balance, current_stamina, max_stamina, last_stamina_regen')
-    .eq('id', userId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!profile) return res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
-
-  const max = profile.max_stamina || DEFAULT_MAX_STAMINA;
-  const current = effectiveStamina(profile.current_stamina, profile.last_stamina_regen, max);
-  if (current >= max) {
-    return res.status(400).json({ error: 'STAMINA_ALREADY_FULL', stamina: current });
-  }
-
-  const balance = profile.wngs_balance || 0;
-  if (balance < RECHARGE_COST) {
-    return res.status(402).json({ error: 'INSUFFICIENT_WNGS' });
-  }
-
-  // Balance-guarded debit + refill to full (the user's per-account max).
-  const { data: debited, error: debitError } = await admin
-    .from('profiles')
-    .update({
-      wngs_balance: balance - RECHARGE_COST,
-      current_stamina: max,
-      last_stamina_regen: new Date().toISOString(),
-    })
-    .eq('id', userId)
-    .eq('wngs_balance', balance)
-    .select('wngs_balance')
-    .maybeSingle();
-  if (debitError) throw debitError;
-  if (!debited) return res.status(409).json({ error: 'BALANCE_CHANGED // RETRY' });
-
-  await admin.from('transactions').insert({
-    user_id: userId,
-    amount: -RECHARGE_COST,
-    transaction_type: 'STAMINA_RECHARGE',
-    metadata: {},
-  });
-
-  return res.status(200).json({ success: true, newBalance: debited.wngs_balance, stamina: max });
 }
 
 // Claim an unlocked ASCENSION level reward (gated by level + premium track).
@@ -637,52 +591,18 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, season, progress: progress || null });
     }
 
-    // The active season's physical set (NFC season artifacts + collection_items)
-    // with how many this user owns -- powers the Closet collection tracker.
+    // The active season's NFC artifacts with how many this user owns --
+    // powers the Closet collection tracker.
     if (action === 'get_season_artifacts') {
       const season = await getActiveSeason(admin);
       if (!season) return res.status(200).json({ success: true, season: null, total: 0, owned: 0, items: [] });
       const seasonCode = season.code || season.title;
-      const [{ data: nfc }, { data: items }] = await Promise.all([
-        admin.from('artifacts').select('tag_id, name, owner_id').eq('is_season_artifact', true).in('season', seasonMatchValues(seasonCode)),
-        admin.from('collection_items').select('id, name, image_url, sort_order').eq('season_id', season.id).order('sort_order', { ascending: true }),
-      ]);
-      const itemIds = (items || []).map((i) => i.id);
-      let ownedItemIds = new Set();
-      if (itemIds.length) {
-        const { data: uci } = await admin
-          .from('user_collection_items').select('item_id').eq('user_id', userId).in('item_id', itemIds);
-        ownedItemIds = new Set((uci || []).map((r) => r.item_id));
-      }
-      const all = [
-        ...(nfc || []).map((a) => ({ type: 'NFC', name: a.name || a.tag_id, image_url: null, owned: a.owner_id === userId })),
-        ...(items || []).map((i) => ({ type: 'ITEM', name: i.name, image_url: i.image_url, owned: ownedItemIds.has(i.id) })),
-      ];
+      const { data: nfc } = await admin
+        .from('artifacts').select('tag_id, name, owner_id').eq('is_season_artifact', true).in('season', seasonMatchValues(seasonCode));
+      const all = (nfc || []).map((a) => ({ type: 'NFC', name: a.name || a.tag_id, image_url: null, owned: a.owner_id === userId }));
       return res.status(200).json({
         success: true, season, total: all.length, owned: all.filter((x) => x.owned).length, items: all,
       });
-    }
-
-    // Register a physical collection item from its QR code. Idempotent via the
-    // (user_id,item_id) unique constraint; awards the full-collection stamp.
-    if (action === 'collect') {
-      const { code } = req.body || {};
-      if (!code) return res.status(400).json({ error: 'MISSING_PAYLOAD_DATA' });
-      const { data: item } = await admin
-        .from('collection_items')
-        .select('id, name, description, season_id, image_url')
-        .eq('item_code', String(code).trim().toUpperCase())
-        .maybeSingle();
-      if (!item) return res.status(404).json({ error: 'INVALID_ITEM_CODE' });
-      await admin
-        .from('user_collection_items')
-        .upsert({ user_id: userId, item_id: item.id }, { onConflict: 'user_id,item_id', ignoreDuplicates: true });
-      if (STAMPS_ENABLED) try {
-        if (await isFullCollectionComplete(admin, userId, item.season_id)) {
-          await checkAndAwardStamps(admin, userId, 'FULL_SEASON_COLLECTION');
-        }
-      } catch (e) { console.error('COLLECT_STAMP_WARN:', e); }
-      return res.status(200).json({ success: true, item: { name: item.name, description: item.description, image_url: item.image_url } });
     }
 
     // Read comments for a feed post (service role; feed is login-gated anyway).
@@ -764,7 +684,6 @@ export default async function handler(req, res) {
     }
 
     // Dispatch ASCENSION actions (identity already verified above).
-    if (action === 'recharge_stamina') return await rechargeStamina(admin, userId, res);
     if (action === 'claim_reward') return await claimReward(admin, userId, rewardId, res);
     if (action === 'mint_avatar') return await mintAvatar(admin, userId, req.body, res);
 

@@ -5,14 +5,13 @@ import {
 import { useEffect, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
-import { MdBolt, MdRefresh, MdLock, MdCheck, MdMilitaryTech } from 'react-icons/md'
+import { MdLock, MdCheck, MdMilitaryTech } from 'react-icons/md'
 import { supabase } from '../lib/supabase'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import ThemeSwatch from '../components/ThemeSwatch'
 import { WngsCoin } from '../components/WngsCoin'
 import useStore from '../store/useStore'
 import { SPRING_SNAPPY } from '../lib/motion'
-import { effectiveStamina, DEFAULT_MAX_STAMINA, RECHARGE_COST } from '../lib/ascension'
 import { displayName } from '../lib/displayName'
 
 const MotionVStack = motion.create(VStack)
@@ -47,18 +46,15 @@ const Ascension = () => {
   const { user, getAccessToken } = usePrivy()
   const reduce = useReducedMotion()
   const toast = useToast()
-  const { wngsBalance, setWngsBalance } = useStore()
+  const { setWngsBalance } = useStore()
 
   const [loading, setLoading] = useState(true)
   const [season, setSeason] = useState<Season | null>(null)
   const [progress, setProgress] = useState<Progress | null>(null)
   const [rewards, setRewards] = useState<Reward[]>([])
   const [productMap, setProductMap] = useState<Record<string, any>>({})
-  const [stamina, setStamina] = useState(0)
-  const [staminaRaw, setStaminaRaw] = useState<{ s: number; at: string; max: number } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
-  const maxStamina = staminaRaw?.max || DEFAULT_MAX_STAMINA
 
   const loadAll = async () => {
     setLoading(true)
@@ -79,10 +75,10 @@ const Ascension = () => {
       setRewards((rw || []) as Reward[])
       if (prods) setProductMap(Object.fromEntries(prods.map((p: any) => [p.id, p])))
 
-      // Per-user progress + stamina only when authenticated.
+      // Per-user progress only when authenticated.
       if (!user?.id) { setProgress(null); setLoading(false); return }
 
-      // Progress + profile/stamina via the service-role endpoint. Progress used
+      // Progress + profile via the service-role endpoint. Progress used
       // to be read straight from Supabase, but that required a world-readable
       // RLS policy on user_season_progress (the anon client can't identify a
       // Privy user), so it now goes through the server like everything else.
@@ -104,26 +100,14 @@ const Ascension = () => {
           body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
         })
         const prof = (await profRes.json().catch(() => null))?.profile || null
-        if (prof) {
-          const max = prof.max_stamina || DEFAULT_MAX_STAMINA
-          setStaminaRaw({ s: prof.current_stamina, at: prof.last_stamina_regen, max })
-          setStamina(effectiveStamina(prof.current_stamina, prof.last_stamina_regen, max))
-          if (typeof prof.wngs_balance === 'number') setWngsBalance(prof.wngs_balance)
-        }
-      } catch { /* stamina unavailable (e.g. local vite dev) — ladder still shows */ }
+        if (prof && typeof prof.wngs_balance === 'number') setWngsBalance(prof.wngs_balance)
+      } catch { /* progress unavailable (e.g. local vite dev) — ladder still shows */ }
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => { loadAll() }, [user?.id])
-
-  // Tick the displayed stamina up as it regenerates.
-  useEffect(() => {
-    if (!staminaRaw) return
-    const t = setInterval(() => setStamina(effectiveStamina(staminaRaw.s, staminaRaw.at, staminaRaw.max)), 30000)
-    return () => clearInterval(t)
-  }, [staminaRaw])
 
   const post = async (body: Record<string, any>) => {
     const token = await getAccessToken()
@@ -135,19 +119,6 @@ const Ascension = () => {
     const data = await res.json()
     if (!res.ok || !data.success) throw new Error(data.error || 'REQUEST_FAILED')
     return data
-  }
-
-  const handleRecharge = async () => {
-    setBusy('recharge')
-    try {
-      const data = await post({ action: 'recharge_stamina' })
-      setWngsBalance(data.newBalance)
-      setStamina(data.stamina ?? maxStamina)
-      setStaminaRaw((prev) => prev ? { ...prev, s: data.stamina ?? maxStamina, at: new Date().toISOString() } : prev)
-      toast({ title: 'STAMINA RECHARGED', status: 'success', duration: 2000 })
-    } catch (e: any) {
-      toast({ title: 'RECHARGE FAILED', description: e.message, status: 'error', duration: 3000 })
-    } finally { setBusy(null) }
   }
 
   const handleClaim = async (reward: Reward) => {
@@ -360,36 +331,6 @@ const Ascension = () => {
           </Box>
           <Text fontSize="7px" fontWeight="900" color="whiteAlpha.500" fontFamily="monospace" mt={1}>
             TOTAL XP: {xp} {season.level_count} LEVELS
-          </Text>
-        </Box>
-
-        {/* Stamina */}
-        <Box px={8} mt={6}>
-          <Flex justify="space-between" align="center" border="1px solid" borderColor="whiteAlpha.300" p={3}>
-            <HStack spacing={3}>
-              <Icon as={MdBolt} color="var(--monarch-accent)" boxSize="18px" />
-              <HStack spacing={1}>
-                {Array.from({ length: maxStamina }).map((_, i) => (
-                  <Box key={i} w="14px" h="20px" border="1px solid" borderColor="white" bg={i < stamina ? 'var(--monarch-accent)' : 'transparent'} />
-                ))}
-              </HStack>
-              <Text fontSize="8px" fontWeight="900" color="whiteAlpha.600" fontFamily="monospace">SOCIAL STAMINA {stamina}/{maxStamina}</Text>
-            </HStack>
-            <Button
-              size="xs" borderRadius="0" h="28px" fontSize="8px" fontFamily="monospace"
-              bg={stamina >= maxStamina ? 'whiteAlpha.200' : 'var(--monarch-accent)'}
-              color={stamina >= maxStamina ? 'whiteAlpha.500' : 'black'}
-              isDisabled={!isAuthed || stamina >= maxStamina || wngsBalance < RECHARGE_COST}
-              isLoading={busy === 'recharge'}
-              leftIcon={<MdRefresh />}
-              onClick={handleRecharge}
-              _hover={{ bg: 'white' }}
-            >
-              RECHARGE{RECHARGE_COST}
-            </Button>
-          </Flex>
-          <Text fontSize="7px" fontWeight="900" color="whiteAlpha.400" fontFamily="monospace" mt={1}>
-            SHARE YOUR SOCIAL LINK TO MINE XP &amp; WNGS WHILE STAMINA LASTS.
           </Text>
         </Box>
 

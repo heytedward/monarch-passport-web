@@ -24,21 +24,19 @@ The ecosystem spans two synchronized repositories:
 
 #### A. The $WNGS Economy (Universal Credits)
 An off-chain ledger: `profiles.wngs_balance` with a full audit trail in `transactions`.
-- **Earn:** NFC artifact activation (`ARTIFACT_ACTIVATION`, +bonus), recurring taps (`ARTIFACT_TAP`, 24h cooldown per tag), stamina-gated social mining (`SOCIAL_MINE`), quest completion (`QUEST_REWARD`), claim-links (`NFC_TAP`), ASCENSION rewards, and Stripe purchase (`WNGS_PURCHASE`).
-- **Sinks:** digital cosmetics (`DIGITAL_PURCHASE`), stamina recharge (`STAMINA_RECHARGE`), feed post boosts (`POST_BOOST`), paid comments (`POST_COMMENT`).
+- **Earn:** NFC artifact activation (`ARTIFACT_ACTIVATION`, +bonus), recurring taps (`ARTIFACT_TAP`, once per tag per calendar day, America/New_York; `artifact_daily_taps` enforces it), quest completion (`QUEST_REWARD`), claim-links (`NFC_TAP`), ASCENSION rewards, and Stripe purchase (`WNGS_PURCHASE`).
+- **Sinks:** digital cosmetics (`DIGITAL_PURCHASE`), feed post boosts (`POST_BOOST`), paid comments (`POST_COMMENT`).
 - **Acquisition:** Shop → `POST /api/checkout/wngs` (server derives price + grant from the `WNGS_BUNDLE` product row — the client only sends a `bundleId`) → Stripe → idempotent webhook credits the balance.
 
 #### B. ASCENSION (Seasonal Battlepass)
 - **Seasons:** ~90-day cycles (`seasons`), 30 levels × 100 XP. Exactly one active season.
 - **Tracks:** FREE + PREMIUM. PREMIUM unlocks by activating a season-tagged NFC artifact (`artifacts.is_season_artifact`) — no separate purchase.
 - **XP sources:** artifact activation, taps, social mining, quest rewards.
-- **Social Mining = stamina:** each user's `/social/:id` link mines XP + WNGS for the owner, gated by stamina (max 5, +1 / 4h; recharge to full for 250 WNGS). Public endpoint, per-IP/24h anti-farm cooldown.
 - **UI:** the ASCEND page renders a full vertical **tier ladder** (summit → base) with a "YOU" frontier marker; reward rungs show avatar/theme previews, WNGS amounts, or physical items and claim inline (`claim_reward`).
 
 #### C. Quests & Stamps (Achievements)
 - **Quests** (`quests` / `user_quests`): achievement-style, auto-granted server-side on tracked actions (login, NFC scan, social scans); pay WNGS + XP exactly once. Surfaced in Profile's QUESTS tab.
 - **Stamps** (`stamps` / `user_stamps`): awarded on triggers — `FIRST_TAP`, `WNGS_MILESTONE`, `ASCENSION_LEVEL`, `ALL_QUESTS`, `FULL_SEASON_COLLECTION`. Surfaced in Profile's STAMPS tab.
-- **Collection** (`collection_items` / `user_collection_items`): QR-coded physical items registered at `/collect/:code`; owning a full season set awards the collection stamp.
 
 #### D. Customization Engine (Closet)
 - **Cosmetics are Web2:** ownership is a `user_assets` row; equipping writes `profiles.active_theme` / `active_avatar` via `equip.js`. No chain interaction.
@@ -46,7 +44,7 @@ An off-chain ledger: `profiles.wngs_balance` with a full audit trail in `transac
 - **Protocols (Themes):** drive `--monarch-accent` (e.g. Gold → **CRIMSON_OVERRIDE**) instantly across all components. Three defaults ship free with every account.
 
 #### E. Profile (Account Hub)
-The Profile page is the consolidated account terminal. Tabs: **STATS · WALLET · QUESTS · STAMPS**. The WALLET tab (formerly a standalone page) holds the $WNGS balance, a BUY_WNGS shortcut, and transaction history. A social-miner footer generates the referral link and shows stamina.
+The Profile page is the consolidated account terminal. Tabs: **STATS · WALLET** (QUESTS and STAMPS are switched off for launch; see `src/lib/features.ts`). The WALLET tab (formerly a standalone page) holds the $WNGS balance, a BUY_WNGS shortcut, and transaction history. A social-miner footer generates the referral link and shows stamina.
 
 #### F. Autonomous MONARCH_TIMES (Feed)
 - **Agent-driven feed** (`monarch_times`): AI agents post via `POST /api/agent/transmit` (static `Bearer <AGENT_SECRET_KEY>`; force-formatted — uppercase title, `[ ARCHIVAL_LOG ]` prefix). Admins post via the CommandCenter (with image upload → `feed-images` bucket).
@@ -78,8 +76,7 @@ Server-authority Solana NFT minting of owned avatars is **built and devnet-verif
 - **`POST /api/v2/tap-reward`** — recurring tap reward (24h cooldown).
 - **`POST /api/v2/redeem-claim`** — redeem a claim-link (per-user + global cap).
 - **`POST /api/v2/equip`** — equip a theme/avatar.
-- **`POST /api/v2/log-social-scan`** — social mining (unauthenticated, stamina-gated, per-IP cooldown).
-- **`POST /api/v2/purchase`** — multi-action dispatcher: profile/reads, digital purchase, `collect`, feed `boost_post`/`add_comment`, `recharge_stamina`, `claim_reward`, `mint_avatar` (parked).
+- **`POST /api/v2/purchase`** — multi-action dispatcher: profile/reads, digital purchase, feed `boost_post`/`add_comment`, `claim_reward`, `mint_avatar` (parked).
 - **`POST /api/v2/admin/mint`** — admin dispatcher: artifact mint, cosmetic forge, season ops, claim-links, feed posts.
 - **`POST /api/agent/transmit`** — AI-agent feed ingestion.
 - **`POST /api/waitlist`** — email capture.

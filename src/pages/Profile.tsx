@@ -21,7 +21,6 @@ import { usePrivy } from '@privy-io/react-auth'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import useStore from '../store/useStore'
 import { staggerContainer, staggerItem } from '../lib/motion'
-import { effectiveStamina, DEFAULT_MAX_STAMINA } from '../lib/ascension'
 import { STAMPS_ENABLED, QUESTS_ENABLED } from '../lib/features'
 import { displayName } from '../lib/displayName'
 
@@ -51,10 +50,7 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState<'STATS' | 'WALLET' | 'QUESTS' | 'STAMPS'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
   const [userQuests, setUserQuests] = useState<Record<string, { status: string; progress: number; target: number }>>({});
-  const [linkCopied, setLinkCopied] = useState(false);
   const [progress, setProgress] = useState<any>(null);
-  const [stamina, setStamina] = useState(0);
-  const [maxStamina, setMaxStamina] = useState(DEFAULT_MAX_STAMINA);
   const [stamps, setStamps] = useState<any[]>([]);
   const [stampsLoading, setStampsLoading] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -117,14 +113,6 @@ const Profile = () => {
     toast({ title: 'COPIED', description: code, status: 'success', duration: 1500 });
   };
 
-  const handleCopyLink = () => {
-    // Generate the unique link using the user's Privy ID or wallet
-    const socialUrl = `${window.location.origin}/social/${user?.id || 'guest'}`;
-    navigator.clipboard.writeText(socialUrl);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 3000);
-  };
-
   useEffect(() => {
     const fetchQuests = async () => {
       if (!QUESTS_ENABLED) return;
@@ -153,9 +141,8 @@ const Profile = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    // Season progress feeds the ARTIFACT_LEVEL stat; stamina feeds the social-
-    // miner footer. The full Ascension ladder now lives on its own /ascension
-    // page (ASCEND in the nav), so there's no season card here anymore.
+    // Season progress feeds the ARTIFACT_LEVEL stat. The full Ascension ladder
+    // lives on its own /ascension page (ASCEND in the nav).
     const loadProgress = async () => {
       if (!user?.id) return;
       try {
@@ -175,12 +162,7 @@ const Profile = () => {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
         });
-        const data = await res.json().catch(() => null);
-        if (data?.profile) {
-          const max = data.profile.max_stamina || DEFAULT_MAX_STAMINA;
-          setMaxStamina(max);
-          setStamina(effectiveStamina(data.profile.current_stamina, data.profile.last_stamina_regen, max));
-        }
+        await res.json().catch(() => null); // ensure_profile creates the row for new users
       } catch { /* ignore */ }
     };
     loadProgress();
@@ -575,45 +557,6 @@ const Profile = () => {
       {/* Dynamic Tab Content */}
       {renderTabContent()}
 
-      {/* Social Miner Hub Footer */}
-      <Box p={6} borderTop={`4px solid ${text}`}>
-        <Text fontSize="9px" fontWeight="900" color={text} fontFamily="monospace" mb={4}>
-          SOCIAL MINER HUB · SEASON 01
-        </Text>
-        
-        <VStack align="stretch" spacing={4}>
-          <Text fontSize="10px" color={mutedText} fontFamily="monospace">
-            SHARE YOUR SOCIAL LINK TO MINE XP &amp; WNGS. EACH MINE COSTS 1 STAMINA; RECHARGE WITH WNGS.
-          </Text>
-          
-          <Button
-            onClick={handleCopyLink}
-            bg="var(--monarch-accent)"
-            color="black"
-            height="50px"
-            borderRadius="0"
-            fontWeight="900"
-            fontSize="sm"
-            fontFamily="monospace"
-            _hover={{ bg: "#e69e00" }}
-            _active={{ bg: "#cc8c00" }}
-            width="full"
-          >
-            {linkCopied ? '[ SIGNAL COPIED TO CLIPBOARD ]' : 'GENERATE SOCIAL LINK'}
-          </Button>
-
-          <HStack spacing={4} pt={2}>
-            <VStack align="start" spacing={0} flex={1} borderLeft="2px solid" borderColor="var(--monarch-accent)" pl={3}>
-              <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">STAMINA</Text>
-              <Text fontSize="12px" fontWeight="900" color={text} fontFamily="monospace">{stamina}/{maxStamina}</Text>
-            </VStack>
-            <VStack align="start" spacing={0} flex={1} borderLeft="2px solid" borderColor="gray.600" pl={3}>
-              <Text fontSize="7px" fontWeight="900" color={mutedText} fontFamily="monospace">AGENT BANDWIDTH</Text>
-              <Text fontSize="12px" fontWeight="900" color={text} fontFamily="monospace">100/100</Text>
-            </VStack>
-          </HStack>
-        </VStack>
-      </Box>
     </Box>
   )
 }

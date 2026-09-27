@@ -1,7 +1,8 @@
 // Shared quest auto-grant engine. Underscore prefix => Vercel does NOT treat
 // this as a serverless function, so it doesn't count toward the cap.
 // Imported by purchase.js (SYSTEM_LOGIN), tap-reward.js + claim.js
-// (ACHIEVE_1_NFC_SCAN), and log-social-scan.js (ACHIEVE_5_SOCIAL_SCANS).
+// (ACHIEVE_1_NFC_SCAN). ACHIEVE_5_SOCIAL_SCANS no longer has a source
+// (social-link mining was removed); it only matters if quests return.
 //
 // Quests are achievement-style and auto-grant: when a tracked action fires we
 // recompute the user's real progress, persist it to user_quests, and on the

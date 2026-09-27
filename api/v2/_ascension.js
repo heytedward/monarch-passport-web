@@ -1,49 +1,13 @@
 // Shared ASCENSION (battlepass) helpers. Underscore prefix => Vercel does NOT
 // treat this as a serverless function, so it doesn't count toward the cap.
-// Imported by tap-reward.js, claim.js, log-social-scan.js, purchase.js.
-import { checkAndAwardStamps } from './_stamps.js';
+// Imported by tap-reward.js, claim.js, purchase.js and _quests.js.
 //
-// Client mirrors the user-facing constants in src/lib/ascension.ts -- keep in sync.
+// XP amounts are server-only; the app shows whatever the API returns.
+import { checkAndAwardStamps } from './_stamps.js';
 
 // XP rates
 export const XP_TAP = 60;          // per daily artifact tap (tapping ~4 days a week reaches level 30 in a 90-day season)
 export const XP_ACTIVATION = 100;  // first-claim activation bonus
-export const XP_SOCIAL_MINE = 10;  // per successful social-link mine (link owner)
-export const WNGS_SOCIAL_MINE = 2; // small WNGS trickle per mine
-
-// Stamina ("Active Hustle"). Uses the per-user profiles.max_stamina column;
-// DEFAULT_MAX_STAMINA is only the seed for brand-new accounts.
-export const DEFAULT_MAX_STAMINA = 5;
-export const STAMINA_REGEN_MS = 4 * 60 * 60 * 1000; // +1 every 4h
-export const RECHARGE_COST = 250;                   // WNGS to refill to full
-
-// Effective stamina after time-based regen, capped at the user's max.
-export function effectiveStamina(stored, updatedAtIso, max = DEFAULT_MAX_STAMINA, now = Date.now()) {
-  const cap = max || DEFAULT_MAX_STAMINA;
-  const updated = new Date(updatedAtIso || 0).getTime();
-  const regen = Math.floor((now - updated) / STAMINA_REGEN_MS);
-  return Math.min(cap, (stored || 0) + Math.max(0, regen));
-}
-
-// Consume one stamina, accounting for regen. Returns the new stored value and
-// the regen-timer anchor to persist.
-export function consumeOneStamina(stored, updatedAtIso, max = DEFAULT_MAX_STAMINA, now = Date.now()) {
-  const cap = max || DEFAULT_MAX_STAMINA;
-  const updated = new Date(updatedAtIso || 0).getTime();
-  const intervals = Math.max(0, Math.floor((now - updated) / STAMINA_REGEN_MS));
-  const base = Math.min(cap, (stored || 0) + intervals);
-  if (base <= 0) {
-    return { ok: false, newStored: base, newUpdatedAt: updatedAtIso };
-  }
-  const wasFull = base >= cap;
-  const newStored = base - 1;
-  // If the pool was full, the regen timer starts now; otherwise preserve the
-  // partial progress toward the next point.
-  const newUpdatedAt = wasFull
-    ? new Date(now).toISOString()
-    : new Date(updated + intervals * STAMINA_REGEN_MS).toISOString();
-  return { ok: true, newStored, newUpdatedAt };
-}
 
 // The currently-active season row (or null).
 export async function getActiveSeason(supabase) {

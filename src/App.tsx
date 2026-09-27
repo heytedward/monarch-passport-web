@@ -24,11 +24,8 @@ const Profile = lazyPage(() => import('./pages/Profile'))
 const Settings = lazyPage(() => import('./pages/Settings'))
 const Claim = lazyPage(() => import('./pages/Claim'))
 const Shop = lazyPage(() => import('./pages/Shop'))
-const Recruit = lazyPage(() => import('./pages/Recruit'))
 const CommandCenter = lazyPage(() => import('./pages/CommandCenter'))
-const Social = lazyPage(() => import('./pages/Social'))
 const Ascension = lazyPage(() => import('./pages/Ascension'))
-const Collect = lazyPage(() => import('./pages/Collect'))
 
 import { PRIVY_APP_ID } from './config'
 
@@ -94,11 +91,8 @@ function AppRoutes() {
         <Route path="/ascension" element={<ProtectedRoute><Ascension /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-        <Route path="/collect/:code" element={<Collect />} />
         <Route path="/v/:id" element={<Verify />} />
-        <Route path="/recruit" element={<Recruit />} />
         <Route path="/claim/:id" element={<Claim />} />
-        <Route path="/social/:userId" element={<Social />} />
         <Route path="/command-center" element={<CommandCenter />} />
         <Route path="/admin" element={<CommandCenter />} />
             {/* Unknown paths redirect home instead of rendering an empty page. */}

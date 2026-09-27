@@ -50,13 +50,13 @@ export function seasonMatchValues(code) {
 }
 
 /**
- * Check whether the user owns the complete season collection:
- * the single NFC artifact + all collection_items for the season.
+ * Check whether the user owns the complete season collection (every NFC
+ * season artifact).
  * Returns true if complete (and total > 0), false otherwise.
  *
  * @param {object} admin        Service-role Supabase client
  * @param {string} userId       Privy user ID
- * @param {string} seasonId     UUID of the season (from collection_items.season_id or seasons.id)
+ * @param {string} seasonId     The season's id
  */
 export async function isFullCollectionComplete(admin, userId, seasonId) {
   if (!seasonId) return false;
@@ -81,26 +81,7 @@ export async function isFullCollectionComplete(admin, userId, seasonId) {
       .eq('is_season_artifact', true).in('season', seasonVals).eq('owner_id', userId),
   ]);
 
-  // Collection items check.
-  const { data: seasonItems } = await admin
-    .from('collection_items')
-    .select('id')
-    .eq('season_id', seasonId);
-  const itemIds = (seasonItems || []).map((i) => i.id);
-
-  let claimedItems = 0;
-  if (itemIds.length > 0) {
-    const { count } = await admin
-      .from('user_collection_items')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .in('item_id', itemIds);
-    claimedItems = count || 0;
-  }
-
-  const totalAll = (totalNfc || 0) + itemIds.length;
-  const ownedAll = (ownedNfc || 0) + claimedItems;
-  return totalAll > 0 && ownedAll >= totalAll;
+  return (totalNfc || 0) > 0 && (ownedNfc || 0) >= totalNfc;
 }
 
 /**

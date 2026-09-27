@@ -126,7 +126,6 @@ delete from products    where name like 'TEST\_%' escape '\';
 
 ## 4. Known gaps (harmless today, listed so they're not mysteries)
 
-- `collection_items` table is unseeded — the `/collect/<code>` QR-collection feature has no items yet. Ignore unless you launch that feature.
 - The `ALL_QUESTS` stamp trigger isn't wired — completing every quest doesn't auto-award its stamp.
 - Confirm `db/claim_link_cap.sql` was applied (Supabase → SQL Editor): `select max_redemptions from claim_links limit 1;` — if the column doesn't exist, run that file's SQL once. Without it, claim-link caps aren't enforced.
 - Rarity prices are defined in two places in the code (`api/v2/admin/mint.js` and `src/lib/destijlPalette.ts`) — if a developer ever changes prices, both must change.

@@ -172,8 +172,8 @@ export default async function handler(req, res) {
       }
     }
 
-    // STAMPS: check if user now owns the full season collection (NFC artifact
-    // + all collection_items). Best-effort.
+    // STAMPS: check if user now owns the full season collection (every NFC
+    // season artifact). Best-effort.
     if (STAMPS_ENABLED) try {
       const season = await getActiveSeason(admin);
       if (season) {

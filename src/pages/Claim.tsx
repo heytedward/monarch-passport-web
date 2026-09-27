@@ -141,7 +141,7 @@ const Claim = () => {
               <Box p={10} border={`4px solid #FF1744`} bg="#FF1744" color="white">
                 <Icon as={MdErrorOutline} w={20} h={20} mb={4} />
                 <Heading size="xl" fontWeight="900" mb={2}>{errorMessage}</Heading>
-                <Text fontSize="xs" fontWeight="900" mb={4}>STAMINA DEPLETED OR ALREADY SCANNED</Text>
+                <Text fontSize="xs" fontWeight="900" mb={4}>THIS LINK IS INVALID, EXPIRED OR ALREADY CLAIMED</Text>
                 {rawError && (
                   <Box p={2} bg="blackAlpha.400" borderRadius="md" mt={2}>
                     <Text fontSize="8px" fontWeight="900" color="white" textAlign="left" wordBreak="break-all">
