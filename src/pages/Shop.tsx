@@ -39,6 +39,7 @@ import { WngsCoin } from '../components/WngsCoin'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import ThemeSwatch from '../components/ThemeSwatch'
 import { RARITY_COLORS } from '../lib/destijlPalette'
+import { displayName } from '../lib/displayName'
 
 const MotionBox = motion.create(Box)
 
@@ -110,18 +111,18 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg }: { index: str
             opacity={owned ? 0.6 : 1}
           />
         )}
-        <Text position="absolute" top={1} left={1} fontSize="6px" color={text} opacity={0.4} fontFamily="monospace" zIndex={2}>{index}</Text>
+        <Text position="absolute" top={1} left={1} fontSize="6px" color={text} opacity={0.4} fontFamily="mono" zIndex={2}>{index}</Text>
         {owned ? (
           <Box position="absolute" top={1} right={1} bg="var(--monarch-accent)" px={1}>
-            <Text fontSize="6px" fontWeight="900" color="black" fontFamily="monospace">OWNED</Text>
+            <Text fontSize="6px" fontWeight="900" color="black" fontFamily="mono">OWNED</Text>
           </Box>
         ) : isItemFeatured(item) && (
           <Box position="absolute" top={1} right={1} bg="#FFB000" px={1}>
-            <Text fontSize="6px" fontWeight="900" color="black" fontFamily="monospace">FEATURED</Text>
+            <Text fontSize="6px" fontWeight="900" color="black" fontFamily="mono">FEATURED</Text>
           </Box>
         )}
         {item.rarity && (
-          <Text position="absolute" bottom={1} left={1} fontSize="6px" fontWeight="900" color={RARITY_COLORS[item.rarity] || text} fontFamily="monospace">
+          <Text position="absolute" bottom={1} left={1} fontSize="6px" fontWeight="900" color={RARITY_COLORS[item.rarity] || text} fontFamily="mono">
             {item.rarity}
           </Text>
         )}
@@ -138,7 +139,7 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg }: { index: str
             <DeStijlAvatar seed={item.id} colors={item.palette} size={60} />
           )}
           <Box mt={item.type === 'physical' && item.image ? 0 : 2} position={item.type === 'physical' && item.image ? 'absolute' : 'static'} bottom={item.type === 'physical' && item.image ? 1 : undefined} bg={text} px={2} py={0.5}>
-            <Text color={bg} fontSize="10px" fontWeight="900" fontFamily="monospace">{item.priceString}</Text>
+            <Text color={bg} fontSize="10px" fontWeight="900" fontFamily="mono">{item.priceString}</Text>
           </Box>
         </Center>
       </Box>
@@ -152,7 +153,7 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg }: { index: str
       h="140px" 
       position="relative"
     >
-      <Text position="absolute" top={1} left={1} fontSize="6px" color={text} opacity={0.4} fontFamily="monospace">{index}</Text>
+      <Text position="absolute" top={1} left={1} fontSize="6px" color={text} opacity={0.4} fontFamily="mono">{index}</Text>
       <Center h="full">
         <Box w="2px" h="2px" bg={text} opacity={0.3} borderRadius="full" />
       </Center>
@@ -205,7 +206,7 @@ const Shop = () => {
 
     if (wngsBalance < item.price) {
       toast({
-        title: "INSUFFICIENT_WNGS",
+        title: "INSUFFICIENT WNGS",
         description: "YOU DON'T HAVE ENOUGH WNGS FOR THIS ITEM.",
         status: "error",
         duration: 3000,
@@ -234,8 +235,8 @@ const Shop = () => {
       setWngsBalance(data.newBalance);
       setOwnedProductIds((prev) => new Set(prev).add(item.id));
       toast({
-        title: "ITEM_ACQUIRED",
-        description: `${item.name} HAS BEEN ADDED TO YOUR CLOSET.`,
+        title: "ITEM ACQUIRED",
+        description: `${displayName(item.name)} HAS BEEN ADDED TO YOUR CLOSET.`,
         status: "success",
         duration: 3000,
         isClosable: true,
@@ -243,7 +244,7 @@ const Shop = () => {
       onItemClose();
     } catch (error: any) {
       toast({
-        title: "PURCHASE_ERROR",
+        title: "PURCHASE ERROR",
         description: error.message || "COULD NOT COMPLETE PURCHASE.",
         status: "error",
         duration: 5000,
@@ -439,8 +440,8 @@ const Shop = () => {
             <HStack spacing={4}>
               <Logo boxSize="35px" color={text} />
               <VStack align="start" spacing={0}>
-                <Text fontSize="8px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">PAPILLON</Text>
-                <Heading fontSize="3xl" fontWeight="900" fontStyle="italic" color={text} lineHeight="1" fontFamily="'Archivo Black', sans-serif">
+                <Text fontSize="8px" fontWeight="900" color="var(--monarch-accent)" fontFamily="mono">PAPILLON</Text>
+                <Heading fontSize="3xl" fontWeight="900" fontStyle="italic" color={text} lineHeight="1" fontFamily="heading">
                   {mode === 'physical' ? 'PHYSICAL' : 'DIGITAL'}
                 </Heading>
               </VStack>
@@ -527,7 +528,7 @@ const Shop = () => {
                     variant="ghost"
                     size="xs"
                     fontSize="9px"
-                    fontFamily="monospace"
+                    fontFamily="mono"
                     fontWeight="900"
                     color={digitalFilter === cat ? "var(--monarch-accent)" : mutedText}
                     onClick={() => setDigitalFilter(cat as any)}
@@ -545,8 +546,8 @@ const Shop = () => {
         {/* Info Bar */}
         <Box borderY="1px solid" borderColor={border} px={6} py={2}>
           <Flex justify="space-between" align="center">
-            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">PROTOCOL: {mode === 'physical' ? 'PHYSICAL' : 'DIGITAL'}_MARKET</Text>
-            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="monospace">ENCRYPTION: WNGS_SYNC</Text>
+            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="mono">PROTOCOL: {mode === 'physical' ? 'PHYSICAL' : 'DIGITAL'} MARKET</Text>
+            <Text fontSize="7px" fontWeight="900" color={text} fontFamily="mono">ENCRYPTION: WNGS SYNC</Text>
           </Flex>
         </Box>
 
@@ -577,11 +578,11 @@ const Shop = () => {
                             fontSize={{ base: "xs", md: "sm" }} 
                             fontWeight="900" 
                             color="white" 
-                            fontFamily="monospace" 
+                            fontFamily="mono" 
                             lineHeight="1.1"
                             textTransform="uppercase"
                           >
-                            {item.name.includes(' // ') ? item.name.split(' // ')[0] : item.name}: {item.name.includes(' // ') ? item.name.split(' // ')[1] : item.priceString.split(' ')[0]} / ${item.price}
+                            {displayName(item.name.includes(' // ') ? item.name.split(' // ')[0] : item.name)}: {item.name.includes(' // ') ? displayName(item.name.split(' // ')[1]) : item.priceString.split(' ')[0]} / ${item.price}
                           </Text>
                           <Button
                             size="xs"
@@ -590,7 +591,7 @@ const Shop = () => {
                             borderRadius="0"
                             fontSize="8px"
                             fontWeight="900"
-                            fontFamily="monospace"
+                            fontFamily="mono"
                             px={4}
                             isLoading={isProcessing && selectedItem?.id === item.id}
                             onClick={(e) => {
@@ -613,8 +614,8 @@ const Shop = () => {
             <Box border="1px solid" borderColor={text} borderBottom="none" p={4} bg={bg}>
               <Flex justify="space-between" align="center">
                 <VStack align="start" spacing={1}>
-                  <Heading fontSize="xs" fontWeight="900" color={text} fontFamily="'Archivo Black', sans-serif">
-                    ASSET_SLOTS // {loading ? "..." : filteredItems.length}
+                  <Heading fontSize="xs" fontWeight="900" color={text} fontFamily="heading">
+                    ASSET SLOTS{loading ? "..." : filteredItems.length}
                   </Heading>
                 </VStack>
                 
@@ -636,9 +637,9 @@ const Shop = () => {
                     FILTER: {filter}
                   </MenuButton>
                   <MenuList bg={bg} border={`1px solid ${text}`} borderRadius="0" minW="100px">
-                    <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('ALL')}>ALL_ASSETS</MenuItem>
-                    <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('PREMIUM')}>PREMIUM_PROTOCOL</MenuItem>
-                    <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="monospace" _hover={{ bg: cardBg }} onClick={() => setFilter('BASIC')}>BASIC_PROTOCOL</MenuItem>
+                    <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="mono" _hover={{ bg: cardBg }} onClick={() => setFilter('ALL')}>ALL ASSETS</MenuItem>
+                    <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="mono" _hover={{ bg: cardBg }} onClick={() => setFilter('PREMIUM')}>PREMIUM PROTOCOL</MenuItem>
+                    <MenuItem bg={bg} color={text} fontSize="9px" fontWeight="900" fontFamily="mono" _hover={{ bg: cardBg }} onClick={() => setFilter('BASIC')}>BASIC PROTOCOL</MenuItem>
                   </MenuList>
                 </Menu>
               </Flex>
@@ -646,8 +647,8 @@ const Shop = () => {
 
             <Box border="1px solid" borderColor={text} p={4}>
               <Flex justify="space-between" mb={4} borderBottom="1px solid" borderColor={border} pb={1}>
-                <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">ID_INDEX</Text>
-                <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="monospace">VALUATION</Text>
+                <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="mono">ID INDEX</Text>
+                <Text fontSize="6px" fontWeight="900" color={mutedText} fontFamily="mono">VALUATION</Text>
               </Flex>
               
               <SimpleGrid columns={3} spacing={3}>
@@ -669,8 +670,8 @@ const Shop = () => {
               </SimpleGrid>
 
               <Flex justify="end" mt={4}>
-                <Text fontSize="6px" fontWeight="900" color={mutedText} opacity={0.4} fontFamily="monospace">
-                  SYSTEM_STABILITY: 100% // {loading ? "LOADING..." : "LOAD_COMPLETE"}
+                <Text fontSize="6px" fontWeight="900" color={mutedText} opacity={0.4} fontFamily="mono">
+                  SYSTEM STABILITY: 100%{loading ? "LOADING..." : "LOAD COMPLETE"}
                 </Text>
               </Flex>
             </Box>
@@ -731,11 +732,11 @@ const Shop = () => {
                           <Text fontSize="2xl" fontWeight="900" color="black" bg="white" px={4} fontStyle="italic">
                             {selectedItem.priceString}
                           </Text>
-                          <Text fontSize="10px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
-                            {selectedItem.name}
+                          <Text fontSize="10px" fontWeight="900" color="var(--monarch-accent)" fontFamily="mono">
+                            {displayName(selectedItem.name)}
                           </Text>
                           {selectedItem.rarity && (
-                            <Text fontSize="8px" fontWeight="900" color={RARITY_COLORS[selectedItem.rarity] || mutedText} fontFamily="monospace">
+                            <Text fontSize="8px" fontWeight="900" color={RARITY_COLORS[selectedItem.rarity] || mutedText} fontFamily="mono">
                               [ {selectedItem.rarity} ]
                             </Text>
                           )}
@@ -765,17 +766,17 @@ const Shop = () => {
                             <Text fontSize="2xl" fontWeight="900" color={bg} bg={text} px={4} fontStyle="italic">
                               {selectedItem.priceString}
                             </Text>
-                            <Text fontSize="10px" fontWeight="900" color="var(--monarch-accent)" fontFamily="monospace">
-                              {selectedItem.name}
+                            <Text fontSize="10px" fontWeight="900" color="var(--monarch-accent)" fontFamily="mono">
+                              {displayName(selectedItem.name)}
                             </Text>
                             {selectedItem.rarity && (
-                              <Text fontSize="8px" fontWeight="900" color={RARITY_COLORS[selectedItem.rarity] || mutedText} fontFamily="monospace">
+                              <Text fontSize="8px" fontWeight="900" color={RARITY_COLORS[selectedItem.rarity] || mutedText} fontFamily="mono">
                                 [ {selectedItem.rarity} ]
                               </Text>
                             )}
                             {isItemFeatured(selectedItem) && (
-                              <Text fontSize="8px" fontWeight="900" color="#FFB000" fontFamily="monospace">
-                                *** FEATURED_DROP ***
+                              <Text fontSize="8px" fontWeight="900" color="#FFB000" fontFamily="mono">
+                                *** FEATURED DROP ***
                               </Text>
                             )}
                           </VStack>
@@ -803,14 +804,14 @@ const Shop = () => {
                   >
                     <VStack spacing={6} w="full">
                       <VStack spacing={1}>
-                        <Text fontSize="xs" fontWeight="900" color={text}>ASSET_SPECIFICATIONS</Text>
+                        <Text fontSize="xs" fontWeight="900" color={text}>ASSET SPECIFICATIONS</Text>
                         <Box h="2px" w="40px" bg="var(--monarch-accent)" />
                       </VStack>
                       
                       <VStack align="start" spacing={4} w="full">
                         {selectedItem.type === 'physical' && (
                           <Box w="full">
-                            <Text fontSize="7px" fontWeight="900" color={mutedText} mb={2} fontFamily="monospace">SELECT_SIZE</Text>
+                            <Text fontSize="7px" fontWeight="900" color={mutedText} mb={2} fontFamily="mono">SELECT SIZE</Text>
                             <HStack spacing={3}>
                               {['S', 'M', 'L', 'XL'].map((size) => (
                                 <Center
@@ -871,12 +872,12 @@ const Shop = () => {
                         {selectedItem.type === 'digital' && !isWngsCategory((selectedItem as any).category) && ownedProductIds.has(selectedItem.id)
                           ? 'OWNED'
                           : selectedItem.type === 'physical' && (selectedItem as any).external_buy_url
-                            ? 'BUY_NOW'
+                            ? 'BUY NOW'
                             : isWngsCategory((selectedItem as any).category)
-                              ? 'ACQUIRE_WNGS'
+                              ? 'ACQUIRE WNGS'
                               : selectedItem.type === 'digital'
-                                ? 'ACQUIRE_ITEM'
-                                : 'ADD_TO_CART'}
+                                ? 'ACQUIRE ITEM'
+                                : 'ADD TO CART'}
                       </Button>
                       
                       <HStack color={mutedText}>
@@ -915,7 +916,7 @@ const Shop = () => {
                   <HStack spacing={3}>
                     <Icon as={PiShoppingBagFill} color="var(--monarch-accent)" boxSize="20px" />
                     <Heading fontSize="xl" fontWeight="900" color={text} fontStyle="italic">
-                      MY_CART
+                      MY CART
                     </Heading>
                     <Circle size="18px" bg="var(--monarch-accent)" color="black" fontSize="10px" fontWeight="900">
                       {cart.length}
@@ -939,8 +940,8 @@ const Shop = () => {
                 {cart.length === 0 ? (
                   <Center h="250px" flexDirection="column">
                     <Icon as={PiShoppingBagFill} color={border} boxSize="60px" mb={4} />
-                    <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="monospace">
-                      CART_IS_EMPTY
+                    <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="mono">
+                      CART IS EMPTY
                     </Text>
                   </Center>
                 ) : (
@@ -952,8 +953,8 @@ const Shop = () => {
                             <TShirtIcon color={text} boxSize="20px" />
                           </Box>
                           <VStack align="start" spacing={0}>
-                            <Text fontSize="10px" fontWeight="900" color={text}>{item.name}</Text>
-                            <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">${item.price}</Text>
+                            <Text fontSize="10px" fontWeight="900" color={text}>{displayName(item.name)}</Text>
+                            <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono">${item.price}</Text>
                           </VStack>
                         </HStack>
                         <IconButton 
@@ -974,14 +975,14 @@ const Shop = () => {
               <Box p={6} bg={bg} borderTop={`1px solid ${border}`}>
                 <VStack spacing={4} align="stretch">
                   <Flex justify="space-between" align="center">
-                    <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">ESTIMATED_REWARDS</Text>
+                    <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono">ESTIMATED REWARDS</Text>
                     <HStack spacing={1} color="var(--monarch-accent)">
                       <Icon as={MdRefresh} boxSize="10px" />
                       <Text fontSize="10px" fontWeight="900">+{estimatedRewards} WNGS</Text>
                     </HStack>
                   </Flex>
                   <Flex justify="space-between" align="center">
-                    <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="monospace">SUBTOTAL</Text>
+                    <Text fontSize="8px" fontWeight="900" color={mutedText} fontFamily="mono">SUBTOTAL</Text>
                     <Text fontSize="2xl" fontWeight="900" color={text} fontStyle="italic">${subtotal}</Text>
                   </Flex>
 

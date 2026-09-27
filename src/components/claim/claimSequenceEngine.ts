@@ -37,12 +37,13 @@ export interface ClaimEngine {
   destroy: () => void;
 }
 
-const FONT_HREF =
-  'https://fonts.googleapis.com/css2?family=Archivo+Black&family=Share+Tech+Mono&family=Space+Mono:wght@400;700&display=swap';
+// Self-hosted brand font (public/fonts/unbounded.css), shared with the app.
+const FONT_HREF = '/fonts/unbounded.css';
+const FONT = "'Unbounded Variable', system-ui, sans-serif";
 
 const CSS = `
 .mcs { position: fixed; inset: 0; z-index: 1000; background: #000; overflow: hidden; color: #f4f4f4;
-  font-family: "Share Tech Mono", ui-monospace, Menlo, monospace; user-select: none; -webkit-user-select: none;
+  font-family: var(--brand-font, 'Unbounded Variable', system-ui, sans-serif); user-select: none; -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent; --mcs-gold: #f0b429; --mcs-gold-hi: #ffd24a; --mcs-cyan: #3df0ff; }
 .mcs [hidden] { display: none !important; }
 .mcs canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -56,11 +57,11 @@ const CSS = `
 .mcs-panel.verifying { border-color: var(--mcs-cyan); }
 .mcs-panel.out { transform: translateY(36px) scale(.96); opacity: 0; filter: blur(4px); transition-duration: .35s; }
 .mcs-panel.live { border-color: var(--mcs-cyan); }
-.mcs-kicker { color: var(--mcs-gold); font-size: 15px; line-height: 1.25; letter-spacing: .06em; text-align: center; font-family: "Archivo Black", Impact, sans-serif; }
-.mcs-panel.live .mcs-kicker { color: #9aa; font-family: "Share Tech Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .16em; text-align: left; min-height: 14px; }
+.mcs-kicker { color: var(--mcs-gold); font-size: 15px; line-height: 1.25; letter-spacing: .06em; text-align: center; font-family: var(--brand-font, 'Unbounded Variable', system-ui, sans-serif); }
+.mcs-panel.live .mcs-kicker { color: #9aa; font-family: var(--brand-font, 'Unbounded Variable', system-ui, sans-serif); font-size: 11px; letter-spacing: .16em; text-align: left; min-height: 14px; }
 .mcs-caret { display: inline-block; width: 7px; height: 11px; background: var(--mcs-cyan); margin-left: 3px; vertical-align: -1px; animation: mcs-blink .8s steps(1) infinite; }
 @keyframes mcs-blink { 50% { opacity: 0; } }
-.mcs-title { margin: 14px 0 8px; font-family: "Archivo Black", Impact, sans-serif; font-size: 26px; line-height: 1.05; letter-spacing: .02em; text-wrap: balance; text-transform: uppercase; }
+.mcs-title { margin: 14px 0 8px; font-family: var(--brand-font, 'Unbounded Variable', system-ui, sans-serif); font-size: 26px; line-height: 1.05; letter-spacing: .02em; text-wrap: balance; text-transform: uppercase; }
 .mcs-meta { color: var(--mcs-gold); font-size: 11px; letter-spacing: .08em; margin-bottom: 6px; text-transform: uppercase; }
 .mcs-badge { display: inline-block; background: var(--mcs-gold); color: #000; padding: 2px 6px; margin-left: 6px; font-size: 10px; }
 .mcs-badge.tier { background: transparent; color: var(--mcs-rarity); border: 1px solid var(--mcs-rarity); margin-left: 0; margin-right: 8px; }
@@ -75,27 +76,27 @@ const CSS = `
   border: 1px solid var(--mcs-cyan); color: var(--mcs-cyan); font-size: 12px; transition: box-shadow .25s, background .25s, color .25s; }
 .mcs-coin.hit { box-shadow: 0 0 0 3px rgba(240,180,41,.25), 0 0 18px rgba(240,180,41,.7); }
 .mcs-coin.full { background: var(--mcs-gold); color: #000; border-color: var(--mcs-gold); }
-.mcs-bonus b { font-family: "Archivo Black", Impact, sans-serif; color: var(--mcs-gold); font-size: 22px; font-weight: 400; font-variant-numeric: tabular-nums; display: inline-block; }
+.mcs-bonus b { font-family: var(--brand-font, 'Unbounded Variable', system-ui, sans-serif); color: var(--mcs-gold); font-size: 22px; font-weight: 400; font-variant-numeric: tabular-nums; display: inline-block; }
 .mcs-bonus b.pop { animation: mcs-pop .16s ease-out; }
 @keyframes mcs-pop { 40% { transform: scale(1.12); color: var(--mcs-gold-hi); } }
 .mcs-lbl { display: block; color: #888; font-size: 10px; letter-spacing: .12em; }
-.mcs-banner { background: var(--mcs-gold); color: #000; text-align: center; font-family: "Archivo Black", Impact, sans-serif; font-size: 12px; letter-spacing: .06em;
+.mcs-banner { background: var(--mcs-gold); color: #000; text-align: center; font-family: var(--brand-font, 'Unbounded Variable', system-ui, sans-serif); font-size: 12px; letter-spacing: .06em;
   padding: 12px 8px; margin-bottom: 12px; clip-path: inset(0 100% 0 0); transition: clip-path .55s cubic-bezier(.7,0,.2,1); }
 .mcs-banner.in { clip-path: inset(0 0 0 0); }
 .mcs-note { color: #888; font-size: 10px; letter-spacing: .1em; text-align: center; margin: 0 0 14px; min-height: 1.3em; }
 .mcs-btn { display: flex; align-items: center; justify-content: center; gap: 10px; box-sizing: border-box; min-height: 48px; width: 100%;
-  border: 0; border-radius: 0; cursor: pointer; text-decoration: none; font: 400 13px "Archivo Black", Impact, sans-serif; letter-spacing: .08em;
+  border: 0; border-radius: 0; cursor: pointer; text-decoration: none; font: 700 12px var(--brand-font, 'Unbounded Variable', system-ui, sans-serif); letter-spacing: .08em;
   background: var(--mcs-gold); color: #000; margin-top: 8px; position: relative; overflow: hidden; }
 .mcs-btn.white { background: #fff; color: #000; }
 .mcs-btn.pass { background: #00f0ff; color: #000; }
 .mcs-btn.pass::before { content: ""; position: absolute; top: 0; bottom: 0; left: -45%; width: 35%;
   background: linear-gradient(100deg, transparent, rgba(255,255,255,.75), transparent); animation: mcs-glint 3.2s ease-in-out 1.2s infinite; }
 @keyframes mcs-glint { 0% { left: -45%; } 35%, 100% { left: 110%; } }
-.mcs-btn .arrow { font-family: "Share Tech Mono", ui-monospace, monospace; font-size: 16px; }
+.mcs-btn .arrow { font-family: var(--brand-font, 'Unbounded Variable', system-ui, sans-serif); font-size: 16px; }
 .mcs-btn:active { transform: translateY(1px); }
 .mcs-btn:disabled { cursor: progress; }
 .mcs-btn:focus-visible { outline: 2px solid var(--mcs-cyan); outline-offset: 3px; }
-.mcs-btn.busy { background: #061416; color: var(--mcs-cyan); border: 1px solid var(--mcs-cyan); font-family: "Share Tech Mono", ui-monospace, monospace; letter-spacing: .2em; }
+.mcs-btn.busy { background: #061416; color: var(--mcs-cyan); border: 1px solid var(--mcs-cyan); font-family: var(--brand-font, 'Unbounded Variable', system-ui, sans-serif); letter-spacing: .2em; }
 .mcs-btn.busy::after { content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%;
   background: linear-gradient(90deg, transparent, rgba(61,240,255,.35), transparent); animation: mcs-sweep 1.1s linear infinite; }
 @keyframes mcs-sweep { to { left: 100%; } }
@@ -111,13 +112,13 @@ const TEMPLATE = `
 <canvas aria-hidden="true"></canvas>
 <div class="mcs-hud">
   <section class="mcs-panel" data-el="unclaimed" hidden>
-    <div class="mcs-kicker">AUTHENTIC<br>MONARCH ARTIFACT<br>// UNCLAIMED</div>
+    <div class="mcs-kicker">AUTHENTIC<br>MONARCH ARTIFACT<br>UNCLAIMED</div>
     <div class="mcs-line"></div>
     <div class="mcs-title" data-el="titleA"></div>
-    <div class="mcs-meta"><span data-el="metaA"></span><span class="mcs-badge" data-el="seasonBadge">SEASON_EXCLUSIVE</span></div>
+    <div class="mcs-meta"><span data-el="metaA"></span><span class="mcs-badge" data-el="seasonBadge">SEASON EXCLUSIVE</span></div>
     <div class="mcs-serial" data-el="serial"></div>
     <div class="mcs-term" data-el="term" aria-live="polite" hidden></div>
-    <button class="mcs-btn" data-el="claim" type="button">CLAIM_ARTIFACT</button>
+    <button class="mcs-btn" data-el="claim" type="button">CLAIM ARTIFACT</button>
   </section>
   <section class="mcs-panel live" data-el="claimed" hidden>
     <div class="mcs-kicker"><span data-el="kick"></span><i class="mcs-caret"></i></div>
@@ -126,12 +127,12 @@ const TEMPLATE = `
     <div class="mcs-line rv" data-at="340"></div>
     <div class="mcs-bonus rv" data-at="440">
       <div class="mcs-coin" data-el="coin">P</div>
-      <div><b data-el="wngsB">+<span data-el="wngs">0</span> $WNGS</b><span class="mcs-lbl">ACTIVATION_BONUS_AWARDED</span></div>
+      <div><b data-el="wngsB">+<span data-el="wngs">0</span> $WNGS</b><span class="mcs-lbl">ACTIVATION BONUS AWARDED</span></div>
     </div>
-    <div class="mcs-banner" data-el="banner">PREMIUM_TRACK_UNLOCKED //<br>ASCENSION_ELEVATED</div>
+    <div class="mcs-banner" data-el="banner">PREMIUM TRACK UNLOCKED<br>ASCENSION ELEVATED</div>
     <p class="mcs-note" data-el="note"></p>
-    <button class="mcs-btn white rv" data-el="closet" type="button">GO_TO_CLOSET</button>
-    <button class="mcs-btn pass rv" data-el="pass" type="button">VIEW_ASCENSION_PASS <span class="arrow" aria-hidden="true">&#8594;</span></button>
+    <button class="mcs-btn white rv" data-el="closet" type="button">GO TO CLOSET</button>
+    <button class="mcs-btn pass rv" data-el="pass" type="button">VIEW ASCENSION PASS <span class="arrow" aria-hidden="true">&#8594;</span></button>
   </section>
 </div>
 `;
@@ -168,7 +169,7 @@ export function mountClaimSequence(root: HTMLElement, opts: ClaimEngineOptions):
   const TAG_ID = artifact.id.trim().toUpperCase().slice(0, 32);
   const NAME = artifact.name.toUpperCase();
   const TIER = artifact.tier.toUpperCase();
-  const SET_LINE = `${(artifact.collection || 'GENERAL_RELEASE').toUpperCase()} // ${(artifact.season || 'UNSPECIFIED').toUpperCase()}`;
+  const SET_LINE = `${(artifact.collection || 'GENERAL RELEASE').toUpperCase()} · ${(artifact.season || 'UNSPECIFIED').toUpperCase()}`;
   const RARITY = opts.rarityColor;
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -194,7 +195,7 @@ export function mountClaimSequence(root: HTMLElement, opts: ClaimEngineOptions):
   q<HTMLElement>('metaA').textContent = SET_LINE;
   q<HTMLElement>('metaB').textContent = SET_LINE;
   q<HTMLElement>('tierBadge').textContent = TIER;
-  q<HTMLElement>('serial').textContent = `SERIAL_NUM: ${TAG_ID} // REGISTRY_TIER: ${TIER}`;
+  q<HTMLElement>('serial').textContent = `SERIAL NUM: ${TAG_ID} · REGISTRY TIER: ${TIER}`;
   q<HTMLElement>('seasonBadge').hidden = !artifact.isSeasonArtifact;
 
   const cv = root.querySelector('canvas') as HTMLCanvasElement;
@@ -356,8 +357,8 @@ export function mountClaimSequence(root: HTMLElement, opts: ClaimEngineOptions):
   }
   function fitText(text: string, maxW: number, px: number, u: number) {
     let size = px;
-    ctx.font = `700 ${size * u}px "Space Mono", ui-monospace, monospace`;
-    while (size > 8 && ctx.measureText(text).width > maxW) { size -= .5; ctx.font = `700 ${size * u}px "Space Mono", ui-monospace, monospace`; }
+    ctx.font = `700 ${size * u}px ${FONT}`;
+    while (size > 8 && ctx.measureText(text).width > maxW) { size -= .5; ctx.font = `700 ${size * u}px ${FONT}`; }
   }
   // The framed art window: iridescent studio backdrop + the mark.
   function art(sat: number, ax: number, ay: number, aw: number, ah: number, u: number, foil: number) {
@@ -463,9 +464,9 @@ export function mountClaimSequence(root: HTMLElement, opts: ClaimEngineOptions):
     for (let gy = ay + 24 * u; gy < ay + ah; gy += 24 * u) { ctx.beginPath(); ctx.moveTo(ax, gy); ctx.lineTo(ax + aw, gy); ctx.stroke(); }
     ctx.save(); ctx.translate(0, ay + ah * .42); drawLogo(aw * .56); ctx.restore();
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#f4f2ec'; ctx.font = `${17 * u}px "Archivo Black", Impact, sans-serif`;
+    ctx.fillStyle = '#f4f2ec'; ctx.font = `800 ${17 * u}px ${FONT}`;
     setSpacing(5 * u); ctx.fillText('PAPILLON', 2.5 * u, ay + ah - 42 * u);
-    ctx.fillStyle = '#8a8a92'; ctx.font = `${9 * u}px "Space Mono", ui-monospace, monospace`;
+    ctx.fillStyle = '#8a8a92'; ctx.font = `${9 * u}px ${FONT}`;
     setSpacing(1.6 * u); ctx.fillText(SET_LINE, .8 * u, ay + ah - 24 * u);
     setSpacing(0);
     ctx.fillStyle = LOGO.accent;
@@ -493,8 +494,8 @@ export function mountClaimSequence(root: HTMLElement, opts: ClaimEngineOptions):
     };
     crimp(y0, 1); crimp(y0 + bh, -1);
     ctx.fillStyle = 'rgba(20,22,30,.75)'; ctx.textAlign = 'center';
-    ctx.font = `700 ${7.5 * u}px "Space Mono", ui-monospace, monospace`; setSpacing(1.2 * u);
-    ctx.fillText('SEALED // ' + TAG_ID + ' // TEAR TO CLAIM', x0 + bw / 2, y0 + bh - 6.5 * u);
+    ctx.font = `700 ${7.5 * u}px ${FONT}`; setSpacing(1.2 * u);
+    ctx.fillText('SEALED · ' + TAG_ID + ' · TEAR TO CLAIM', x0 + bw / 2, y0 + bh - 6.5 * u);
     setSpacing(0);
     ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1 * u;
     ctx.beginPath(); ctx.moveTo(x0 + 6 * u, y0 + ch); ctx.lineTo(x0 + 6 * u, y0 + bh - ch); ctx.stroke();
@@ -613,11 +614,11 @@ export function mountClaimSequence(root: HTMLElement, opts: ClaimEngineOptions):
     if (state !== SEALED) return;
     const b = el.claim;
     b.disabled = !authReady;
-    b.textContent = !authReady ? 'CONNECTING...' : !authed ? 'AUTHENTICATE_TO_CLAIM' : retry ? 'RETRY_CLAIM' : 'CLAIM_ARTIFACT';
+    b.textContent = !authReady ? 'CONNECTING...' : !authed ? 'AUTHENTICATE TO CLAIM' : retry ? 'RETRY CLAIM' : 'CLAIM ARTIFACT';
   }
   type Line = [string, string, string?];
   const termLines = (): Line[] => [
-    ['> NFC_SIGNATURE ........ ', 'READ'],
+    ['> NFC SIGNATURE ........ ', 'READ'],
     ['> REGISTRY ' + TAG_ID.padEnd(12, '.') + ' ', 'MATCH'],
     ['> TIER ' + '.'.repeat(17) + ' ', TIER],
     ['> BINDING TO PASSPORT .. ', 'OK'],
@@ -647,7 +648,7 @@ export function mountClaimSequence(root: HTMLElement, opts: ClaimEngineOptions):
     }, 120 + i * 380));
     claim.then(
       res => { outcome = res; resolved = true; },
-      err => { failMsg = (err instanceof Error && err.message) || 'CLAIM_FAILED // SYSTEM_ERROR'; failed = true; },
+      err => { failMsg = (err instanceof Error && err.message) || 'CLAIM FAILED · SYSTEM ERROR'; failed = true; },
     );
     buzz([12, 30, 12]);
   }
@@ -682,7 +683,7 @@ export function mountClaimSequence(root: HTMLElement, opts: ClaimEngineOptions):
     el.banner.hidden = !outcome.premiumUnlocked;
     fitTo(el.claimed);
     requestAnimationFrame(() => el.claimed.classList.add('show'));
-    typeText(el.kick, 'ARTIFACT_ACTIVATED //', 34);
+    typeText(el.kick, 'ARTIFACT ACTIVATED', 34);
     el.claimed.querySelectorAll<HTMLElement>('.rv[data-at]').forEach(n => later(() => n.classList.add('in'), Number(n.dataset.at)));
     later(() => startMotes(outcome.awarded), 620);
   }

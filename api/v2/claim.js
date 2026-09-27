@@ -8,7 +8,7 @@ import { securityEvent } from './_audit.js';
 import { verifyPrivyToken } from './_auth.js';
 import { recordQuestAction } from './_quests.js';
 import { clientIpHash, enforceRateLimit, sendRateLimited } from './_ratelimit.js';
-import { checkAndAwardStamps, isFullCollectionComplete, normalizeSeasonCode } from './_stamps.js';
+import { checkAndAwardStamps, isFullCollectionComplete, normalizeSeasonCode, STAMPS_ENABLED } from './_stamps.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -172,9 +172,9 @@ export default async function handler(req, res) {
       }
     }
 
-    // STAMPS: check if user now owns the full season collection (NFC artifact
-    // + all collection_items). Best-effort.
-    try {
+    // STAMPS: check if user now owns the full season collection (every NFC
+    // season artifact). Best-effort.
+    if (STAMPS_ENABLED) try {
       const season = await getActiveSeason(admin);
       if (season) {
         const complete = await isFullCollectionComplete(admin, ownerId, season.id);

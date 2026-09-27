@@ -35,9 +35,9 @@ const Passport = () => {
   const { wngsBalance } = useStore();
 
   return (
-    <Box bg={dark} minH="100vh" color={cream} p={0} fontFamily="Outfit, sans-serif">
+    <Box bg={dark} minH="100vh" color={cream} p={0} fontFamily="body">
       <Box textAlign="center" pt={6} pb={4}>
-        <Heading fontFamily="Outfit, sans-serif" fontWeight={700} fontSize="2xl" letterSpacing="0.1em" mb={1} color={cream}>PAPILLON</Heading>
+        <Heading fontFamily="body" fontWeight={700} fontSize="2xl" letterSpacing="0.1em" mb={1} color={cream}>PAPILLON</Heading>
         <Text fontSize="2xl" fontWeight={600} mb={2} color={cream}>Digital Passport</Text>
         <VStack spacing={0} opacity={0.8}>
            <Text fontSize="sm" fontWeight="bold">Balance: {wngsBalance.toLocaleString()} $WNGS</Text>

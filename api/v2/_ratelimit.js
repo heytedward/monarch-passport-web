@@ -21,7 +21,7 @@ const SWEEP_PROBABILITY = 0.005;
 
 // Trust Vercel's injected client-IP headers (a client can't strip these). Fall
 // back through the chain; return null only if nothing is present. Hashed so the
-// limiter never stores raw IPs. Mirrors clientIpHash in log-social-scan.js.
+// limiter never stores raw IPs.
 export function clientIpHash(req) {
   const real = req.headers['x-real-ip'];
   const xff = req.headers['x-forwarded-for'];

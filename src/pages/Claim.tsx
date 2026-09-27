@@ -93,7 +93,7 @@ const Claim = () => {
   }
 
   return (
-    <Box bg={bg} minH="100vh" color={yellow} p={6} fontFamily="monospace">
+    <Box bg={bg} minH="100vh" color={yellow} p={6} fontFamily="mono">
       <Center h="100vh">
         <VStack spacing={8} textAlign="center">
           {status === 'LOADING' && (
@@ -112,7 +112,7 @@ const Claim = () => {
                   onClick={login}
                   _hover={{ bg: "white" }}
                 >
-                  AUTHENTICATE_IDENTITY
+                  AUTHENTICATE IDENTITY
                 </Button>
               )}
             </>
@@ -127,11 +127,11 @@ const Claim = () => {
                 borderRadius="0"
                 h="56px"
                 fontWeight="900"
-                fontFamily="monospace"
+                fontFamily="mono"
                 _hover={{ bg: 'white' }}
                 onClick={() => navigate('/profile')}
               >
-                RETURN_TO_PROFILE
+                RETURN TO PROFILE
               </Button>
             </RewardCard>
           )}
@@ -141,11 +141,11 @@ const Claim = () => {
               <Box p={10} border={`4px solid #FF1744`} bg="#FF1744" color="white">
                 <Icon as={MdErrorOutline} w={20} h={20} mb={4} />
                 <Heading size="xl" fontWeight="900" mb={2}>{errorMessage}</Heading>
-                <Text fontSize="xs" fontWeight="900" mb={4}>STAMINA DEPLETED OR ALREADY SCANNED</Text>
+                <Text fontSize="xs" fontWeight="900" mb={4}>THIS LINK IS INVALID, EXPIRED OR ALREADY CLAIMED</Text>
                 {rawError && (
                   <Box p={2} bg="blackAlpha.400" borderRadius="md" mt={2}>
                     <Text fontSize="8px" fontWeight="900" color="white" textAlign="left" wordBreak="break-all">
-                      DIAGNOSTIC_DATA: {rawError}
+                      DIAGNOSTIC DATA: {rawError}
                     </Text>
                   </Box>
                 )}

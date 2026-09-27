@@ -35,7 +35,7 @@ const Scanner = () => {
   const handleClaim = (token: string) => {
     if (!authenticated && !devBypass) {
       toast({
-        title: "AUTH_REQUIRED",
+        title: "AUTH REQUIRED",
         description: "Please login to claim rewards",
         status: "warning",
       })
@@ -96,10 +96,10 @@ const Scanner = () => {
         <VStack spacing={12} align="stretch">
           <Box borderBottom="8px solid black" pb={8}>
             <Heading className="de-stijl-heading" size="2xl" fontStyle="italic">
-              WNGS_LINK
+              WNGS LINK
             </Heading>
             <Text className="de-stijl-body" fontWeight="bold" fontSize="xs" opacity={0.6} mt={2}>
-              PHYGITAL_HANDSHAKE_V1.0 // NEARFIELD_POLLING
+              PHYGITAL HANDSHAKE V1.0 · NEARFIELD POLLING
             </Text>
           </Box>
 
@@ -115,10 +115,10 @@ const Scanner = () => {
               
               <VStack spacing={2} textAlign="center">
                 <Heading className="de-stijl-heading" size="md" color={isScanning ? "white" : "black"}>
-                  {isScanning ? "POLLING_FOR_HARDWARE..." : "READY_FOR_PROTOCOL"}
+                  {isScanning ? "POLLING FOR HARDWARE..." : "READY FOR PROTOCOL"}
                 </Heading>
                 <Text className="de-stijl-body" fontSize="xs" color={isScanning ? "whiteAlpha.800" : "black"}>
-                  {isScanning ? "HOLD_ARTIFACT_NEAR_DEVICE" : "INITIATE_HANDSHAKE_TO_PROCEED"}
+                  {isScanning ? "HOLD ARTIFACT NEAR DEVICE" : "INITIATE HANDSHAKE TO PROCEED"}
                 </Text>
               </VStack>
             </VStack>
@@ -138,15 +138,15 @@ const Scanner = () => {
             className="de-stijl-heading"
             fontSize="xl"
           >
-            EXECUTE_WNGS_LINK
+            EXECUTE WNGS LINK
           </Button>
 
           {showDebug && (
             <Box border="4px solid black" p={6} bg="gray.50">
-              <Text className="de-stijl-heading" fontSize="xs" mb={4}>DEBUG_SIMULATION_MODE</Text>
+              <Text className="de-stijl-heading" fontSize="xs" mb={4}>DEBUG SIMULATION MODE</Text>
               <HStack>
                 <Input 
-                  placeholder="INPUT_HARDWARE_UID_OR_URL" 
+                  placeholder="INPUT HARDWARE UID OR URL" 
                   borderRadius="0" 
                   borderColor="black" 
                   borderWidth="2px"
@@ -174,7 +174,7 @@ const Scanner = () => {
 
           <Alert status="info" variant="solid" bg="black" color="white" borderRadius="0" borderLeft="8px solid #FFD700">
             <Box>
-              <Text className="de-stijl-heading" fontSize="xs">SYSTEM_DIRECTIVE:</Text>
+              <Text className="de-stijl-heading" fontSize="xs">SYSTEM DIRECTIVE:</Text>
               <Text className="de-stijl-body" fontSize="10px">
                 Each artifact contains a unique WNGS sequence. Handshake only possible once per identity.
               </Text>

@@ -1,7 +1,8 @@
 // Shared quest auto-grant engine. Underscore prefix => Vercel does NOT treat
 // this as a serverless function, so it doesn't count toward the cap.
 // Imported by purchase.js (SYSTEM_LOGIN), tap-reward.js + claim.js
-// (ACHIEVE_1_NFC_SCAN), and log-social-scan.js (ACHIEVE_5_SOCIAL_SCANS).
+// (ACHIEVE_1_NFC_SCAN). ACHIEVE_5_SOCIAL_SCANS no longer has a source
+// (social-link mining was removed); it only matters if quests return.
 //
 // Quests are achievement-style and auto-grant: when a tracked action fires we
 // recompute the user's real progress, persist it to user_quests, and on the
@@ -68,10 +69,20 @@ async function grantReward(admin, userId, quest) {
   }
 }
 
+/**
+ * Quests are paused for launch: the core loop is claim, tap daily, level up.
+ * While false, no quest progress or rewards are recorded, get_quests returns
+ * an empty list, and the Profile QUESTS tab is hidden (QUESTS_ENABLED in
+ * src/lib/features.ts). Quest rows stay in the database; flip both to
+ * turn quests back on.
+ */
+export const QUESTS_ENABLED = false;
+
 // Record an action and grant any quest it completes. Best-effort: callers wrap
 // this in try/catch so quest bookkeeping never fails the primary earn action.
 // Returns the quests newly completed by this call.
 export async function recordQuestAction(admin, userId, actionType) {
+  if (!QUESTS_ENABLED) return;
   const { data: quests } = await admin
     .from('quests')
     .select('*')

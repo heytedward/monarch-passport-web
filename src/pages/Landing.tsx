@@ -38,17 +38,17 @@ function Landing() {
             <Text
               fontSize="10px"
               color="#FFB000"
-              fontFamily="monospace"
+              fontFamily="mono"
               fontWeight="900"
               letterSpacing="0.25em"
               textTransform="uppercase"
             >
-              SEASON 001 // PROTOCOL ONLINE
+              SEASON 001 · PROTOCOL ONLINE
             </Text>
             <Heading
               fontSize={{ base: "3xl", sm: "4xl" }}
               fontWeight="900"
-              fontFamily="'Archivo Black', sans-serif"
+              fontFamily="heading"
               letterSpacing="-0.02em"
               lineHeight="1.1"
               color="white"
@@ -58,7 +58,7 @@ function Landing() {
             <Text
               fontSize="xs"
               color="gray.400"
-              fontFamily="monospace"
+              fontFamily="mono"
               lineHeight="1.6"
               maxW="340px"
             >
@@ -75,7 +75,7 @@ function Landing() {
               h="54px"
               borderRadius="0"
               fontWeight="900"
-              fontFamily="monospace"
+              fontFamily="mono"
               fontSize="sm"
               letterSpacing="0.08em"
               _hover={{ bg: "#f0b44c", transform: "translateY(-1px)" }}
@@ -95,7 +95,7 @@ function Landing() {
               h="48px"
               borderRadius="0"
               fontWeight="900"
-              fontFamily="monospace"
+              fontFamily="mono"
               fontSize="xs"
               letterSpacing="0.05em"
               _hover={{ bg: "whiteAlpha.100", borderColor: "#FFB000" }}
@@ -108,7 +108,7 @@ function Landing() {
                 href="https://papillonbrand.us"
                 isExternal
                 fontSize="10px"
-                fontFamily="monospace"
+                fontFamily="mono"
                 fontWeight="900"
                 color="gray.500"
                 _hover={{ color: '#FFB000' }}

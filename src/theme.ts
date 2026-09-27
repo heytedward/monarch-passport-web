@@ -10,6 +10,14 @@ const config: ThemeConfig = {
   useSystemColorMode: false,
 };
 
-const theme = extendTheme({ config });
+// One brand typeface everywhere (Unbounded, self-hosted via
+// public/fonts/unbounded.css). Headings, body and the former monospace
+// labels all resolve to it, so changing the brand font is a one-line edit.
+const BRAND_FONT = "'Unbounded Variable', system-ui, -apple-system, 'Segoe UI', sans-serif";
+
+const theme = extendTheme({
+  config,
+  fonts: { heading: BRAND_FONT, body: BRAND_FONT, mono: BRAND_FONT },
+});
 
 export default theme;

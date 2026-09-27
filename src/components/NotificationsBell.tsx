@@ -7,6 +7,7 @@ import {
   PiGiftFill, PiRankingFill, PiArrowBendUpLeftFill, PiSparkleFill, PiXBold,
 } from 'react-icons/pi';
 import { usePrivy } from '@privy-io/react-auth';
+import { displayName } from '../lib/displayName'
 
 interface Notification {
   id: string;
@@ -133,7 +134,7 @@ const NotificationsBell = () => {
             borderRadius="full"
             fontSize="9px"
             fontWeight="900"
-            fontFamily="monospace"
+            fontFamily="mono"
             lineHeight="1"
           >
             {unread > 9 ? '9+' : unread}
@@ -168,7 +169,7 @@ const NotificationsBell = () => {
               top={0}
               bg={panelBg}
             >
-              <Text fontSize="11px" fontWeight="900" fontFamily="monospace" letterSpacing="0.15em" color={iconColor}>
+              <Text fontSize="11px" fontWeight="900" fontFamily="mono" letterSpacing="0.15em" color={iconColor}>
                 NOTIFICATIONS
               </Text>
               <Box as="button" onClick={() => setOpen(false)} color={iconColor} aria-label="Close">
@@ -183,10 +184,10 @@ const NotificationsBell = () => {
             ) : items.length === 0 ? (
               <Center py={10} px={6} textAlign="center">
                 <VStack spacing={2}>
-                  <Text fontSize="10px" fontWeight="900" fontFamily="monospace" color={muted} letterSpacing="0.1em">
-                    [ NO_SIGNAL_YET ]
+                  <Text fontSize="10px" fontWeight="900" fontFamily="mono" color={muted} letterSpacing="0.1em">
+                    [ NO SIGNAL YET ]
                   </Text>
-                  <Text fontSize="9px" fontFamily="monospace" color={muted}>
+                  <Text fontSize="9px" fontFamily="mono" color={muted}>
                     tap an artifact or scan a link to see rewards land here.
                   </Text>
                 </VStack>
@@ -214,10 +215,10 @@ const NotificationsBell = () => {
                         <Icon size={15} />
                       </Center>
                       <Box flex={1} minW={0}>
-                        <Text fontSize="11px" fontWeight="900" fontFamily="monospace" color={iconColor} noOfLines={1} textTransform="uppercase">
-                          {n.title}
+                        <Text fontSize="11px" fontWeight="900" fontFamily="mono" color={iconColor} noOfLines={1} textTransform="uppercase">
+                          {displayName(n.title)}
                         </Text>
-                        <Text fontSize="9px" fontFamily="monospace" color={muted}>
+                        <Text fontSize="9px" fontFamily="mono" color={muted}>
                           {timeAgo(n.created_at)}
                         </Text>
                       </Box>
@@ -225,7 +226,7 @@ const NotificationsBell = () => {
                         <Text
                           fontSize="11px"
                           fontWeight="900"
-                          fontFamily="monospace"
+                          fontFamily="mono"
                           color={n.positive ? 'var(--monarch-accent)' : muted}
                           flexShrink={0}
                         >
@@ -236,7 +237,7 @@ const NotificationsBell = () => {
                   );
                 })}
                 <Center py={3}>
-                  <Text fontSize="8px" fontFamily="monospace" color={muted} letterSpacing="0.1em">
+                  <Text fontSize="8px" fontFamily="mono" color={muted} letterSpacing="0.1em">
                     LAST 30 DAYS
                   </Text>
                 </Center>
