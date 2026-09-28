@@ -33,7 +33,7 @@ import { MdFilterList, MdRefresh, MdClose } from 'react-icons/md'
 import { motion } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import useStore from '../store/useStore'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from '../lib/auth';
 
 import { WngsCoin } from '../components/WngsCoin'
 import DeStijlAvatar from '../components/DeStijlAvatar'
@@ -162,7 +162,7 @@ const ShopSlot = ({ index, item, owned, onOpen, text, border, bg }: { index: str
 }
 
 const Shop = () => {
-  const { user, getAccessToken } = usePrivy();
+  const { user, getAccessToken } = useAuth();
   const toast = useToast();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);

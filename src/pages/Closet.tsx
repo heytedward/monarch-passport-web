@@ -33,7 +33,7 @@ import { MdRefresh, MdClose, MdSearch } from 'react-icons/md'
 import { PiShoppingBagFill } from 'react-icons/pi'
 import { motion, useReducedMotion } from 'framer-motion'
 import { staggerContainer, staggerItem } from '../lib/motion'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from '../lib/auth';
 import useStore from '../store/useStore'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import ThemeSwatch from '../components/ThemeSwatch'
@@ -150,7 +150,7 @@ const Closet = () => {
   const [selectedItem, setSelectedItem] = useState<ClosetItemData | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
   
-  const { user, getAccessToken } = usePrivy();
+  const { user, getAccessToken } = useAuth();
   const [ownedAssets, setOwnedAssets] = useState<ClosetItemData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMinting, setIsMinting] = useState(false);

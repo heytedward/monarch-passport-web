@@ -17,7 +17,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { MdSettings, MdLock, MdBolt, MdCreditCard, MdHistory, MdLocalOffer, MdContentCopy, MdClose } from 'react-icons/md'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from '../lib/auth';
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import useStore from '../store/useStore'
 import { staggerContainer, staggerItem } from '../lib/motion'
@@ -31,7 +31,7 @@ const Profile = () => {
   const navigate = useNavigate()
   const reduce = useReducedMotion()
   const toast = useToast()
-  const { user, getAccessToken } = usePrivy()
+  const { user, getAccessToken } = useAuth()
   
   const solanaWallet = user?.linkedAccounts?.find(
     (account: any) => account.type === 'wallet' && account.walletClientType === 'privy' && account.connectorType === 'embedded'

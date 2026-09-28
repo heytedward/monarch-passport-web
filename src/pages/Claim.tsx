@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box, Heading, Text, VStack, Center, Spinner, Button, Icon, useColorModeValue } from '@chakra-ui/react'
 import { MdErrorOutline } from 'react-icons/md'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from '../lib/auth';
 import useStore from '../store/useStore'
 import RewardCard from '../components/RewardCard'
 import { displayName } from '../lib/displayName'
@@ -10,7 +10,7 @@ import { displayName } from '../lib/displayName'
 const Claim = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user, authenticated, ready, login, getAccessToken } = usePrivy()
+  const { user, authenticated, ready, login, getAccessToken } = useAuth()
   const { fetchUserProfile } = useStore()
 
   const [status, setStatus] = useState<'LOADING' | 'SUCCESS' | 'ERROR'>('LOADING')

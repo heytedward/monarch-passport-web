@@ -3,7 +3,7 @@ import {
   useToast, Icon
 } from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from '../lib/auth';
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { MdLock, MdCheck, MdMilitaryTech } from 'react-icons/md'
 import { supabase } from '../lib/supabase'
@@ -43,7 +43,7 @@ interface Reward {
 }
 
 const Ascension = () => {
-  const { user, getAccessToken } = usePrivy()
+  const { user, getAccessToken } = useAuth()
   const reduce = useReducedMotion()
   const toast = useToast()
   const { setWngsBalance } = useStore()

@@ -3,7 +3,7 @@ import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { PiHouseFill, PiCoatHangerFill, PiUserFill, PiRankingFill } from 'react-icons/pi'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Logo } from './Logo'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from '../lib/auth';
 import { SPRING_SNAPPY } from '../lib/motion'
 import { displayName } from '../lib/displayName';
 
@@ -41,7 +41,7 @@ const rightNavItems = [
 
 const Navbar = () => {
   const location = useLocation()
-  const { authenticated, ready } = usePrivy()
+  const { authenticated, ready } = useAuth()
   const reduce = useReducedMotion()
   const tapProps = reduce ? {} : { whileTap: { scale: 0.86 }, transition: SPRING_SNAPPY }
   const isDev = import.meta.env.DEV;
