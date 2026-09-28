@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>Monarch Passport · Offline</title>
+<link rel="stylesheet" href="/fonts/unbounded.css" />
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #000; color: #fff; font-family: var(--brand-font); }
+  main { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 32px 24px; box-sizing: border-box; text-align: center; }
+  img { width: 96px; height: 96px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: .04em; color: #FFB000; }
+  p { margin: 0; max-width: 300px; font-size: 14px; line-height: 1.5; color: #bdbdbd; }
+  button { margin-top: 8px; padding: 14px 28px; border: 2px solid #FFB000; background: #FFB000; color: #000; font: inherit; font-weight: 800; font-size: 14px; letter-spacing: .08em; cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <img src="/icons/icon-192.png" alt="" />
+  <h1>YOU'RE OFFLINE</h1>
+  <p>Passport needs a connection to show your WNGS and rewards. Reconnect and try again.</p>
+  <button type="button" onclick="location.reload()">TRY AGAIN</button>
+</main>
+</body>
+</html>

@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from './lib/auth'
 import Navbar from './components/Navbar'
 import PageTransition from './components/PageTransition'
 import ErrorBoundary from './components/ErrorBoundary'
+import InstallPrompt from './components/InstallPrompt'
 import Landing from './pages/Landing'
 import Verify from './pages/Verify'
 import { lazyPage } from './lib/lazyPage'
@@ -121,6 +122,7 @@ function AppFrame() {
     >
       {!isFullWidth && <Navbar />}
       <AppRoutes />
+      <InstallPrompt />
     </Box>
   );
 }

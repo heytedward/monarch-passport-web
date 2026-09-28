@@ -14,6 +14,7 @@ import {
 } from '@chakra-ui/react';
 import useStore from '../store/useStore';
 import ClaimSequence from '../components/claim/ClaimSequence';
+import { markFirstClaim } from '../lib/install';
 import type { ClaimOutcome } from '../components/claim/claimSequenceEngine';
 import { displayName } from '../lib/displayName'
 
@@ -179,6 +180,7 @@ const Verify: React.FC = () => {
     }
 
     setJustClaimed(true);
+    markFirstClaim();
     setArtifact({ ...artifact, isActivated: true, isOwner: true });
     fetchUserProfile(user.id);
     return { awarded: result.awarded ?? 0, premiumUnlocked: !!result.premiumUnlocked };
