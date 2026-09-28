@@ -43,7 +43,7 @@ function Landing() {
               letterSpacing="0.25em"
               textTransform="uppercase"
             >
-              SEASON 001 · PROTOCOL ONLINE
+              PAPILLON BRAND · STREETWEAR+
             </Text>
             <Heading
               fontSize={{ base: "3xl", sm: "4xl" }}
@@ -62,7 +62,7 @@ function Landing() {
               lineHeight="1.6"
               maxW="340px"
             >
-              Your phygital loyalty operating system. Sync physical artifacts, unlock seasonal clearance, and earn $WNGS.
+              Claim artifact, earn WNGS, and unlock seasonal rewards. Every Papillon piece you own pays you back.
             </Text>
           </VStack>
 
@@ -100,7 +100,7 @@ function Landing() {
               letterSpacing="0.05em"
               _hover={{ bg: "whiteAlpha.100", borderColor: "#FFB000" }}
             >
-              SCAN / TAP ARTIFACT ⎋
+              TAP YOUR ARTIFACT ⎋
             </Button>
 
             <HStack justify="center" pt={4} spacing={4}>

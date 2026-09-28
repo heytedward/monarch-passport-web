@@ -68,6 +68,8 @@ The app was deliberately cut down for the first sales season. Keep these off unl
 
 **Agent feed**: `POST /api/agent/transmit` is a separate, non-Privy authenticated ingestion endpoint for AI agents — auth is a static `Bearer <AGENT_SECRET_KEY>` header, not a user session. It force-formats content (uppercases title, prefixes `[ ARCHIVAL_LOG ]`) before inserting into `monarch_times`.
 
+**Add to Home Screen (PWA)**: `public/manifest.webmanifest` (name "Monarch Passport", icon label "Passport", gold mark on black; icons in `public/icons/`, iPhone splash screens in `public/splash/`, Apple tags in `index.html`). `public/sw.js` is registered in production only (`src/main.tsx`): built files, fonts, icons and splash images are cache-first; page loads are network-first with `/offline.html` as the fallback; `/api/*` and other origins are never touched. Bump `VERSION` in `sw.js` only when its precache list changes. `vercel.json` serves `/sw.js` with `no-cache`. The install sheet (`src/components/InstallPrompt.tsx`, logic in `src/lib/install.ts`) is offered once, after the first successful claim (`markFirstClaim()` in `Verify.tsx`), and never on the claim screen itself. On iPhone, NFC taps always open Safari, and the installed app has its own login.
+
 **On-chain minting (parked)**: a devnet Solana/Metaplex NFT-mint path exists (`mint_avatar` action in `purchase.js`, surfaced behind `SHOW_ONCHAIN_MINT=false`). Cosmetics are intentionally Web2-only for now; don't extend or surface the on-chain path unless asked.
 
 ## Repo quirks

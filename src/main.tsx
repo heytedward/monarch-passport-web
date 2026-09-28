@@ -4,6 +4,8 @@ import { ColorModeScript } from '@chakra-ui/react'
 import App from './App.tsx'
 import theme from './theme'
 import './index.css'
+// Registers the Add to Home Screen listener before Chrome can fire it.
+import './lib/install'
 
 // Dark-only app: Chakra persists the color mode in localStorage
 // ('chakra-ui-color-mode'), and a stored value overrides initialColorMode.
@@ -23,3 +25,10 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   </React.StrictMode>
 )
  
+// Service worker (public/sw.js): caches built files for fast repeat opens and
+// shows an offline screen. Production only, so dev never serves stale code.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* app works without it */ })
+  })
+}
