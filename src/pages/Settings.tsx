@@ -9,12 +9,12 @@ import {
   Icon,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '../lib/auth';
 import { PiArrowLeftBold, PiPowerBold, PiUserBold } from 'react-icons/pi';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { user, logout } = usePrivy();
+  const { user, logout } = useAuth();
   
   const bgColor = useColorModeValue("gray.50", "black");
   const text = useColorModeValue("black", "white");

@@ -6,7 +6,7 @@ import {
   PiBellFill, PiLightningFill, PiTrophyFill, PiUsersFill, PiTShirtFill,
   PiGiftFill, PiRankingFill, PiArrowBendUpLeftFill, PiSparkleFill, PiXBold,
 } from 'react-icons/pi';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '../lib/auth';
 import { displayName } from '../lib/displayName'
 
 interface Notification {
@@ -53,7 +53,7 @@ const timeAgo = (iso: string) => {
 // the passport opens (on-open model) so the bell can show an unread badge;
 // opening the panel marks everything seen and clears the badge.
 const NotificationsBell = () => {
-  const { user, getAccessToken } = usePrivy();
+  const { user, getAccessToken } = useAuth();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '../lib/auth';
 import {
   Box,
   Heading,
@@ -14,7 +14,7 @@ import {
 import { Logo } from '../components/Logo';
 
 function Landing() {
-  const { login, authenticated, ready } = usePrivy();
+  const { login, authenticated, ready } = useAuth();
   const navigate = useNavigate();
 
   // Once Privy authenticates, leave the landing screen and enter the app.

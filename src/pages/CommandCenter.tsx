@@ -25,7 +25,7 @@ import {
   Switch,
 } from '@chakra-ui/react';
 import { MdContentCopy, MdRefresh, MdClose } from 'react-icons/md';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '../lib/auth';
 import DeStijlAvatar from '../components/DeStijlAvatar';
 import { rollPalette, RARITIES, priceForRarity } from '../lib/destijlPalette';
 import { supabase } from '../lib/supabase';
@@ -51,7 +51,7 @@ const SECTIONS = [
 ] as const;
 
 const CommandCenter: React.FC = () => {
-  const { user, authenticated, ready, getAccessToken } = usePrivy();
+  const { user, authenticated, ready, getAccessToken } = useAuth();
   const toast = useToast();
 
   const [activeSection, setActiveSection] = useState<string>('PHYSICAL');

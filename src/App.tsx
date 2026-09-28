@@ -3,7 +3,7 @@ import { ChakraProvider, Box, Center, Spinner, Text, useColorModeValue, useToast
 import theme from './theme'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import { PrivyProvider, usePrivy } from '@privy-io/react-auth'
+import { AuthProvider, useAuth } from './lib/auth'
 import Navbar from './components/Navbar'
 import PageTransition from './components/PageTransition'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -27,10 +27,8 @@ const Shop = lazyPage(() => import('./pages/Shop'))
 const CommandCenter = lazyPage(() => import('./pages/CommandCenter'))
 const Ascension = lazyPage(() => import('./pages/Ascension'))
 
-import { PRIVY_APP_ID } from './config'
-
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { authenticated, ready } = usePrivy();
+  const { authenticated, ready } = useAuth();
   const { identityType } = useStore();
   const bgColor = useColorModeValue("gray.50", "black");
 
@@ -128,7 +126,7 @@ function AppFrame() {
 }
 
 function AppContent() {
-  const { user, ready, authenticated, getAccessToken } = usePrivy();
+  const { user, ready, authenticated, getAccessToken } = useAuth();
   const { activeTheme, activeThemeAccent, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent } = useStore();
   const toast = useToast();
 
@@ -210,54 +208,9 @@ function AppContent() {
   );
 }
 
-const dummyEthereumChain = {
-  id: 1,
-  name: 'Ethereum',
-  network: 'mainnet',
-  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  rpcUrls: {
-    default: {
-      http: ['https://cloudflare-eth.com']
-    },
-    public: {
-      http: ['https://cloudflare-eth.com']
-    }
-  }
-};
-
-// Privy's installed SDK types have drifted from this app's provider/config shape
-// (onSuccess, createOnLogin, solanaClusters); the runtime is correct, so type the
-// provider loosely here instead of chasing each individual prop.
-const Privy = PrivyProvider as unknown as React.ComponentType<any>;
-
 function App() {
-  const { setIdentityType, identityType } = useStore();
-
   return (
-    <Privy
-      appId={PRIVY_APP_ID}
-      onSuccess={() => {
-        if (!identityType) {
-          setIdentityType('HUMAN');
-        }
-      }}
-      config={{
-        loginMethods: ['email', 'wallet', 'google', 'apple'],
-        appearance: {
-          theme: 'dark',
-          accentColor: '#FFB000',
-          showWalletLoginFirst: false,
-        },
-        embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
-        },
-        supportedChains: [dummyEthereumChain],
-        solanaClusters: [{
-          name: 'devnet',
-          rpcUrl: 'https://api.devnet.solana.com'
-        }]
-      }}
-    >
+    <AuthProvider>
       <ChakraProvider theme={theme}>
         <style>{`
           .de-stijl-heading { font-family: var(--brand-font) !important; }
@@ -267,7 +220,7 @@ function App() {
           <AppContent />
         </ErrorBoundary>
       </ChakraProvider>
-    </Privy>
+    </AuthProvider>
   )
 }
 

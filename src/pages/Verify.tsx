@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { keyframes } from '@emotion/react';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '../lib/auth';
 import {
   Box,
   VStack,
@@ -42,7 +42,7 @@ function formatCooldown(ms: number): string {
 const Verify: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { ready, authenticated, user, login, getAccessToken } = usePrivy();
+  const { ready, authenticated, user, login, getAccessToken } = useAuth();
   const { fetchUserProfile } = useStore();
 
   const [isLoading, setIsLoading] = useState(true);

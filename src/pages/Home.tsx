@@ -15,7 +15,7 @@ import {
   Container
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from '../lib/auth';
 import { motion, useReducedMotion } from 'framer-motion'
 import { MdAccessTime, MdPerson, MdLocalFireDepartment, MdChatBubbleOutline, MdArrowBack, MdSend } from 'react-icons/md'
 import { supabase } from '../lib/supabase'
@@ -51,7 +51,7 @@ interface MonarchTimesPost {
 // HYPE (boost) and COMMENTS actions; tapping COMMENTS flips to the back, which
 // lists comments and a paid composer. Mirrors the flip cards used elsewhere.
 const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) => {
-  const { user, getAccessToken } = usePrivy();
+  const { user, getAccessToken } = useAuth();
   const { wngsBalance, setWngsBalance } = useStore();
   const toast = useToast();
 

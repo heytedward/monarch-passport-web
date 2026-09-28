@@ -15,10 +15,10 @@ import {
   Spinner,
 } from '@chakra-ui/react'
 import { MdNfc } from 'react-icons/md'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAuth } from '../lib/auth';
 
 const Scanner = () => {
-  const { authenticated } = usePrivy()
+  const { authenticated } = useAuth()
   const navigate = useNavigate()
   const [isScanning, setIsScanning] = useState(false)
   const [isClaiming, setIsClaiming] = useState(false)
