@@ -3,11 +3,13 @@ import { ChakraProvider, Box, Center, Spinner, Text, useColorModeValue, useToast
 import theme from './theme'
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import { AuthProvider, useAuth } from './lib/auth'
+import { AuthProvider, mayHaveSession, useAuth } from './lib/auth'
 import Navbar from './components/Navbar'
 import PageTransition from './components/PageTransition'
 import ErrorBoundary from './components/ErrorBoundary'
 import InstallPrompt from './components/InstallPrompt'
+import LaunchSplash from './components/LaunchSplash'
+import TopProgressBar, { RouteFallback } from './components/loading/TopProgressBar'
 import Landing from './pages/Landing'
 import Verify from './pages/Verify'
 import { lazyPage } from './lib/lazyPage'
@@ -16,17 +18,51 @@ import useStore from './store/useStore'
 // The NFC tap flow (/ and /v/:id) ships in the first bundle; every other page
 // is fetched when first visited, so a tap doesn't download the admin panel,
 // the shop or the closet before the artifact can render.
-const Home = lazyPage(() => import('./pages/Home'))
-const Passport = lazyPage(() => import('./pages/Passport'))
-const Rewards = lazyPage(() => import('./pages/Rewards'))
-const Scanner = lazyPage(() => import('./pages/Scanner'))
-const Closet = lazyPage(() => import('./pages/Closet'))
-const Profile = lazyPage(() => import('./pages/Profile'))
-const Settings = lazyPage(() => import('./pages/Settings'))
-const Claim = lazyPage(() => import('./pages/Claim'))
-const Shop = lazyPage(() => import('./pages/Shop'))
-const CommandCenter = lazyPage(() => import('./pages/CommandCenter'))
-const Ascension = lazyPage(() => import('./pages/Ascension'))
+const pages = {
+  home: () => import('./pages/Home'),
+  passport: () => import('./pages/Passport'),
+  rewards: () => import('./pages/Rewards'),
+  scanner: () => import('./pages/Scanner'),
+  closet: () => import('./pages/Closet'),
+  profile: () => import('./pages/Profile'),
+  settings: () => import('./pages/Settings'),
+  claim: () => import('./pages/Claim'),
+  shop: () => import('./pages/Shop'),
+  commandCenter: () => import('./pages/CommandCenter'),
+  ascension: () => import('./pages/Ascension'),
+}
+const Home = lazyPage(pages.home)
+const Passport = lazyPage(pages.passport)
+const Rewards = lazyPage(pages.rewards)
+const Scanner = lazyPage(pages.scanner)
+const Closet = lazyPage(pages.closet)
+const Profile = lazyPage(pages.profile)
+const Settings = lazyPage(pages.settings)
+const Claim = lazyPage(pages.claim)
+const Shop = lazyPage(pages.shop)
+const CommandCenter = lazyPage(pages.commandCenter)
+const Ascension = lazyPage(pages.ascension)
+
+// A returning visitor almost always lands on Home: start downloading it now,
+// alongside Privy, instead of after login is restored.
+const SESSION_LIKELY = mayHaveSession()
+if (SESSION_LIKELY) pages.home().catch(() => { /* lazyPage retries on navigation */ })
+
+// Once signed in, fetch the other tabs' code in the background so switching
+// tabs never waits on a download. The admin panel is left out.
+let tabsPrefetched = false
+function prefetchTabs() {
+  if (tabsPrefetched) return
+  tabsPrefetched = true
+  const run = () => [pages.home, pages.ascension, pages.closet, pages.profile, pages.shop, pages.settings, pages.passport, pages.rewards]
+    .forEach((load) => load().catch(() => {}))
+  const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
+  if (w.requestIdleCallback) w.requestIdleCallback(run, { timeout: 2500 })
+  else window.setTimeout(run, 1200)
+}
+
+// Screens where the launch splash would hide what the visitor came for.
+const NO_SPLASH = /^\/(v|claim|command-center|admin)(\/|$)/
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { authenticated, ready } = useAuth();
@@ -78,7 +114,7 @@ function AppRoutes() {
     <AnimatePresence mode="wait" initial={false}>
       <PageTransition key={location.pathname}>
         <ErrorBoundary>
-          <React.Suspense fallback={<Box minH="100vh" bg="black" />}>
+          <React.Suspense fallback={<RouteFallback />}>
           <Routes location={location}>
             <Route path="/" element={<Landing />} />
         <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
@@ -133,6 +169,16 @@ function AppContent() {
   const toast = useToast();
 
   const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
+  const [showSplash, setShowSplash] = React.useState(() => SESSION_LIKELY && !NO_SPLASH.test(window.location.pathname));
+  const [splashTimedOut, setSplashTimedOut] = React.useState(false);
+  // Never hold the app hostage: if login restore stalls (offline, Privy down),
+  // let the splash finish after 8 s and show whatever the app can.
+  React.useEffect(() => {
+    if (!showSplash) return;
+    const id = window.setTimeout(() => setSplashTimedOut(true), 8000);
+    return () => window.clearTimeout(id);
+  }, [showSplash]);
+  React.useEffect(() => { if (authenticated) prefetchTabs(); }, [authenticated]);
   const bgColor = useColorModeValue("gray.50", "black");
 
   React.useEffect(() => {
@@ -204,7 +250,9 @@ function AppContent() {
           .de-stijl-body { font-family: var(--brand-font) !important; }
         `}</style>
         {/* Phone-tight frame for the app; the admin breaks out to full width. */}
+        <TopProgressBar />
         <AppFrame />
+        {showSplash && <LaunchSplash ready={ready || splashTimedOut} onDone={() => setShowSplash(false)} />}
       </Box>
     </Router>
   );

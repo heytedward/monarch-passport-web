@@ -1,0 +1,81 @@
+/* Launch splash: a gold loading ring that breaks into the logo's two dots,
+   then the wings unfold and flap and "MONARCH PASSPORT" appears.
+   Geometry is in the logo's own viewBox: the dots are centred at
+   (965, 281) and (966, 539), radius ~100, so a ring centred at (965, 410)
+   with r = 129 passes through both dot centres. */
+
+.launch-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.launch-splash.is-out { opacity: 0; transform: scale(1.03); pointer-events: none; }
+
+.launch-splash svg { width: 150px; height: auto; overflow: visible; }
+.launch-splash .ls-ring,
+.launch-splash .ls-ringwrap,
+.launch-splash .ls-wl,
+.launch-splash .ls-wr { transform-box: view-box; }
+.launch-splash .ls-ring,
+.launch-splash .ls-ringwrap { transform-origin: 965px 410px; }
+.launch-splash .ls-wl,
+.launch-splash .ls-wr { transform-origin: 965px 800px; transform: scaleX(0); }
+.launch-splash .ls-ringwrap { transform: scale(3.4); }
+
+.launch-splash .ls-arc {
+  fill: none;
+  stroke: #FFB000;
+  stroke-linecap: round;
+  stroke-width: 13;
+  stroke-dasharray: 32 68;
+}
+.launch-splash .ls-a1 { stroke-dashoffset: -59; }
+.launch-splash .ls-a2 { stroke-dashoffset: -9; }
+.launch-splash .ls-dots { opacity: 0; }
+
+.launch-splash .ls-word {
+  font-family: var(--brand-font);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.35em;
+  padding-left: 0.35em;
+  line-height: 1.7;
+  text-align: center;
+  color: #fff;
+  opacity: 0;
+}
+
+/* Reveal: runs once login is ready and the ring has settled upright. */
+.launch-splash.is-reveal .ls-ringwrap { animation: ls-shrink 0.32s cubic-bezier(.5,0,.2,1) both, ls-hide 0.01s 0.32s both; }
+.launch-splash.is-reveal .ls-a1 { animation: ls-collapse1 0.32s cubic-bezier(.5,0,.2,1) both; }
+.launch-splash.is-reveal .ls-a2 { animation: ls-collapse2 0.32s cubic-bezier(.5,0,.2,1) both; }
+.launch-splash.is-reveal .ls-dots { animation: ls-show 0.01s 0.32s both; }
+.launch-splash.is-reveal .ls-wl { animation: ls-unfold 0.4s 0.34s cubic-bezier(.2,1.3,.4,1) both, ls-flapL 0.7s 0.72s ease-in-out; }
+.launch-splash.is-reveal .ls-wr { animation: ls-unfold 0.4s 0.34s cubic-bezier(.2,1.3,.4,1) both, ls-flapR 0.7s 0.72s ease-in-out; }
+.launch-splash.is-reveal .ls-word { animation: ls-rise 0.45s 0.8s cubic-bezier(.2,1.2,.4,1) both; }
+
+@keyframes ls-shrink { to { transform: scale(1); } }
+@keyframes ls-collapse1 { to { stroke-dasharray: .01 99.99; stroke-dashoffset: -75; stroke-width: 200; } }
+@keyframes ls-collapse2 { to { stroke-dasharray: .01 99.99; stroke-dashoffset: -25; stroke-width: 200; } }
+@keyframes ls-hide { to { opacity: 0; } }
+@keyframes ls-show { to { opacity: 1; } }
+@keyframes ls-unfold { from { transform: scaleX(0); opacity: .2; } to { transform: scaleX(1); opacity: 1; } }
+@keyframes ls-flapL { 0%, 100% { transform: scaleX(1); } 35% { transform: scaleX(.45) rotate(-4deg); } 70% { transform: scaleX(1.06); } }
+@keyframes ls-flapR { 0%, 100% { transform: scaleX(1); } 35% { transform: scaleX(.45) rotate(4deg); } 70% { transform: scaleX(1.06); } }
+@keyframes ls-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* Reduced motion: no spin or flap; the finished logo fades in and out. */
+@media (prefers-reduced-motion: reduce) {
+  .launch-splash .ls-ringwrap { display: none; }
+  .launch-splash .ls-dots { opacity: 1; }
+  .launch-splash .ls-wl, .launch-splash .ls-wr { transform: none; }
+  .launch-splash .ls-word { opacity: 1; }
+  .launch-splash.is-reveal * { animation: none !important; }
+}
