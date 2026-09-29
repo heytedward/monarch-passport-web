@@ -23,6 +23,9 @@ import useStore from '../store/useStore'
 import NotificationsBell from '../components/NotificationsBell'
 import { staggerContainer, staggerItem } from '../lib/motion'
 import { displayName } from '../lib/displayName'
+import { readCache, writeCache } from '../lib/pageCache'
+import { trackProgress } from '../lib/progress'
+import { FeedSkeleton } from '../components/loading/Skeletons'
 
 const MotionVStack = motion(VStack)
 const MotionBox = motion(Box)
@@ -132,7 +135,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
         <Box position="absolute" inset={0} bg="black" overflow="hidden" display="flex" flexDirection="column" style={{ backfaceVisibility: 'hidden' }}>
           {post.image_url && (
             <Box position="relative" flexShrink={0} borderBottom="2px solid white">
-              <Image src={post.image_url} alt={post.title} w="full" h="180px" objectFit="cover" filter="grayscale(20%)" />
+              <Image src={post.image_url} alt={post.title} w="full" h="180px" objectFit="cover" filter="grayscale(20%)" loading="lazy" decoding="async" />
               {isFeatured && (
                 <Box position="absolute" top={2} left={2} bg={accent} px={2} py={0.5}>
                   <Text fontSize="8px" fontWeight="900" color="black" fontFamily="mono">★ FEATURED</Text>
@@ -212,11 +215,16 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
   );
 };
 
+// The feed shows the latest posts; older ones aren't loaded.
+const FEED_LIMIT = 20;
+const FEED_CACHE_KEY = 'home:feed';
+
 const Home = () => {
   const { wngsBalance, activeTheme, activeThemeAccent } = useStore();
   const reduceMotion = useReducedMotion();
-  const [posts, setPosts] = useState<MonarchTimesPost[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const cachedPosts = readCache<MonarchTimesPost[]>(FEED_CACHE_KEY);
+  const [posts, setPosts] = useState<MonarchTimesPost[]>(cachedPosts ?? []);
+  const [isLoading, setIsLoading] = useState(!cachedPosts);
 
   const bg = "black";
   const text = "white";
@@ -225,29 +233,31 @@ const Home = () => {
 
   useEffect(() => {
     const fetchPosts = async () => {
-      setIsLoading(true);
+      // A remembered feed stays on screen while a fresh copy loads quietly;
+      // only a first load shows the skeleton and the progress bar.
+      const first = !readCache(FEED_CACHE_KEY);
       try {
-        const { data, error } = await supabase
+        const query = supabase
           .from('monarch_times')
           .select('*')
           .eq('status', 'PUBLISHED')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(FEED_LIMIT);
+        const { data, error } = first ? await trackProgress(Promise.resolve(query)) : await query;
 
         const mockPost: MonarchTimesPost = {
           id: 'mock-01',
           title: 'NEO COLLECTION · HANDSHAKE SEQUENCE LOGGED',
           content: 'The first batch of NTAG 424 DNA chips has been successfully integrated into the Neo Hoodie v1. Agents report 100% signal stability during initial phygital stress tests. Protocol Season 01 is now entering the final verification phase.',
-          image_url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop',
+          image_url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=75&w=900&auto=format&fit=crop',
           author: 'SYSTEM ARCHITECT',
           created_at: new Date().toISOString(),
           status: 'PUBLISHED'
         };
 
-        if (!error && data && data.length > 0) {
-          setPosts(data);
-        } else {
-          setPosts([mockPost]);
-        }
+        const next = !error && data && data.length > 0 ? data : [mockPost];
+        setPosts(next);
+        writeCache(FEED_CACHE_KEY, next);
       } catch (err) {
         console.error('Error fetching Monarch Times:', err);
       } finally {
@@ -288,14 +298,7 @@ const Home = () => {
 
         {/* Feed Content */}
         {isLoading ? (
-          <Center py={20}>
-            <VStack spacing={4}>
-              <Spinner color={brandAccent} size="xl" thickness="4px" />
-              <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="mono">
-                CONNECTING TO NEURAL LINK...
-              </Text>
-            </VStack>
-          </Center>
+          <FeedSkeleton />
         ) : posts.length > 0 ? (
           <MotionVStack
             spacing={0}

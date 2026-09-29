@@ -1,5 +1,5 @@
 import {
-  Box, Container, Heading, Text, VStack, HStack, Flex, Button, Center, Spinner,
+  Box, Container, Heading, Text, VStack, HStack, Flex, Button, Center,
   useToast, Icon
 } from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
@@ -13,6 +13,9 @@ import { WngsCoin } from '../components/WngsCoin'
 import useStore from '../store/useStore'
 import { SPRING_SNAPPY } from '../lib/motion'
 import { displayName } from '../lib/displayName'
+import { readCache, writeCache } from '../lib/pageCache'
+import { trackProgress } from '../lib/progress'
+import { AscensionSkeleton } from '../components/loading/Skeletons'
 
 const MotionVStack = motion.create(VStack)
 const MotionBox = motion.create(Box)
@@ -42,69 +45,89 @@ interface Reward {
   product_id: string | null; wngs_amount: number | null; label: string | null;
 }
 
+interface AscensionSnapshot {
+  season: Season; rewards: Reward[]; productMap: Record<string, any>; progress: Progress | null
+}
+
 const Ascension = () => {
   const { user, getAccessToken } = useAuth()
   const reduce = useReducedMotion()
   const toast = useToast()
   const { setWngsBalance } = useStore()
 
-  const [loading, setLoading] = useState(true)
-  const [season, setSeason] = useState<Season | null>(null)
-  const [progress, setProgress] = useState<Progress | null>(null)
-  const [rewards, setRewards] = useState<Reward[]>([])
-  const [productMap, setProductMap] = useState<Record<string, any>>({})
+  // The last loaded track is remembered per user, so coming back to this tab
+  // is instant while a fresh copy loads quietly.
+  const cacheKey = `ascension:${user?.id ?? 'anon'}`
+  const cached = readCache<AscensionSnapshot>(cacheKey)
+  const [loading, setLoading] = useState(!cached)
+  const [season, setSeason] = useState<Season | null>(cached?.season ?? null)
+  const [progress, setProgress] = useState<Progress | null>(cached?.progress ?? null)
+  const [rewards, setRewards] = useState<Reward[]>(cached?.rewards ?? [])
+  const [productMap, setProductMap] = useState<Record<string, any>>(cached?.productMap ?? {})
   const [busy, setBusy] = useState<string | null>(null)
 
-
-  const loadAll = async () => {
-    setLoading(true)
+  // Per-user progress via the service-role endpoint (the anon client can't
+  // identify a Privy user). Best-effort: api/ functions don't run under
+  // `vite dev`, so a failure here must never blank out the ladder.
+  const fetchProgress = async (): Promise<Progress | null> => {
+    if (!user?.id) return null
     try {
+      const token = await getAccessToken()
+      const res = await fetch('/api/v2/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId: user.id, action: 'get_season_progress' }),
+      })
+      return ((await res.json().catch(() => null))?.progress || null) as Progress | null
+    } catch {
+      return null
+    }
+  }
+
+  // Season, catalog and progress load in parallel; rewards need the season id.
+  const loadAll = async () => {
+    const first = !readCache(cacheKey)
+    const work = (async () => {
+      const progressP = fetchProgress()
+      const productsP = supabase.from('products').select('id, name, category, palette, accent_color, theme_mode')
       // Season + rewards are public (anon-readable), so the ladder renders even
       // before/without auth (e.g. the dev bypass, which has no Privy user).
       const { data: seasonRow } = await supabase
         .from('seasons').select('*').eq('is_active', true)
         .order('start_date', { ascending: false }).limit(1).maybeSingle()
-
-      if (!seasonRow) { setSeason(null); setLoading(false); return }
-      setSeason(seasonRow as Season)
-
-      const [{ data: rw }, { data: prods }] = await Promise.all([
+      if (!seasonRow) { setSeason(null); return }
+      const [{ data: rw }, { data: prods }, prog] = await Promise.all([
         supabase.from('season_rewards').select('*').eq('season_id', seasonRow.id).order('level', { ascending: true }),
-        supabase.from('products').select('id, name, category, palette, accent_color, theme_mode'),
+        productsP,
+        progressP,
       ])
+      const map = prods ? Object.fromEntries(prods.map((p: any) => [p.id, p])) : {}
+      setSeason(seasonRow as Season)
       setRewards((rw || []) as Reward[])
-      if (prods) setProductMap(Object.fromEntries(prods.map((p: any) => [p.id, p])))
-
-      // Per-user progress only when authenticated.
-      if (!user?.id) { setProgress(null); setLoading(false); return }
-
-      // Progress + profile via the service-role endpoint. Progress used
-      // to be read straight from Supabase, but that required a world-readable
-      // RLS policy on user_season_progress (the anon client can't identify a
-      // Privy user), so it now goes through the server like everything else.
-      // Best-effort: api/ functions don't run under `vite dev`, so never let a
-      // failure here blank out the ladder.
-      try {
-        const token = await getAccessToken()
-        const progRes = await fetch('/api/v2/purchase', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ userId: user.id, action: 'get_season_progress' }),
-        })
-        const prog = (await progRes.json().catch(() => null))?.progress || null
-        setProgress(prog as Progress | null)
-
-        const profRes = await fetch('/api/v2/purchase', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
-        })
-        const prof = (await profRes.json().catch(() => null))?.profile || null
-        if (prof && typeof prof.wngs_balance === 'number') setWngsBalance(prof.wngs_balance)
-      } catch { /* progress unavailable (e.g. local vite dev) — ladder still shows */ }
+      setProductMap(map)
+      setProgress(prog)
+      writeCache<AscensionSnapshot>(cacheKey, { season: seasonRow as Season, rewards: (rw || []) as Reward[], productMap: map, progress: prog })
+    })()
+    try {
+      await (first ? trackProgress(work) : work)
     } finally {
       setLoading(false)
     }
+  }
+
+  // A claimed WNGS reward changes the balance; the claim response doesn't carry it.
+  const refreshBalance = async () => {
+    if (!user?.id) return
+    try {
+      const token = await getAccessToken()
+      const res = await fetch('/api/v2/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId: user.id, action: 'ensure_profile' }),
+      })
+      const prof = (await res.json().catch(() => null))?.profile || null
+      if (prof && typeof prof.wngs_balance === 'number') setWngsBalance(prof.wngs_balance)
+    } catch { /* balance refreshes on next launch */ }
   }
 
   useEffect(() => { loadAll() }, [user?.id])
@@ -126,7 +149,7 @@ const Ascension = () => {
     try {
       await post({ action: 'claim_reward', rewardId: reward.id })
       toast({ title: 'REWARD CLAIMED', status: 'success', duration: 2000 })
-      await loadAll()
+      await Promise.all([loadAll(), refreshBalance()])
     } catch (e: any) {
       toast({ title: 'CLAIM FAILED', description: e.message, status: 'error', duration: 3000 })
     } finally { setBusy(null) }
@@ -140,7 +163,7 @@ const Ascension = () => {
   }
 
   if (loading) {
-    return <Center h="100vh" bg="black"><Spinner color="var(--monarch-accent)" size="xl" /></Center>
+    return <AscensionSkeleton />
   }
 
   if (!season) {

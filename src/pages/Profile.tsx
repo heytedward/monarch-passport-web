@@ -23,6 +23,7 @@ import useStore from '../store/useStore'
 import { staggerContainer, staggerItem } from '../lib/motion'
 import { STAMPS_ENABLED, QUESTS_ENABLED } from '../lib/features'
 import { displayName } from '../lib/displayName'
+import { ListSkeleton } from '../components/loading/Skeletons'
 
 const MotionSimpleGrid = motion.create(SimpleGrid)
 const MotionBox = motion.create(Box)
@@ -346,7 +347,7 @@ const Profile = () => {
 
             <Text fontSize="10px" fontWeight="900" color={mutedText} fontFamily="mono" pt={2}>TRANSACTION HISTORY</Text>
             {transLoading ? (
-              <Center py={8}><Spinner color="var(--monarch-accent)" /></Center>
+              <ListSkeleton rows={4} rowH="48px" />
             ) : transactions.length > 0 ? (
               <VStack align="stretch" spacing={0}>
                 {transactions.map((item, idx) => (

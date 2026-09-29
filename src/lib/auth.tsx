@@ -40,7 +40,7 @@ export function useAuth(): Auth {
 
 // Privy's storage keys (localStorage 'privy:token' / 'privy:refresh_token', or
 // the 'privy-token' / 'privy-session' cookies) and its OAuth return params.
-function mayHaveSession(): boolean {
+export function mayHaveSession(): boolean {
   try {
     if (localStorage.getItem('privy:token') || localStorage.getItem('privy:refresh_token')) return true;
   } catch { /* storage blocked: fall through */ }

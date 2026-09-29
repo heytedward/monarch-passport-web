@@ -11,6 +11,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { PiArrowLeftBold, PiPowerBold, PiUserBold } from 'react-icons/pi';
+import { clearCache } from '../lib/pageCache';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ const Settings = () => {
   const monarchYellow = "#FFB000";
 
   const handleLogout = async () => {
+    clearCache();
     await logout();
     navigate('/');
   };

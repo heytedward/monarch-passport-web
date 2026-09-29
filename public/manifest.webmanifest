@@ -3,7 +3,7 @@
   "short_name": "Passport",
   "description": "Claim artifact, earn WNGS, and unlock seasonal rewards with the Monarch Passport from Papillon Brand.",
   "id": "/",
-  "start_url": "/?source=homescreen",
+  "start_url": "/home?source=homescreen",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

@@ -1,0 +1,18 @@
+/* Skeleton placeholder with a gold shimmer sweeping across it. */
+.mp-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: #1c1c1f;
+}
+.mp-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 176, 0, 0.16), transparent);
+  animation: mp-shimmer 1.3s ease-in-out infinite;
+}
+@keyframes mp-shimmer { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .mp-shimmer::after { animation: none; opacity: 0; }
+}

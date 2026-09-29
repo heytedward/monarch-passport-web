@@ -17,7 +17,6 @@ import {
   useDisclosure,
   IconButton,
   useColorModeValue,
-  Spinner,
   useToast,
   Menu,
   MenuButton,
@@ -38,6 +37,9 @@ import useStore from '../store/useStore'
 import DeStijlAvatar from '../components/DeStijlAvatar'
 import ThemeSwatch from '../components/ThemeSwatch'
 import { displayName } from '../lib/displayName'
+import { readCache, writeCache } from '../lib/pageCache';
+import { beginProgress } from '../lib/progress';
+import { GridSkeleton } from '../components/loading/Skeletons';
 
 const MotionBox = motion.create(Box)
 const MotionSimpleGrid = motion.create(SimpleGrid)
@@ -151,8 +153,12 @@ const Closet = () => {
   const [isFlipped, setIsFlipped] = useState(false);
   
   const { user, getAccessToken } = useAuth();
-  const [ownedAssets, setOwnedAssets] = useState<ClosetItemData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Remembered per user for the session: coming back to the closet is instant
+  // while a fresh copy loads quietly.
+  const closetKey = `closet:${user?.id ?? 'anon'}`;
+  const cachedAssets = readCache<ClosetItemData[]>(closetKey);
+  const [ownedAssets, setOwnedAssets] = useState<ClosetItemData[]>(cachedAssets ?? []);
+  const [isLoading, setIsLoading] = useState(!cachedAssets);
   const [isMinting, setIsMinting] = useState(false);
 
   // The user's embedded Solana wallet (mint recipient).
@@ -254,8 +260,9 @@ const Closet = () => {
         return;
       }
       
+      const first = !readCache(closetKey);
+      const endProgress = first ? beginProgress() : () => {};
       try {
-        setIsLoading(true);
         // Owned cosmetics come from a service-role endpoint (Supabase can't
         // validate the Privy token for a direct RLS read).
         const token = await getAccessToken();
@@ -381,13 +388,17 @@ const Closet = () => {
               },
             }));
           } catch { /* artifacts are non-critical to the closet */ }
-          setOwnedAssets([...defaults, ...mapped, ...artifactItems]);
+          const next = [...defaults, ...mapped, ...artifactItems];
+          setOwnedAssets(next);
+          writeCache(closetKey, next);
         } else {
           setOwnedAssets(defaults);
+          writeCache(closetKey, defaults);
         }
       } catch (err) {
         console.error("Registry Sync Failed:", err);
       } finally {
+        endProgress();
         setIsLoading(false);
       }
     };
@@ -630,9 +641,7 @@ const Closet = () => {
             </Flex>
             
             {isLoading ? (
-              <Center h="200px">
-                <Spinner color="var(--monarch-accent)" />
-              </Center>
+              <GridSkeleton />
             ) : (
               <MotionSimpleGrid
                 key={reduce ? undefined : `${mode}-${typeFilter}-${collectionFilter}-${rarityFilter}`}
