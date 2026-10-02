@@ -30,15 +30,7 @@ import DeStijlAvatar from '../components/DeStijlAvatar';
 import { rollPalette, RARITIES, priceForRarity } from '../lib/destijlPalette';
 import { supabase } from '../lib/supabase';
 import { displayName } from '../lib/displayName';
-
-// Entries may be full Privy DIDs, bare Privy IDs ("cmpho..."), or wallet
-// addresses. Bare entries also match as their did:privy: form, so the env var
-// works with or without the prefix.
-const ADMIN_WALLETS = (import.meta.env.VITE_ADMIN_PRIVY_ID || "did:privy:cmphogmw500340ckz646kklaw,did:privy:cmjufzcf403jjl70dpyp1mood")
-  .split(",")
-  .map((w: string) => w.trim())
-  .filter(Boolean)
-  .flatMap((w: string) => (w.startsWith('did:privy:') ? [w] : [w, `did:privy:${w}`]));
+import { isAdminUser } from '../lib/admin';
 
 // The Command Center is split into focused screens; the nav shows one at a
 // time so each tool gets room to breathe (and it's usable on a phone).
@@ -159,13 +151,8 @@ const CommandCenter: React.FC = () => {
     setSystemLogs(prev => [...prev.slice(-4), `[${timestamp}] ${message}`]);
   };
 
-  const userId = user?.id?.toLowerCase();
   const userWallet = user?.wallet?.address?.toLowerCase();
-  
-  const isAuthorized = authenticated && (
-    (userId && ADMIN_WALLETS.map((w: string) => w.toLowerCase()).includes(userId)) ||
-    (userWallet && ADMIN_WALLETS.map((w: string) => w.toLowerCase()).includes(userWallet))
-  );
+  const isAuthorized = authenticated && isAdminUser(user);
 
   const bgColor = useColorModeValue('gray.50', 'black');
   const cardBg = useColorModeValue('white', 'gray.900');

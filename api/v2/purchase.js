@@ -25,6 +25,32 @@ const BOOST_FEATURE_THRESHOLD = 20;
 const COMMENT_COST = 10;
 const COMMENT_MAX_LEN = 500;
 
+// Usernames: 3-20 lowercase letters, numbers and hyphens, no leading/trailing
+// hyphen (matches the profiles_username_format check in db/usernames.sql).
+// Stored lowercase; uniqueness is case-insensitive.
+const USERNAME_RE = /^[a-z0-9][a-z0-9-]{1,18}[a-z0-9]$/;
+const USERNAME_CHANGE_LIMIT = 5;
+const USERNAME_CHANGE_WINDOW_MS = 24 * 60 * 60 * 1000;
+// Names that would read as staff or the brand, matched with hyphens removed
+// (so "pap-illon" is caught). Exact words are blocked as the whole name;
+// prefixes also block anything starting with them ("papillon-drops").
+const RESERVED_USERNAMES = [
+  'help', 'staff', 'mod', 'moderator', 'team', 'passport', 'system', 'root',
+  'null', 'undefined', 'wngs', 'ascension', 'security',
+];
+const RESERVED_PREFIXES = ['admin', 'support', 'official', 'papillon', 'monarch'];
+
+// Usernames for a set of user ids, as { id: username }. Missing or unset
+// names are left out; callers fall back to a short id.
+async function usernamesFor(admin, ids) {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return {};
+  const { data } = await admin.from('profiles').select('id, username').in('id', unique);
+  const map = {};
+  for (const row of data || []) if (row.username) map[row.id] = row.username;
+  return map;
+}
+
 // Notification feed: how far back the derived feed reaches. The audit ledger
 // (`transactions`) is never trimmed — this is only the display window, so
 // notifications effectively self-expire after 30 days.
@@ -379,7 +405,7 @@ export default async function handler(req, res) {
       }
       const { data: profile } = await admin
         .from('profiles')
-        .select('wngs_balance, active_theme, active_avatar, total_taps, current_stamina, max_stamina, last_stamina_regen')
+        .select('wngs_balance, active_theme, active_avatar, total_taps, current_stamina, max_stamina, last_stamina_regen, username')
         .eq('id', userId)
         .maybeSingle();
       // Resolve the equipped avatar's palette so the client can render it.
@@ -614,7 +640,42 @@ export default async function handler(req, res) {
         .select('id, user_id, body, created_at')
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
-      return res.status(200).json({ success: true, comments: data || [] });
+      const names = await usernamesFor(admin, (data || []).map((c) => c.user_id));
+      const comments = (data || []).map((c) => ({ ...c, username: names[c.user_id] || null }));
+      return res.status(200).json({ success: true, comments });
+    }
+
+    // Pick or change the member's username. Format and reserved words are
+    // checked here; the unique index on lower(username) settles races.
+    if (action === 'set_username') {
+      const raw = typeof req.body?.username === 'string' ? req.body.username : '';
+      const username = raw.trim().replace(/^@/, '').toLowerCase();
+      if (!USERNAME_RE.test(username) || username.includes('--')) {
+        return res.status(400).json({ error: 'USERNAME_INVALID' });
+      }
+      const squashed = username.replace(/-/g, '');
+      if (RESERVED_USERNAMES.includes(squashed) || RESERVED_PREFIXES.some((w) => squashed.startsWith(w))) {
+        return res.status(400).json({ error: 'USERNAME_RESERVED' });
+      }
+
+      const { data: current } = await admin.from('profiles').select('username').eq('id', userId).maybeSingle();
+      if (!current) return res.status(404).json({ error: 'PROFILE_NOT_FOUND' });
+      if (current.username === username) return res.status(200).json({ success: true, username });
+
+      const rate = await enforceRateLimit(admin, {
+        scope: 'username_change',
+        identifier: userId,
+        limit: USERNAME_CHANGE_LIMIT,
+        windowMs: USERNAME_CHANGE_WINDOW_MS,
+      });
+      if (!rate.allowed) return sendRateLimited(res, rate.retryAfterMs);
+
+      const { error: uErr } = await admin.from('profiles').update({ username }).eq('id', userId);
+      if (uErr) {
+        if (uErr.code === '23505') return res.status(409).json({ error: 'USERNAME_TAKEN' });
+        throw uErr;
+      }
+      return res.status(200).json({ success: true, username });
     }
 
     // Boost ("hype") a feed post: spend BOOST_COST WNGS, log the boost, bump the
@@ -680,7 +741,10 @@ export default async function handler(req, res) {
       await admin.from('transactions').insert({
         user_id: userId, amount: -COMMENT_COST, transaction_type: 'POST_COMMENT', metadata: { post_id: postId },
       });
-      return res.status(200).json({ success: true, newBalance: debited.wngs_balance, comment });
+      const names = await usernamesFor(admin, [userId]);
+      return res.status(200).json({
+        success: true, newBalance: debited.wngs_balance, comment: { ...comment, username: names[userId] || null },
+      });
     }
 
     // Dispatch ASCENSION actions (identity already verified above).

@@ -2,7 +2,7 @@ import React from 'react';
 import { PrivyProvider, usePrivy } from '@privy-io/react-auth';
 import { PRIVY_APP_ID } from '../config';
 import useStore from '../store/useStore';
-import type { Auth, PrivyBridgeProps } from './auth';
+import type { Auth, LoginKind, PrivyBridgeProps } from './auth';
 
 // Loaded on demand by AuthProvider (src/lib/auth.tsx): everything that pulls in
 // the Privy SDK lives in this module so it gets its own chunk.
@@ -35,6 +35,18 @@ function Bridge({ onChange, pendingLogin }: PrivyBridgeProps) {
     login: () => latest.current.login(),
     logout: () => latest.current.logout(),
     getAccessToken: () => latest.current.getAccessToken(),
+    linkLogin: (kind: LoginKind) => {
+      const p = latest.current;
+      if (kind === 'email') p.linkEmail();
+      else if (kind === 'google') p.linkGoogle();
+      else p.linkApple();
+    },
+    unlinkLogin: async (kind: LoginKind, id: string) => {
+      const p = latest.current;
+      if (kind === 'email') await p.unlinkEmail(id);
+      else if (kind === 'google') await p.unlinkGoogle(id);
+      else await p.unlinkApple(id);
+    },
   }), []);
 
   const { ready, authenticated, user } = privy;

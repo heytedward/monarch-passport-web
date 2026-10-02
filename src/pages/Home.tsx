@@ -23,6 +23,7 @@ import useStore from '../store/useStore'
 import NotificationsBell from '../components/NotificationsBell'
 import { staggerContainer, staggerItem } from '../lib/motion'
 import { displayName } from '../lib/displayName'
+import { memberHandle } from '../lib/username'
 import { readCache, writeCache } from '../lib/pageCache'
 import { trackProgress } from '../lib/progress'
 import { FeedSkeleton } from '../components/loading/Skeletons'
@@ -33,10 +34,7 @@ const MotionBox = motion(Box)
 const BOOST_COST = 50;
 const COMMENT_COST = 10;
 
-// Derive a short readable handle from a Privy DID for comment attribution.
-const handleFromId = (id: string) => '@' + (id || '').replace(/^did:privy:/, '').slice(0, 6).toUpperCase();
-
-interface Comment { id: string; user_id: string; body: string; created_at: string; }
+interface Comment { id: string; user_id: string; username?: string | null; body: string; created_at: string; }
 
 interface MonarchTimesPost {
   id: string;
@@ -195,7 +193,7 @@ const PostCard = ({ post, accent }: { post: MonarchTimesPost; accent: string }) 
               <Center py={8}><Text fontSize="9px" fontWeight="900" color="gray.600" fontFamily="mono">[ NO COMMENTS YET · BE FIRST ]</Text></Center>
             ) : comments.map((c) => (
               <Box key={c.id} borderLeft={`2px solid ${accent}`} pl={3} py={1}>
-                <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="mono">{handleFromId(c.user_id)}</Text>
+                <Text fontSize="8px" fontWeight="900" color={accent} fontFamily="mono">{memberHandle(c.username, c.user_id)}</Text>
                 <Text fontSize="xs" color="gray.300" fontFamily="mono" lineHeight="1.4">{c.body}</Text>
               </Box>
             ))}

@@ -16,6 +16,9 @@ import type { User } from '@privy-io/react-auth';
  * Import only types from '@privy-io/react-auth' here; the runtime lives in
  * ./privyAuth, which is loaded on demand.
  */
+/** Sign-in methods a member can add to or remove from their account. */
+export type LoginKind = 'email' | 'google' | 'apple';
+
 export interface Auth {
   ready: boolean;
   authenticated: boolean;
@@ -23,6 +26,10 @@ export interface Auth {
   login: () => void;
   logout: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
+  /** Opens Privy's flow to add a sign-in method to the current account. */
+  linkLogin: (kind: LoginKind) => void;
+  /** Removes a sign-in method; `id` is the email address or the Google/Apple subject. */
+  unlinkLogin: (kind: LoginKind, id: string) => Promise<void>;
 }
 
 export interface PrivyBridgeProps {
@@ -85,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login: () => { pendingLogin.current = true; load(); },
     logout: async () => {},
     getAccessToken: async () => null,
+    linkLogin: () => {},
+    unlinkLogin: async () => {},
   }), [sessionLikely, load]);
 
   return (

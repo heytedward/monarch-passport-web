@@ -23,6 +23,7 @@ import useStore from '../store/useStore'
 import { staggerContainer, staggerItem } from '../lib/motion'
 import { STAMPS_ENABLED, QUESTS_ENABLED } from '../lib/features'
 import { displayName } from '../lib/displayName'
+import { memberHandle } from '../lib/username'
 import { ListSkeleton } from '../components/loading/Skeletons'
 
 const MotionSimpleGrid = motion.create(SimpleGrid)
@@ -39,15 +40,9 @@ const Profile = () => {
   ) || (user as any)?.wallets?.find((w: any) => w.chainType === 'solana');
   const solanaAddress = (solanaWallet as any)?.address;
 
-  // Derive a handle from the real account (email > wallet > fallback).
-  const email = (user as any)?.email?.address as string | undefined;
-  const handle = email
-    ? '@' + email.split('@')[0].toUpperCase()
-    : solanaAddress
-      ? '@' + solanaAddress.slice(0, 6).toUpperCase()
-      : '@OPERATOR';
-
-  const { wngsBalance, totalTaps, isLoading, setWngsBalance } = useStore()
+  // The member's chosen username; never derived from their sign-in email.
+  const { wngsBalance, totalTaps, isLoading, setWngsBalance, username, profileLoaded } = useStore()
+  const handle = memberHandle(username, user?.id)
   const [activeTab, setActiveTab] = useState<'STATS' | 'WALLET' | 'QUESTS' | 'STAMPS'>('STATS');
   const [activeQuests, setActiveQuests] = useState<any[]>([]);
   const [userQuests, setUserQuests] = useState<Record<string, { status: string; progress: number; target: number }>>({});
@@ -488,7 +483,7 @@ const Profile = () => {
           PROFILE
         </Heading>
         <Text fontSize="9px" fontWeight="900" color={mutedText} fontFamily="mono" letterSpacing="0.1em">
-          SYSTEM IDENTITY{handle}
+          MEMBER · {handle}
         </Text>
       </Box>
 
@@ -514,6 +509,14 @@ const Profile = () => {
             <Heading fontSize="3xl" fontWeight="900" color={bg} fontStyle="italic" fontFamily="heading" letterSpacing="-0.02em">
               {handle}
             </Heading>
+            {profileLoaded && !username && (
+              <Button
+                size="xs" h="26px" borderRadius="0" bg={bg} color={text} fontWeight="900" fontSize="9px"
+                _hover={{ bg: '#FFB000', color: 'black' }} onClick={() => navigate('/settings')}
+              >
+                PICK YOUR NAME
+              </Button>
+            )}
             
             {solanaAddress ? (
               <HStack spacing={1.5} bg={useColorModeValue("blackAlpha.100", "whiteAlpha.200")} px={3} py={1} border="1px solid" borderColor={bg}>
