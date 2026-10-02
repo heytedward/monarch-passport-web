@@ -8,6 +8,7 @@ import Navbar from './components/Navbar'
 import PageTransition from './components/PageTransition'
 import ErrorBoundary from './components/ErrorBoundary'
 import InstallPrompt from './components/InstallPrompt'
+import UsernamePrompt from './components/UsernamePrompt'
 import LaunchSplash from './components/LaunchSplash'
 import TopProgressBar, { RouteFallback } from './components/loading/TopProgressBar'
 import Landing from './pages/Landing'
@@ -159,13 +160,14 @@ function AppFrame() {
       {!isFullWidth && <Navbar />}
       <AppRoutes />
       <InstallPrompt />
+      <UsernamePrompt />
     </Box>
   );
 }
 
 function AppContent() {
   const { user, ready, authenticated, getAccessToken } = useAuth();
-  const { activeTheme, activeThemeAccent, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent } = useStore();
+  const { activeTheme, activeThemeAccent, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent, setUsername, setProfileLoaded } = useStore();
   const toast = useToast();
 
   const brandAccent = activeThemeAccent || (activeTheme === 'CRIMSON_OVERRIDE' ? '#DC143C' : '#FFB000');
@@ -189,6 +191,7 @@ function AppContent() {
       // identityType=null bounces between Landing and ProtectedRoute in a
       // history.replaceState loop (browser throttles it -> render crash).
       if (!identityType) setIdentityType('HUMAN');
+      setProfileLoaded(false);
       (async () => {
         // Make sure a profile row exists before anything reads/writes it.
         // Server endpoints (purchase/claim/tap/equip) verify identity by
@@ -209,6 +212,8 @@ function AppContent() {
             setActiveAvatar(data.profile.active_avatar || null);
             setActiveAvatarColors(data.avatarColors || null);
             if (data.themeAccent) setActiveThemeAccent(data.themeAccent);
+            setUsername(data.profile.username ?? null);
+            setProfileLoaded(true);
           }
           // Storefront purchases auto-granted on this login (matched by email).
           if (Array.isArray(data?.granted) && data.granted.length > 0) {
@@ -237,7 +242,7 @@ function AppContent() {
         }
       })();
     }
-  }, [ready, authenticated, user?.id, getAccessToken, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent]);
+  }, [ready, authenticated, user?.id, getAccessToken, identityType, setIdentityType, setWngsBalance, setActiveTheme, setActiveAvatar, setActiveAvatarColors, setActiveThemeAccent, setUsername, setProfileLoaded]);
 
   return (
     <Router>

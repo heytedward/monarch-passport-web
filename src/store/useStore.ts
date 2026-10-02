@@ -30,6 +30,11 @@ interface UserState {
   cart: CartItem[]
   activeAvatarColors: string[] | null
   activeThemeAccent: string | null
+  // The member's chosen username (lowercase), or null until they pick one.
+  username: string | null
+  // True once this session's ensure_profile has answered, so screens can tell
+  // "no username yet" from "not loaded yet". Not persisted.
+  profileLoaded: boolean
   setUser: (user: { id: string } | null) => void
   setWngsBalance: (balance: number) => void
   setIsLoading: (loading: boolean) => void
@@ -45,6 +50,8 @@ interface UserState {
   setActiveTheme: (theme: string | null) => void
   setActiveAvatar: (avatar: string | null) => void
   setActiveThemeAccent: (accent: string | null) => void
+  setUsername: (username: string | null) => void
+  setProfileLoaded: (loaded: boolean) => void
 }
 
 // The 3 built-in themes ship free and aren't looked up by product id; their
@@ -73,6 +80,8 @@ const useStore = create<UserState>()(
       ],
       cart: [],
       activeAvatarColors: null,
+      username: null,
+      profileLoaded: false,
       activeThemeAccent: null,
       setUser: (user) => set({ user }),
       setWngsBalance: (balance) => set({ wngsBalance: balance }),
@@ -154,9 +163,13 @@ const useStore = create<UserState>()(
       setActiveTheme: (theme) => set({ activeTheme: theme }),
       setActiveAvatar: (avatar) => set({ activeAvatar: avatar }),
       setActiveThemeAccent: (accent) => set({ activeThemeAccent: accent }),
+      setUsername: (username) => set({ username }),
+      setProfileLoaded: (loaded) => set({ profileLoaded: loaded }),
     }),
     {
       name: 'monarch-passport-storage',
+      // profileLoaded describes this session only.
+      partialize: ({ profileLoaded: _profileLoaded, ...rest }) => rest,
     }
   )
 )
